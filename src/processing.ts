@@ -1,0 +1,81 @@
+import path from "node:path";
+import { createHash } from "node:crypto";
+import { atomicJson, readJson, withFileLock } from "./io.js";
+import { vaultPaths } from "./paths.js";
+import { listJsonFiles } from "./vault.js";
+import type { ProcessedMemory, QueueItem, RawEvent } from "./types.js";
+
+const STOP = new Set(["the", "and", "for", "that", "this", "with", "have", "from", "我们", "这个", "一下", "可以", "就是"]);
+
+export async function processQueue(root: string, projectId?: string): Promise<{ processed: number; failed: number }> {
+  const p = vaultPaths(root);
+  return await withFileLock(path.join(p.tmp, "processor.lock"), async () => {
+    const queueFiles = (await listJsonFiles(p.queue)).filter((file) => !projectId || file.includes(`${path.sep}${projectId}${path.sep}`));
+    const items = await Promise.all(queueFiles.map(async file => ({ file, item: await readJson<QueueItem>(file) })));
+    items.sort((a, b) => Number(b.item.priority === "explicit") - Number(a.item.priority === "explicit") || a.item.created_at.localeCompare(b.item.created_at));
+    let processed = 0;
+    let failed = 0;
+    for (const entry of items.filter(({ item }) => item.status === "pending" || item.status === "failed")) {
+      const running = { ...entry.item, status: "processing" as const, attempts: entry.item.attempts + 1, updated_at: new Date().toISOString() };
+      await atomicJson(entry.file, running);
+      try {
+        const rawFiles = (await listJsonFiles(path.join(p.raw, running.project_id))).filter(async () => true);
+        let event: RawEvent | undefined;
+        for (const file of rawFiles) {
+          const candidate = await readJson<RawEvent>(file);
+          if (candidate.event_id === running.event_id) { event = candidate; break; }
+        }
+        if (!event) throw new Error(`Missing raw event ${running.event_id}`);
+        if (event.sensitivity === "secret") {
+          await atomicJson(entry.file, { ...running, status: "done", updated_at: new Date().toISOString() });
+          processed += 1;
+          continue;
+        }
+        const memory = memoryFromEvent(event, running.priority === "explicit");
+        await atomicJson(path.join(p.processed, event.project_id, `${memory.id}.json`), memory);
+        await atomicJson(entry.file, { ...running, status: "done", updated_at: new Date().toISOString() });
+        processed += 1;
+      } catch (error) {
+        await atomicJson(entry.file, { ...running, status: "failed", error: (error as Error).message, updated_at: new Date().toISOString() });
+        failed += 1;
+      }
+    }
+    return { processed, failed };
+  });
+}
+
+function memoryFromEvent(event: RawEvent, explicit: boolean): ProcessedMemory {
+  const clean = event.content.replace(/\s+/g, " ").trim();
+  const tags = keywords(clean);
+  const id = `mem_${createHash("sha256").update(event.event_id).digest("hex").slice(0, 24)}`;
+  const isCorrection = /(?:不是这个意思|这条不对|纠正|correct)/i.test(clean);
+  const isDecision = /(?:决定|采用|选择|不做|拒绝|decision|decided|choose)/i.test(clean);
+  return {
+    schema_version: 1,
+    id,
+    type: isCorrection ? "correction" : isDecision ? "decision" : "conversation",
+    scope: "project",
+    project_id: event.project_id,
+    title: clean.slice(0, 80),
+    summary: clean.slice(0, 1000),
+    tags,
+    predictive_tags: tags,
+    retrieval_phrases: tags.map(tag => `关于 ${tag} 的讨论`),
+    source_events: [event.event_id],
+    confidence: explicit ? 1 : 0.65,
+    source: explicit ? "user_explicit" : "agent_inferred",
+    status: "active",
+    sensitivity: event.sensitivity === "sensitive" ? "sensitive" : "normal",
+    supersedes: [],
+    superseded_by: [],
+    created_at: event.timestamp,
+    updated_at: event.timestamp,
+    agent: "continuity-deterministic-processor"
+  };
+}
+
+function keywords(text: string): string[] {
+  const latin = text.toLowerCase().match(/[a-z][a-z0-9_-]{2,}/g) ?? [];
+  const cjk = text.match(/[\p{Script=Han}]{2,8}/gu) ?? [];
+  return [...new Set([...latin, ...cjk].filter(token => !STOP.has(token)))].slice(0, 12);
+}
