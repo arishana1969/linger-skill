@@ -2,6 +2,7 @@ import { cp, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promis
 import path from "node:path";
 import { capabilityReport, type AdapterName } from "./adapters.js";
 import { atomicJson } from "./io.js";
+import { installHooks, uninstallHooks } from "./hook-installer.js";
 
 export interface InstallManifest {
   schema_version: 1;
@@ -11,6 +12,7 @@ export interface InstallManifest {
   adapters: AdapterName[];
   files: string[];
   backups: string[];
+  hook_files: string[];
 }
 
 export interface InstallOptions {
@@ -43,8 +45,9 @@ export async function install(options: InstallOptions): Promise<{ manifest: Inst
     await writeFile(path.join(destination, ".continuity-managed"), "managed by continuity-skill\n", { mode: 0o600 });
     files.push(destination);
   }
+  const hookFiles = await installHooks(options.home, options.packageRoot, adapters);
   const packageJson = JSON.parse(await readFile(path.join(options.packageRoot, "package.json"), "utf8")) as { version: string };
-  const manifest: InstallManifest = { schema_version: 1, package_version: packageJson.version, installed_at: new Date().toISOString(), package_root: options.packageRoot, adapters, files, backups };
+  const manifest: InstallManifest = { schema_version: 1, package_version: packageJson.version, installed_at: new Date().toISOString(), package_root: options.packageRoot, adapters, files, backups, hook_files: hookFiles };
   await atomicJson(manifestFile, manifest);
   return { manifest, capabilities: await capabilityReport(options.home) };
 }
@@ -59,6 +62,7 @@ export async function uninstall(home: string): Promise<{ removed: string[]; vaul
     if (!isInside(home, target)) throw new Error(`Refusing to remove path outside home: ${target}`);
     if (await isManaged(target)) { await rm(target, { recursive: true, force: true }); removed.push(target); }
   }
+  await uninstallHooks(home, manifest.adapters);
   await rm(manifestFile, { force: true });
   return { removed, vault_preserved: true };
 }

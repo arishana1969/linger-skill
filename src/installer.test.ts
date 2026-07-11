@@ -8,10 +8,10 @@ import { install, uninstall } from "./installer.js";
 const packageRoot = process.cwd();
 async function home(): Promise<string> { return await mkdtemp(path.join(os.tmpdir(), "continuity-install-")); }
 
-test("installs idempotently into both hosts and reports L1", async () => {
+test("installs idempotently into both hosts and reports L2", async () => {
   const fakeHome = await home();
   const first = await install({ home: fakeHome, packageRoot });
-  assert.deepEqual(first.capabilities.map(item => item.level), [1, 1]);
+  assert.deepEqual(first.capabilities.map(item => item.level), [2, 2]);
   const second = await install({ home: fakeHome, packageRoot });
   assert.equal(second.manifest.backups.length, 0);
   await access(path.join(fakeHome, ".claude", "skills", "continuity", "SKILL.md"));

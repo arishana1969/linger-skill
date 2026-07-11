@@ -35,6 +35,7 @@ export async function detectClaudeCode(home: string): Promise<AdapterCapability>
     const parsed = JSON.parse(await readFile(settings, "utf8")) as { hooks?: Record<string, unknown> };
     hooks = Boolean(parsed.hooks && Object.keys(parsed.hooks).length);
   } catch { /* missing or user-owned invalid settings */ }
+  hooks ||= await exists(path.join(root, "hooks.json"));
   const level: CapabilityLevel = hooks && installed ? 2 : installed ? 1 : 0;
   return result("claude-code", detected, installed, level, hooks, [
     "MVP hook coverage depends on installed Claude Code lifecycle events.",
@@ -50,6 +51,7 @@ export async function detectCodex(home: string): Promise<AdapterCapability> {
   const installed = await exists(skill);
   let hooks = false;
   try { hooks = /(^|\n)\s*\[hooks(?:\.|\])/m.test(await readFile(config, "utf8")); } catch { /* absent */ }
+  hooks ||= await exists(path.join(root, "hooks.json"));
   const level: CapabilityLevel = hooks && installed ? 2 : installed ? 1 : 0;
   return result("codex", detected, installed, level, hooks, [
     "Automatic final-answer capture must be verified against the installed Codex surface.",

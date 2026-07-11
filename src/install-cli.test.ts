@@ -12,10 +12,10 @@ const cli = path.resolve("dist/cli.js");
 test("CLI install, capabilities, and confirmed uninstall", async () => {
   const home = await mkdtemp(path.join(os.tmpdir(), "continuity-install-cli-"));
   const installed = JSON.parse((await exec(process.execPath, [cli, "install", "--home", home, "--yes"])).stdout);
-  assert.equal(installed.capabilities[0].level, 1);
+  assert.equal(installed.capabilities[0].level, 2);
   await access(path.join(home, ".codex", "skills", "continuity", "SKILL.md"));
   const capabilities = JSON.parse((await exec(process.execPath, [cli, "capabilities", "--home", home])).stdout);
-  assert.deepEqual(capabilities.map((item: { level: number }) => item.level), [1, 1]);
+  assert.deepEqual(capabilities.map((item: { level: number }) => item.level), [2, 2]);
   await assert.rejects(exec(process.execPath, [cli, "uninstall", "--home", home]), /uninstall requires --yes/);
   const removed = JSON.parse((await exec(process.execPath, [cli, "uninstall", "--home", home, "--yes"])).stdout);
   assert.equal(removed.vault_preserved, true);
