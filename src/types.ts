@@ -46,6 +46,7 @@ export interface ProcessedMemory {
   predictive_tags: string[];
   retrieval_phrases: string[];
   source_events: string[];
+  source_hash?: string;
   confidence: number;
   source: MemorySource;
   status: "active" | "revoked" | "superseded";

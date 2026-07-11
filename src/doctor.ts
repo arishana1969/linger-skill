@@ -12,10 +12,12 @@ export async function doctor(root: string): Promise<DoctorReport> {
   await initVault(root);
   const p = vaultPaths(root);
   const report: DoctorReport = { ok: true, errors: [], warnings: [] };
+  const rawHashes = new Map<string, string>();
   for (const file of await listJsonFiles(p.raw)) {
     try {
       const event = await readJson<RawEvent>(file);
       const hash = createHash("sha256").update(event.content).digest("hex");
+      rawHashes.set(event.event_id, hash);
       if (hash !== event.content_hash) report.warnings.push(`tampered:${path.relative(p.root, file)}`);
     } catch { report.errors.push(`invalid_raw:${path.relative(p.root, file)}`); }
   }
@@ -23,6 +25,10 @@ export async function doctor(root: string): Promise<DoctorReport> {
     try {
       const memory = await readJson<ProcessedMemory>(file);
       if (!memory.source_events.length) report.warnings.push(`missing_evidence:${memory.id}`);
+      if (memory.source_hash) {
+        const verified = memory.source_events.some(eventId => rawHashes.get(eventId) === memory.source_hash);
+        if (!verified) report.warnings.push(`processed_source_mismatch:${memory.id}`);
+      }
     } catch { report.errors.push(`invalid_processed:${path.relative(p.root, file)}`); }
   }
   for (const file of await listJsonFiles(path.join(p.tmp, "pending"))) {
