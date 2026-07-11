@@ -5,6 +5,8 @@ import { atomicJson } from "./io.js";
 import { installHooks, uninstallHooks } from "./hook-installer.js";
 import { installRuntime, uninstallRuntime } from "./runtime-installer.js";
 
+export const PRIVACY_NOTICE = "Continuity stores visible conversations in local files. Recalled evidence may be sent to the current cloud model. Local-first does not mean data never leaves this device. No telemetry is installed, and uninstall preserves the vault.";
+
 export interface InstallManifest {
   schema_version: 1;
   package_version: string;
@@ -23,7 +25,7 @@ export interface InstallOptions {
   adapters?: AdapterName[];
 }
 
-export async function install(options: InstallOptions): Promise<{ manifest: InstallManifest; capabilities: Awaited<ReturnType<typeof capabilityReport>> }> {
+export async function install(options: InstallOptions): Promise<{ manifest: InstallManifest; capabilities: Awaited<ReturnType<typeof capabilityReport>>; privacy_notice: string }> {
   const adapters = options.adapters ?? ["claude-code", "codex"];
   const sourceSkill = path.join(options.packageRoot, "skills", "continuity");
   await stat(path.join(sourceSkill, "SKILL.md"));
@@ -51,7 +53,7 @@ export async function install(options: InstallOptions): Promise<{ manifest: Inst
   const hookFiles = await installHooks(options.home, runtime.root, adapters);
   const manifest: InstallManifest = { schema_version: 1, package_version: runtime.version, installed_at: new Date().toISOString(), package_root: options.packageRoot, runtime_root: runtime.root, adapters, files, backups, hook_files: hookFiles };
   await atomicJson(manifestFile, manifest);
-  return { manifest, capabilities: await capabilityReport(options.home) };
+  return { manifest, capabilities: await capabilityReport(options.home), privacy_notice: PRIVACY_NOTICE };
 }
 
 export async function uninstall(home: string): Promise<{ removed: string[]; vault_preserved: true }> {
