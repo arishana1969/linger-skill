@@ -6,6 +6,7 @@ import { capture } from "./capture.js";
 import { capabilityReport } from "./adapters.js";
 import { correct, forget, inspect } from "./control.js";
 import { appendDecision, getDecisionTrail, listDecisionViews, type DecisionKind, type DecisionSource, type DecisionStatus } from "./decisions.js";
+import { deleteRecord, type DeleteTarget } from "./delete.js";
 import { doctor } from "./doctor.js";
 import { install, uninstall } from "./installer.js";
 import { processQueue } from "./processing.js";
@@ -57,13 +58,14 @@ async function main(): Promise<void> {
     case "decision-list": output(await listDecisionViews(vault, required("--project"))); break;
     case "forget": output(await forget(vault, required("--project"), required("--memory"))); break;
     case "correct": output(await correct(vault, required("--project"), required("--memory"), required("--summary"), required("--evidence").split(",").filter(Boolean), option("--reason"))); break;
+    case "delete": output(await deleteRecord(vault, { projectId: required("--project"), target: required("--type") as DeleteTarget, id: required("--id"), confirmed: flag("--yes"), reason: option("--reason") })); break;
     case "inspect": output(await inspect(vault, required("--project"), required("--memory"))); break;
     case "pause": output(await setPaused(vault, true)); break;
     case "resume": output(await setPaused(vault, false)); break;
     case "status": output(await vaultStats(vault)); break;
     case "doctor": output(await doctor(vault)); break;
     default:
-      console.log("continuity <install|uninstall|capabilities|init|project-id|capture|process|search|decision-add|decision-get|decision-list|forget|correct|inspect|pause|resume|status|doctor> [options]");
+      console.log("continuity <install|uninstall|capabilities|init|project-id|capture|process|search|decision-add|decision-get|decision-list|forget|correct|delete|inspect|pause|resume|status|doctor> [options]");
       if (command) process.exitCode = 2;
   }
 }
