@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { atomicJson, readJson, withFileLock } from "./io.js";
+import { writeProcessedMarkdown } from "./processed-markdown.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { listJsonFiles } from "./vault.js";
 import type { ProcessedMemory } from "./types.js";
@@ -95,6 +96,7 @@ export async function correctMemory(root: string, projectId: string, targetMemor
     agent: "continuity-correction"
   };
   await atomicJson(path.join(p.processed, project, `${id}.json`), memory);
+  await writeProcessedMarkdown(root, memory);
   const event = await appendMemoryControl(root, { kind: "correct", project_id: project, target_memory_id: target, replacement_memory_id: id, reason: correction.reason, evidence_refs: correction.evidenceRefs });
   return { memory, event };
 }

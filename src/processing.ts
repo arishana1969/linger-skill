@@ -1,6 +1,7 @@
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { atomicJson, readJson, withFileLock } from "./io.js";
+import { writeProcessedMarkdown } from "./processed-markdown.js";
 import { vaultPaths } from "./paths.js";
 import { rebuildTagRegistry } from "./tag-registry.js";
 import { listJsonFiles } from "./vault.js";
@@ -38,6 +39,7 @@ export async function processQueue(root: string, projectId?: string, maxItems = 
         }
         const memory = memoryFromEvent(event, running.priority === "explicit");
         await atomicJson(path.join(p.processed, event.project_id, `${memory.id}.json`), memory);
+        await writeProcessedMarkdown(root, memory);
         touchedProjects.add(event.project_id);
         await atomicJson(entry.file, { ...running, status: "done", updated_at: new Date().toISOString() });
         processed += 1;
