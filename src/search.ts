@@ -15,35 +15,62 @@ export interface SearchOptions {
   includeRaw?: boolean;
   limit?: number;
   contextTags?: string[];
+  from?: string;
+  to?: string;
+  maxFiles?: number;
+  maxRawFragmentCharacters?: number;
 }
 
 export async function search(root: string, options: SearchOptions): Promise<SearchHit[]> {
   const config = await initVault(root);
   const p = vaultPaths(root);
+  const from = dateBoundary(options.from, "from");
+  const to = dateBoundary(options.to, "to");
+  if (from !== undefined && to !== undefined && from > to) throw new Error("from must not be after to");
+  const maxFiles = positiveInteger(options.maxFiles ?? config.max_files ?? 5000, "maxFiles");
+  const maxRawFragmentCharacters = positiveInteger(options.maxRawFragmentCharacters ?? config.max_raw_fragment_characters ?? 500, "maxRawFragmentCharacters");
   const originalTokens = tokenize(options.query).filter(token => !QUERY_STOP.has(token));
   if (!originalTokens.length) return [];
   const expansions = await expandTerms(root, options.projectId, lexicalTerms(options.query), options.contextTags);
   const weights = new Map<string, number>(originalTokens.map(token => [token, 1]));
   for (const [term, confidence] of expansions) for (const token of tokenize(term)) weights.set(token, Math.max(weights.get(token) ?? 0, confidence * 0.75));
   const searchTokens = [...weights.keys()];
-  const files = await listJsonFiles(path.join(p.processed, options.projectId));
+  const files = (await listJsonFiles(path.join(p.processed, options.projectId))).slice(0, maxFiles);
   const memories = await Promise.all(files.map(readJson<ProcessedMemory>));
   const controlStates = await effectiveMemoryStates(root, options.projectId);
-  const active = memories.filter(memory => memory.status === "active" && !controlStates.has(memory.id) && (options.includeSensitive || memory.sensitivity === "normal"));
+  const active = memories.filter(memory => memory.status === "active" && !controlStates.has(memory.id) && inRange(memory.created_at, from, to) && (options.includeSensitive || memory.sensitivity === "normal"));
   const documentFrequency = new Map<string, number>();
   for (const token of searchTokens) documentFrequency.set(token, active.filter(memory => tokenize(searchable(memory)).includes(token)).length);
   const hits = active.map(memory => scoreMemory(memory, originalTokens, searchTokens, weights, documentFrequency, active.length, expansions.size > 0)).filter(hit => hit.score > 0);
 
   if (options.includeRaw) {
-    for (const file of await listJsonFiles(path.join(p.raw, options.projectId))) {
+    for (const file of (await listJsonFiles(path.join(p.raw, options.projectId))).slice(0, maxFiles)) {
       const event = await readJson<RawEvent>(file);
+      if (!inRange(event.timestamp, from, to)) continue;
       if (event.sensitivity !== "normal" && !options.includeSensitive) continue;
       const eventTokens = tokenize(event.content);
       const overlap = searchTokens.filter(token => eventTokens.includes(token)).length;
-      if (overlap) hits.push({ match_type: "unprocessed_raw", confidence: Math.min(0.6, overlap / searchTokens.length), score: overlap, source: event.event_id, snippet: event.content.slice(0, 500), raw_ref: [event.raw_ref], warning_flags: ["unprocessed_raw"], sensitivity_flags: event.sensitivity === "normal" ? [] : [event.sensitivity] });
+      if (overlap) hits.push({ match_type: "unprocessed_raw", confidence: Math.min(0.6, overlap / searchTokens.length), score: overlap, source: event.event_id, snippet: event.content.slice(0, maxRawFragmentCharacters), raw_ref: [event.raw_ref], warning_flags: ["unprocessed_raw"], sensitivity_flags: event.sensitivity === "normal" ? [] : [event.sensitivity] });
     }
   }
   return hits.sort((a, b) => b.score - a.score || b.confidence - a.confidence).slice(0, options.limit ?? config.max_snippets);
+}
+
+function dateBoundary(value: string | undefined, label: string): number | undefined {
+  if (value === undefined) return undefined;
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) throw new Error(`${label} must be an ISO date or timestamp`);
+  return parsed;
+}
+
+function positiveInteger(value: number, label: string): number {
+  if (!Number.isInteger(value) || value < 1) throw new Error(`${label} must be a positive integer`);
+  return value;
+}
+
+function inRange(timestamp: string, from?: number, to?: number): boolean {
+  const value = Date.parse(timestamp);
+  return Number.isFinite(value) && (from === undefined || value >= from) && (to === undefined || value <= to);
 }
 
 function scoreMemory(memory: ProcessedMemory, original: string[], candidates: string[], weights: Map<string, number>, df: Map<string, number>, total: number, expanded: boolean): SearchHit {

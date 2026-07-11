@@ -12,6 +12,8 @@ export interface VaultConfig {
   sensitive_exclusion: boolean;
   max_snippets: number;
   max_characters: number;
+  max_files: number;
+  max_raw_fragment_characters: number;
   created_at: string;
 }
 
@@ -32,6 +34,8 @@ export async function initVault(root: string): Promise<VaultConfig> {
     sensitive_exclusion: true,
     max_snippets: 8,
     max_characters: 12000,
+    max_files: 5000,
+    max_raw_fragment_characters: 500,
     created_at: new Date().toISOString()
   };
   await atomicJson(p.config, config);
