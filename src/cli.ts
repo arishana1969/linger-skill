@@ -13,6 +13,7 @@ import { recoverPending } from "./pending.js";
 import { processQueue } from "./processing.js";
 import { rebuildTagRegistry } from "./tag-registry.js";
 import { addTermRelation, type TermRelationType } from "./term-graph.js";
+import { recall } from "./recall.js";
 import { search } from "./search.js";
 import { initVault, projectId, setPaused, vaultStats } from "./vault.js";
 
@@ -53,6 +54,7 @@ async function main(): Promise<void> {
     case "process": output(await processQueue(vault, option("--project"))); break;
     case "tags-rebuild": output(await rebuildTagRegistry(vault, required("--project"))); break;
     case "term-add": output(await addTermRelation(vault, { project_id: required("--project"), term_a: required("--term-a"), term_b: required("--term-b"), relation_type: required("--relation") as TermRelationType, confidence: numberOption("--confidence", 0.8), context_tags: option("--context")?.split(",").filter(Boolean) ?? [], evidence_refs: required("--evidence").split(",").filter(Boolean) })); break;
+    case "recall": output(await recall(vault, { projectId: option("--project") ?? await projectId(process.cwd()), query: option("--query") ?? args.join(" "), includeRaw: flag("--include-raw"), maxCharacters: numberOption("--max-characters", 12000) })); break;
     case "search": output(await search(vault, { projectId: option("--project") ?? await projectId(process.cwd()), query: option("--query") ?? args.join(" "), includeRaw: flag("--include-raw") })); break;
     case "decision-add": output(await appendDecision(vault, {
       projectId: required("--project"), topic: required("--topic"), kind: (option("--kind") ?? "decision") as DecisionKind,
@@ -71,7 +73,7 @@ async function main(): Promise<void> {
     case "status": output(await vaultStats(vault)); break;
     case "doctor": output(await doctor(vault)); break;
     default:
-      console.log("continuity <install|uninstall|capabilities|init|project-id|capture|recover|process|tags-rebuild|term-add|search|decision-add|decision-get|decision-list|forget|correct|delete|inspect|pause|resume|status|doctor> [options]");
+      console.log("continuity <install|uninstall|capabilities|init|project-id|capture|recover|process|tags-rebuild|term-add|recall|search|decision-add|decision-get|decision-list|forget|correct|delete|inspect|pause|resume|status|doctor> [options]");
       if (command) process.exitCode = 2;
   }
 }
