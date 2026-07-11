@@ -1,7 +1,7 @@
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { decisionFromEvent } from "./decision-extraction.js";
-import { appendDecision } from "./decisions.js";
+import { appendDecision, getDecisionTrail } from "./decisions.js";
 import { atomicJson, readJson, withFileLock } from "./io.js";
 import { writeProcessedMarkdown } from "./processed-markdown.js";
 import { vaultPaths } from "./paths.js";
@@ -42,7 +42,14 @@ export async function processQueue(root: string, projectId?: string, maxItems = 
         const memory = memoryFromEvent(event, running.priority === "explicit");
         await atomicJson(path.join(p.processed, event.project_id, `${memory.id}.json`), memory);
         await writeProcessedMarkdown(root, memory);
-        if (memory.type === "decision") await appendDecision(root, decisionFromEvent(event, memory.source === "user_explicit")).catch(() => undefined);
+        if (memory.type === "decision") {
+          const decision = decisionFromEvent(event, memory.source === "user_explicit");
+          if (/(?:当前|现在|目前|current|currently|now)/i.test(event.content)) {
+            const trail = await getDecisionTrail(root, event.project_id, decision.topic);
+            if (trail?.view.current_event_id) decision.supersedes = [trail.view.current_event_id];
+          }
+          await appendDecision(root, decision).catch(() => undefined);
+        }
         touchedProjects.add(event.project_id);
         await atomicJson(entry.file, { ...running, status: "done", updated_at: new Date().toISOString() });
         processed += 1;

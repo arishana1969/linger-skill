@@ -34,6 +34,7 @@ export interface DecisionView {
   aliases: string[];
   event_ids: string[];
   current_event_id?: string;
+  current_evidence_refs?: string[];
   current_state?: string;
   current_status: DecisionStatus;
   confidence: number;
@@ -109,6 +110,7 @@ export async function rebuildDecisionView(root: string, projectId: string, canon
     aliases: normalized(events.flatMap(event => event.aliases)),
     event_ids: events.map(event => event.event_id),
     current_event_id: current?.event_id,
+    current_evidence_refs: current?.evidence_refs,
     current_state: current?.statement,
     current_status: current?.status ?? "unknown",
     confidence: current?.confidence ?? 0,
