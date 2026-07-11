@@ -68,5 +68,5 @@ function oracle(id: string, year: number, query: string, required: string[], for
 }
 
 function milestone(month: number): string {
-  return ["提出使用 PostgreSQL", "因 deployment complexity 决定先用 SQLite", "SQLite prototype works", "讨论 file-native vault", "重新评估 PostgreSQL migration", "记录 API safety constraints", "提案迁移 PostgreSQL", "评估 migration workload", "因 operations cost 暂缓 PostgreSQL", "继续使用 SQLite", "保留 PostgreSQL migration plan", "当前 SQLite，PostgreSQL migration deferred"][month]!;
+  return ["提出使用 PostgreSQL", "拒绝立即迁移 PostgreSQL，因 deployment complexity 决定先用 SQLite", "SQLite prototype works", "讨论 file-native vault", "重新评估 PostgreSQL migration", "记录 API safety constraints", "提案迁移 PostgreSQL", "评估 migration workload", "因 operations cost 暂缓 PostgreSQL", "继续使用 SQLite", "保留 PostgreSQL migration plan", "当前数据库决定：SQLite，PostgreSQL migration deferred"][month]!;
 }
