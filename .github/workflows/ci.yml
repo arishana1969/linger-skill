@@ -25,6 +25,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
+      - if: matrix.node == 24
+        run: pnpm eval:year
+      - if: matrix.node == 24
+        run: pnpm eval:adversarial
 
   artifact-validation:
     runs-on: ubuntu-latest

@@ -30,6 +30,28 @@ pnpm build
 node --test dist/*.test.js
 ```
 
+## Reproducible evaluation
+
+The deterministic year-long fixture and its hidden oracle are written to separate directories. The runner imports only saved events into a real temporary Vault, processes them, performs recall, and then scores the predictions against the oracle.
+
+```sh
+pnpm build
+pnpm eval:year
+pnpm eval:adversarial
+```
+
+For custom paths or a persistent inspection Vault:
+
+```sh
+node dist/eval-cli.js generate --output eval-data --year 2025
+node dist/eval-cli.js run \
+  --fixture eval-data/fixtures/continuity-year-2025.json \
+  --oracle eval-data/oracle/continuity-year-2025.oracle.json \
+  --vault /tmp/continuity-eval-vault
+```
+
+The JSON report includes per-query evidence recall/precision, project-scope isolation, classification accuracy, current-state accuracy, claim coverage, forbidden-claim safety, and a macro composite. The checked-in year and adversarial gates currently require a macro score of `1.0`; this is a deterministic regression baseline, not a claim of general memory quality.
+
 Install into a disposable home while testing:
 
 ```sh
