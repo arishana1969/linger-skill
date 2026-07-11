@@ -14,6 +14,7 @@ import { purge } from "./purge.js";
 import { processQueue } from "./processing.js";
 import { rebuildTagRegistry } from "./tag-registry.js";
 import { addTermRelation, type TermRelationType } from "./term-graph.js";
+import { quarantineInvalidFiles } from "./repair.js";
 import { recall } from "./recall.js";
 import { search } from "./search.js";
 import { initVault, projectId, setPaused, vaultStats } from "./vault.js";
@@ -74,8 +75,9 @@ async function main(): Promise<void> {
     case "resume": output(await setPaused(vault, false)); break;
     case "status": output(await vaultStats(vault)); break;
     case "doctor": output(await doctor(vault)); break;
+    case "doctor-repair": { if (!flag("--yes")) throw new Error("doctor-repair requires --yes"); output(await quarantineInvalidFiles(vault)); break; }
     default:
-      console.log("continuity <install|uninstall|purge|capabilities|init|project-id|capture|recover|process|tags-rebuild|term-add|recall|search|decision-add|decision-get|decision-list|forget|correct|delete|inspect|pause|resume|status|doctor> [options]");
+      console.log("continuity <install|uninstall|purge|capabilities|init|project-id|capture|recover|process|tags-rebuild|term-add|recall|search|decision-add|decision-get|decision-list|forget|correct|delete|inspect|pause|resume|status|doctor|doctor-repair> [options]");
       if (command) process.exitCode = 2;
   }
 }
