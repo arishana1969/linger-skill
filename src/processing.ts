@@ -12,7 +12,10 @@ export async function processQueue(root: string, projectId?: string): Promise<{ 
   const p = vaultPaths(root);
   return await withFileLock(path.join(p.tmp, "processor.lock"), async () => {
     const queueFiles = (await listJsonFiles(p.queue)).filter((file) => !projectId || file.includes(`${path.sep}${projectId}${path.sep}`));
-    const items = await Promise.all(queueFiles.map(async file => ({ file, item: await readJson<QueueItem>(file) })));
+    const items: Array<{ file: string; item: QueueItem }> = [];
+    for (const file of queueFiles) {
+      try { items.push({ file, item: await readJson<QueueItem>(file) }); } catch { continue; }
+    }
     items.sort((a, b) => Number(b.item.priority === "explicit") - Number(a.item.priority === "explicit") || a.item.created_at.localeCompare(b.item.created_at));
     let processed = 0;
     let failed = 0;
