@@ -3,12 +3,14 @@ import path from "node:path";
 import { capabilityReport, type AdapterName } from "./adapters.js";
 import { atomicJson } from "./io.js";
 import { installHooks, uninstallHooks } from "./hook-installer.js";
+import { installRuntime, uninstallRuntime } from "./runtime-installer.js";
 
 export interface InstallManifest {
   schema_version: 1;
   package_version: string;
   installed_at: string;
   package_root: string;
+  runtime_root: string;
   adapters: AdapterName[];
   files: string[];
   backups: string[];
@@ -45,9 +47,9 @@ export async function install(options: InstallOptions): Promise<{ manifest: Inst
     await writeFile(path.join(destination, ".continuity-managed"), "managed by continuity-skill\n", { mode: 0o600 });
     files.push(destination);
   }
-  const hookFiles = await installHooks(options.home, options.packageRoot, adapters);
-  const packageJson = JSON.parse(await readFile(path.join(options.packageRoot, "package.json"), "utf8")) as { version: string };
-  const manifest: InstallManifest = { schema_version: 1, package_version: packageJson.version, installed_at: new Date().toISOString(), package_root: options.packageRoot, adapters, files, backups, hook_files: hookFiles };
+  const runtime = await installRuntime(options.home, options.packageRoot);
+  const hookFiles = await installHooks(options.home, runtime.root, adapters);
+  const manifest: InstallManifest = { schema_version: 1, package_version: runtime.version, installed_at: new Date().toISOString(), package_root: options.packageRoot, runtime_root: runtime.root, adapters, files, backups, hook_files: hookFiles };
   await atomicJson(manifestFile, manifest);
   return { manifest, capabilities: await capabilityReport(options.home) };
 }
@@ -63,6 +65,7 @@ export async function uninstall(home: string): Promise<{ removed: string[]; vaul
     if (await isManaged(target)) { await rm(target, { recursive: true, force: true }); removed.push(target); }
   }
   await uninstallHooks(home, manifest.adapters);
+  await uninstallRuntime(home, manifest.runtime_root);
   await rm(manifestFile, { force: true });
   return { removed, vault_preserved: true };
 }
