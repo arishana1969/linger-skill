@@ -2,6 +2,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { atomicJson, readJson, withFileLock } from "./io.js";
 import { vaultPaths } from "./paths.js";
+import { rebuildTagRegistry } from "./tag-registry.js";
 import { listJsonFiles } from "./vault.js";
 import type { ProcessedMemory, QueueItem, RawEvent } from "./types.js";
 
@@ -15,11 +16,12 @@ export async function processQueue(root: string, projectId?: string): Promise<{ 
     items.sort((a, b) => Number(b.item.priority === "explicit") - Number(a.item.priority === "explicit") || a.item.created_at.localeCompare(b.item.created_at));
     let processed = 0;
     let failed = 0;
+    const touchedProjects = new Set<string>();
     for (const entry of items.filter(({ item }) => item.status === "pending" || item.status === "failed")) {
       const running = { ...entry.item, status: "processing" as const, attempts: entry.item.attempts + 1, updated_at: new Date().toISOString() };
       await atomicJson(entry.file, running);
       try {
-        const rawFiles = (await listJsonFiles(path.join(p.raw, running.project_id))).filter(async () => true);
+        const rawFiles = await listJsonFiles(path.join(p.raw, running.project_id));
         let event: RawEvent | undefined;
         for (const file of rawFiles) {
           const candidate = await readJson<RawEvent>(file);
@@ -33,6 +35,7 @@ export async function processQueue(root: string, projectId?: string): Promise<{ 
         }
         const memory = memoryFromEvent(event, running.priority === "explicit");
         await atomicJson(path.join(p.processed, event.project_id, `${memory.id}.json`), memory);
+        touchedProjects.add(event.project_id);
         await atomicJson(entry.file, { ...running, status: "done", updated_at: new Date().toISOString() });
         processed += 1;
       } catch (error) {
@@ -40,6 +43,7 @@ export async function processQueue(root: string, projectId?: string): Promise<{ 
         failed += 1;
       }
     }
+    for (const project of touchedProjects) await rebuildTagRegistry(root, project).catch(() => undefined);
     return { processed, failed };
   });
 }
