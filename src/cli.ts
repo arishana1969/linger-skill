@@ -10,6 +10,7 @@ import { deleteRecord, type DeleteTarget } from "./delete.js";
 import { doctor } from "./doctor.js";
 import { install, uninstall } from "./installer.js";
 import { recoverPending } from "./pending.js";
+import { purge } from "./purge.js";
 import { processQueue } from "./processing.js";
 import { rebuildTagRegistry } from "./tag-registry.js";
 import { addTermRelation, type TermRelationType } from "./term-graph.js";
@@ -38,6 +39,7 @@ async function main(): Promise<void> {
   switch (command) {
     case "install": { const home = option("--home") ?? os.homedir(); flag("--yes"); output(await install({ home, packageRoot })); break; }
     case "uninstall": { if (!flag("--yes")) throw new Error("uninstall requires --yes; vault will be preserved"); output(await uninstall(option("--home") ?? os.homedir())); break; }
+    case "purge": output(await purge(option("--home") ?? os.homedir(), { yes: flag("--yes"), phrase: required("--confirm") })); break;
     case "capabilities": output(await capabilityReport(option("--home") ?? os.homedir())); break;
     case "init": output(await initVault(vault)); break;
     case "project-id": console.log(await projectId(option("--cwd") ?? process.cwd())); break;
@@ -73,7 +75,7 @@ async function main(): Promise<void> {
     case "status": output(await vaultStats(vault)); break;
     case "doctor": output(await doctor(vault)); break;
     default:
-      console.log("continuity <install|uninstall|capabilities|init|project-id|capture|recover|process|tags-rebuild|term-add|recall|search|decision-add|decision-get|decision-list|forget|correct|delete|inspect|pause|resume|status|doctor> [options]");
+      console.log("continuity <install|uninstall|purge|capabilities|init|project-id|capture|recover|process|tags-rebuild|term-add|recall|search|decision-add|decision-get|decision-list|forget|correct|delete|inspect|pause|resume|status|doctor> [options]");
       if (command) process.exitCode = 2;
   }
 }
