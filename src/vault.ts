@@ -14,6 +14,7 @@ export interface VaultConfig {
   max_characters: number;
   max_files: number;
   max_raw_fragment_characters: number;
+  search_timeout_ms: number;
   created_at: string;
 }
 
@@ -36,6 +37,7 @@ export async function initVault(root: string): Promise<VaultConfig> {
     max_characters: 12000,
     max_files: 5000,
     max_raw_fragment_characters: 500,
+    search_timeout_ms: 2000,
     created_at: new Date().toISOString()
   };
   await atomicJson(p.config, config);

@@ -19,10 +19,14 @@ export interface SearchOptions {
   to?: string;
   maxFiles?: number;
   maxRawFragmentCharacters?: number;
+  timeoutMs?: number;
 }
 
 export async function search(root: string, options: SearchOptions): Promise<SearchHit[]> {
   const config = await initVault(root);
+  const timeoutMs = nonNegativeInteger(options.timeoutMs ?? config.search_timeout_ms ?? 2000, "timeoutMs");
+  const deadline = Date.now() + timeoutMs;
+  assertBeforeDeadline(deadline);
   const p = vaultPaths(root);
   const from = dateBoundary(options.from, "from");
   const to = dateBoundary(options.to, "to");
@@ -31,21 +35,29 @@ export async function search(root: string, options: SearchOptions): Promise<Sear
   const maxRawFragmentCharacters = positiveInteger(options.maxRawFragmentCharacters ?? config.max_raw_fragment_characters ?? 500, "maxRawFragmentCharacters");
   const originalTokens = tokenize(options.query).filter(token => !QUERY_STOP.has(token));
   if (!originalTokens.length) return [];
-  const expansions = await expandTerms(root, options.projectId, lexicalTerms(options.query), options.contextTags);
+  const expansions = await within(expandTerms(root, options.projectId, lexicalTerms(options.query), options.contextTags), deadline);
   const weights = new Map<string, number>(originalTokens.map(token => [token, 1]));
   for (const [term, confidence] of expansions) for (const token of tokenize(term)) weights.set(token, Math.max(weights.get(token) ?? 0, confidence * 0.75));
   const searchTokens = [...weights.keys()];
-  const files = (await listJsonFiles(path.join(p.processed, options.projectId))).slice(0, maxFiles);
-  const memories = await Promise.all(files.map(readJson<ProcessedMemory>));
-  const controlStates = await effectiveMemoryStates(root, options.projectId);
+  const files = (await within(listJsonFiles(path.join(p.processed, options.projectId)), deadline)).slice(0, maxFiles);
+  const memories = await within(Promise.all(files.map(readJson<ProcessedMemory>)), deadline);
+  const controlStates = await within(effectiveMemoryStates(root, options.projectId), deadline);
   const active = memories.filter(memory => memory.status === "active" && !controlStates.has(memory.id) && inRange(memory.created_at, from, to) && (options.includeSensitive || memory.sensitivity === "normal"));
   const documentFrequency = new Map<string, number>();
-  for (const token of searchTokens) documentFrequency.set(token, active.filter(memory => tokenize(searchable(memory)).includes(token)).length);
-  const hits = active.map(memory => scoreMemory(memory, originalTokens, searchTokens, weights, documentFrequency, active.length, expansions.size > 0)).filter(hit => hit.score > 0);
+  for (const token of searchTokens) {
+    assertBeforeDeadline(deadline);
+    documentFrequency.set(token, active.filter(memory => tokenize(searchable(memory)).includes(token)).length);
+  }
+  const hits: SearchHit[] = [];
+  for (const memory of active) {
+    assertBeforeDeadline(deadline);
+    const hit = scoreMemory(memory, originalTokens, searchTokens, weights, documentFrequency, active.length, expansions.size > 0);
+    if (hit.score > 0) hits.push(hit);
+  }
 
   if (options.includeRaw) {
-    for (const file of (await listJsonFiles(path.join(p.raw, options.projectId))).slice(0, maxFiles)) {
-      const event = await readJson<RawEvent>(file);
+    for (const file of (await within(listJsonFiles(path.join(p.raw, options.projectId)), deadline)).slice(0, maxFiles)) {
+      const event = await within(readJson<RawEvent>(file), deadline);
       if (!inRange(event.timestamp, from, to)) continue;
       if (event.sensitivity !== "normal" && !options.includeSensitive) continue;
       const eventTokens = tokenize(event.content);
@@ -54,6 +66,24 @@ export async function search(root: string, options: SearchOptions): Promise<Sear
     }
   }
   return hits.sort((a, b) => b.score - a.score || b.confidence - a.confidence).slice(0, options.limit ?? config.max_snippets);
+}
+
+async function within<T>(promise: Promise<T>, deadline: number): Promise<T> {
+  const remaining = deadline - Date.now();
+  if (remaining <= 0) throw new Error("Search timed out");
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => { timer = setTimeout(() => reject(new Error("Search timed out")), remaining); })
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+function assertBeforeDeadline(deadline: number): void {
+  if (Date.now() >= deadline) throw new Error("Search timed out");
 }
 
 function dateBoundary(value: string | undefined, label: string): number | undefined {
@@ -65,6 +95,11 @@ function dateBoundary(value: string | undefined, label: string): number | undefi
 
 function positiveInteger(value: number, label: string): number {
   if (!Number.isInteger(value) || value < 1) throw new Error(`${label} must be a positive integer`);
+  return value;
+}
+
+function nonNegativeInteger(value: number, label: string): number {
+  if (!Number.isInteger(value) || value < 0) throw new Error(`${label} must be a non-negative integer`);
   return value;
 }
 

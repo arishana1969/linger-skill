@@ -30,4 +30,10 @@ test("rejects invalid search bounds", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "continuity-search-bounds-"));
   await assert.rejects(search(root, { projectId: "p", query: "x", maxFiles: 0 }), /positive integer/);
   await assert.rejects(search(root, { projectId: "p", query: "x", from: "2026-01-01", to: "2025-01-01" }), /must not be after/);
+  await assert.rejects(search(root, { projectId: "p", query: "x", timeoutMs: -1 }), /non-negative integer/);
+});
+
+test("fails explicitly when the search deadline is exhausted", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-search-bounds-"));
+  await assert.rejects(search(root, { projectId: "p", query: "x", timeoutMs: 0 }), /Search timed out/);
 });
