@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { capture } from "./capture.js";
+import { recoverPending } from "./pending.js";
 import { processQueue } from "./processing.js";
 import { projectId } from "./vault.js";
 
@@ -19,6 +20,7 @@ export interface HookResult {
   captured?: string;
   skipped?: string;
   processed?: number;
+  recovered?: number;
   output: Record<string, unknown>;
 }
 
@@ -27,8 +29,9 @@ export async function handleHook(root: string, input: HookInput, sourceAgent: "c
   const cwd = input.cwd ?? process.cwd();
   const project = await projectId(cwd);
   if (eventName === "SessionStart") {
+    const recovery = await recoverPending(root).catch(() => ({ recovered: 0, failed: [] }));
     const result = await processQueue(root, project).catch(() => ({ processed: 0, failed: 1 }));
-    return { processed: result.processed, output: contextOutput(eventName) };
+    return { recovered: recovery.recovered, processed: result.processed, output: contextOutput(eventName) };
   }
   const isUser = eventName === "UserPromptSubmit";
   const isAssistant = eventName === "Stop";

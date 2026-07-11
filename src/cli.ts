@@ -9,6 +9,7 @@ import { appendDecision, getDecisionTrail, listDecisionViews, type DecisionKind,
 import { deleteRecord, type DeleteTarget } from "./delete.js";
 import { doctor } from "./doctor.js";
 import { install, uninstall } from "./installer.js";
+import { recoverPending } from "./pending.js";
 import { processQueue } from "./processing.js";
 import { search } from "./search.js";
 import { initVault, projectId, setPaused, vaultStats } from "./vault.js";
@@ -46,6 +47,7 @@ async function main(): Promise<void> {
       });
       output(event ?? { skipped: "paused" }); break;
     }
+    case "recover": output(await recoverPending(vault)); break;
     case "process": output(await processQueue(vault, option("--project"))); break;
     case "search": output(await search(vault, { projectId: option("--project") ?? await projectId(process.cwd()), query: option("--query") ?? args.join(" "), includeRaw: flag("--include-raw") })); break;
     case "decision-add": output(await appendDecision(vault, {
@@ -65,7 +67,7 @@ async function main(): Promise<void> {
     case "status": output(await vaultStats(vault)); break;
     case "doctor": output(await doctor(vault)); break;
     default:
-      console.log("continuity <install|uninstall|capabilities|init|project-id|capture|process|search|decision-add|decision-get|decision-list|forget|correct|delete|inspect|pause|resume|status|doctor> [options]");
+      console.log("continuity <install|uninstall|capabilities|init|project-id|capture|recover|process|search|decision-add|decision-get|decision-list|forget|correct|delete|inspect|pause|resume|status|doctor> [options]");
       if (command) process.exitCode = 2;
   }
 }
