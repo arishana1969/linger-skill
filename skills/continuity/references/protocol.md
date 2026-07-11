@@ -8,6 +8,7 @@ Use `--vault <path>` when an adapter supplies a non-default vault.
 - `continuity capture --project ID --session ID --turn ID --role user|assistant --content TEXT [--explicit] [--partial]`: capture an event.
 - `continuity recover`: restore staged raw and queue records after interruption.
 - `continuity process [--project ID]`: consume work serially.
+- `continuity recall --project ID --query TEXT [--max-characters N]`: return a bounded evidence package with candidates.
 - `continuity search --project ID --query TEXT [--include-raw]`: return evidence packages.
 - `continuity inspect --project ID --memory ID`: inspect a record and its effective control state.
 - `continuity forget --project ID --memory ID`: append a recall revocation while preserving raw and processed source records.
@@ -15,7 +16,8 @@ Use `--vault <path>` when an adapter supplies a non-default vault.
 - `continuity delete --project ID --type processed|raw --id ID --yes [--reason TEXT]`: delete only a confirmed, ID-addressed record.
 - `continuity decision-add|decision-get|decision-list`: manage immutable decision trails.
 - `continuity pause|resume|status|doctor`: control or diagnose the vault.
-- `continuity install|uninstall|capabilities`: manage adapters. Uninstall requires `--yes` and preserves the vault.
+- `continuity doctor-repair --yes`: quarantine invalid files after explicit confirmation.
+- `continuity install|uninstall|purge|capabilities`: manage adapters. Uninstall requires `--yes` and preserves the vault.
 
 ## Evidence rules
 
