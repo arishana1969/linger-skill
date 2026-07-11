@@ -53,7 +53,7 @@ export function generateYearDataset(year = 2025): EvalDataset {
     events,
     oracle: [
       oracle("q_rationale", year, "之前为什么没有迁移 PostgreSQL？", ["evt_02_1", "evt_09_1"], ["evt_other_pg"], ["deployment complexity", "operations cost"], ["PostgreSQL is live"]),
-      oracle("q_current", year, "数据库最后定了什么？", ["evt_12_1"], ["evt_other_pg", "evt_optout"], ["SQLite remains current"], ["MongoDB selected"]),
+      oracle("q_current", year, "数据库最后定了什么？", ["evt_12_1"], ["evt_other_pg", "evt_optout"], ["SQLite", "migration deferred"], ["MongoDB selected"]),
       { ...oracle("q_absent", year, "我们讨论过 Cassandra 吗？", [], [], ["no reliable memory"], ["Cassandra was rejected"]), expected_classification: "no_reliable_memory_found", expected_current_state: undefined }
     ]
   };
@@ -64,7 +64,7 @@ function event(id: string, project: string, timestamp: string, role: "user" | "a
 }
 
 function oracle(id: string, year: number, query: string, required: string[], forbidden: string[], acceptable: string[], unacceptable: string[]): EvalOracle {
-  return { query_id: id, at: `${year}-12-31T00:00:00.000Z`, project_id: "p_continuity", query, required_evidence: required, forbidden_evidence: forbidden, expected_current_state: "SQLite current; PostgreSQL migration deferred", acceptable_claims: acceptable, unacceptable_claims: unacceptable, expected_classification: "similar_record_found" };
+  return { query_id: id, at: `${year}-12-31T00:00:00.000Z`, project_id: "p_continuity", query, required_evidence: required, forbidden_evidence: forbidden, expected_current_state: "当前数据库决定：SQLite，PostgreSQL migration deferred", acceptable_claims: acceptable, unacceptable_claims: unacceptable, expected_classification: "similar_record_found" };
 }
 
 function milestone(month: number): string {

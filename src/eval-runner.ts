@@ -22,7 +22,7 @@ export async function runEvalDataset(root: string, dataset: EvalDataset): Promis
       classification: result.classification,
       evidence_ids: [...new Set(result.hits.flatMap(hit => hit.raw_ref).map(id => rawToFixture.get(id)).filter((id): id is string => Boolean(id)))],
       claims: result.hits.map(hit => hit.snippet),
-      current_state: undefined
+      current_state: result.current_state
     });
   }
   return { predictions, scores: scoreSuite(dataset.oracle, predictions), imported, skipped };

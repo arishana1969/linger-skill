@@ -1,5 +1,7 @@
 import path from "node:path";
 import { createHash } from "node:crypto";
+import { decisionFromEvent } from "./decision-extraction.js";
+import { appendDecision } from "./decisions.js";
 import { atomicJson, readJson, withFileLock } from "./io.js";
 import { writeProcessedMarkdown } from "./processed-markdown.js";
 import { vaultPaths } from "./paths.js";
@@ -40,6 +42,7 @@ export async function processQueue(root: string, projectId?: string, maxItems = 
         const memory = memoryFromEvent(event, running.priority === "explicit");
         await atomicJson(path.join(p.processed, event.project_id, `${memory.id}.json`), memory);
         await writeProcessedMarkdown(root, memory);
+        if (memory.type === "decision") await appendDecision(root, decisionFromEvent(event, memory.source === "user_explicit")).catch(() => undefined);
         touchedProjects.add(event.project_id);
         await atomicJson(entry.file, { ...running, status: "done", updated_at: new Date().toISOString() });
         processed += 1;
@@ -58,7 +61,7 @@ function memoryFromEvent(event: RawEvent, explicit: boolean): ProcessedMemory {
   const tags = keywords(clean);
   const id = `mem_${createHash("sha256").update(event.event_id).digest("hex").slice(0, 24)}`;
   const isCorrection = /(?:不是这个意思|这条不对|纠正|correct)/i.test(clean);
-  const isDecision = /(?:决定|采用|选择|不做|拒绝|decision|decided|choose)/i.test(clean);
+  const isDecision = /(?:决定|采用|选择|不做|拒绝|提案|暂缓|当前|decision|decided|choose|proposal|current)/i.test(clean);
   return {
     schema_version: 1,
     id,

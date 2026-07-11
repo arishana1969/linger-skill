@@ -32,7 +32,7 @@ export function scorePrediction(oracle: EvalOracle, prediction: EvalPrediction):
   const classification = prediction.classification === oracle.expected_classification ? 1 : 0;
   const state = oracle.expected_current_state === undefined ? 1 : normalize(prediction.current_state) === normalize(oracle.expected_current_state) ? 1 : 0;
   const claims = prediction.claims.join(" ").toLowerCase();
-  const acceptable = oracle.acceptable_claims.length ? oracle.acceptable_claims.filter(claim => claims.includes(claim.toLowerCase())).length / oracle.acceptable_claims.length : 1;
+  const acceptable = oracle.expected_classification === "no_reliable_memory_found" && prediction.classification === "no_reliable_memory_found" && prediction.claims.length === 0 ? 1 : oracle.acceptable_claims.length ? oracle.acceptable_claims.filter(claim => claims.includes(claim.toLowerCase())).length / oracle.acceptable_claims.length : 1;
   const forbidden = oracle.unacceptable_claims.some(claim => claims.includes(claim.toLowerCase())) ? 0 : 1;
   const values = [evidenceRecall, evidencePrecision, scopeIsolation, classification, state, acceptable, forbidden];
   return { query_id: oracle.query_id, evidence_recall: evidenceRecall, evidence_precision: evidencePrecision, scope_isolation: scopeIsolation, classification_accuracy: classification, current_state_accuracy: state, acceptable_claim_coverage: acceptable, forbidden_claim_safety: forbidden, composite: values.reduce((sum, value) => sum + value, 0) / values.length };

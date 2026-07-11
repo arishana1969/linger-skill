@@ -9,10 +9,16 @@ export interface RecallPackage {
   candidates: { topics: string[]; decisions: string[]; tags: string[] };
   truncated: boolean;
   total_characters: number;
+  current_state?: string;
+  decision_topic?: string;
 }
 
 export async function recall(root: string, options: SearchOptions & { maxCharacters?: number }): Promise<RecallPackage> {
-  const found = await search(root, options);
+  let found = await search(root, options);
+  if (/(?:为什么|原因|理由|why|reason)/i.test(options.query)) {
+    const rationale = found.filter(hit => /(?:因为|由于|\b因|because|reason|cost|complexity|constraint)/i.test(hit.snippet));
+    if (rationale.length) found = rationale;
+  }
   const max = options.maxCharacters ?? 12000;
   const hits: SearchHit[] = [];
   let characters = 0;
@@ -27,10 +33,12 @@ export async function recall(root: string, options: SearchOptions & { maxCharact
   }
   const decisions = await listDecisionViews(root, options.projectId);
   const registry = await readTagRegistry(root, options.projectId);
+  const hitEvidence = new Set(hits.flatMap(hit => hit.raw_ref));
+  const matchedDecision = decisions.filter(view => view.source_events.some(event => hitEvidence.has(event))).sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
   const conflicts = decisions.filter(view => view.conflicts.length);
   const classification = classify(hits, conflicts.length > 0);
   return {
-    classification, hits, truncated, total_characters: characters,
+    classification, hits, truncated, total_characters: characters, current_state: matchedDecision?.current_state, decision_topic: matchedDecision?.topic,
     candidates: hits.length ? { topics: [], decisions: [], tags: [] } : {
       topics: decisions.map(view => view.topic).slice(0, 5),
       decisions: decisions.map(view => view.current_state).filter((value): value is string => Boolean(value)).slice(0, 5),
