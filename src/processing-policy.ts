@@ -15,7 +15,7 @@ export interface ProcessingPolicy {
 
 export interface ProcessingDecision {
   should_run: boolean;
-  reason: "explicit" | "size_threshold" | "max_wait" | "manual" | "no_pending" | "below_threshold" | "rate_limited";
+  reason: "explicit" | "startup" | "size_threshold" | "max_wait" | "manual" | "no_pending" | "below_threshold" | "rate_limited";
   pending_items: number;
   pending_bytes: number;
   limit: number;
@@ -23,7 +23,7 @@ export interface ProcessingDecision {
 
 const DEFAULT_POLICY: ProcessingPolicy = { threshold_bytes: 50 * 1024, max_wait_ms: 30 * 60 * 1000, max_runs_per_hour: 4, max_items_per_run: 100, min_content_characters: 20 };
 
-export async function processingDecision(root: string, projectId: string, trigger: "automatic" | "manual", now = new Date(), policy: Partial<ProcessingPolicy> = {}): Promise<ProcessingDecision> {
+export async function processingDecision(root: string, projectId: string, trigger: "automatic" | "manual" | "startup", now = new Date(), policy: Partial<ProcessingPolicy> = {}): Promise<ProcessingDecision> {
   const config = { ...DEFAULT_POLICY, ...policy };
   const p = vaultPaths(root);
   const items: QueueItem[] = [];
@@ -45,6 +45,7 @@ export async function processingDecision(root: string, projectId: string, trigge
   const history = await readHistory(historyFile);
   const cutoff = now.getTime() - 60 * 60 * 1000;
   if (history.filter(value => Date.parse(value) >= cutoff).length >= config.max_runs_per_hour) return { should_run: false, reason: "rate_limited", ...base };
+  if (trigger === "startup") return { should_run: true, reason: "startup", ...base };
   if (items.some(item => item.priority === "explicit")) return { should_run: true, reason: "explicit", ...base };
   if (bytes >= config.threshold_bytes) return { should_run: true, reason: "size_threshold", ...base };
   const oldest = Math.min(...items.map(item => Date.parse(item.created_at)));
