@@ -1,9 +1,10 @@
 import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { atomicJson } from "./io.js";
+import { windowsCommand } from "./windows-command.js";
 import type { AdapterName } from "./adapters.js";
 
-type HookMap = Record<string, Array<{ matcher?: string; hooks: Array<{ type: "command"; command: string; timeout?: number; statusMessage?: string }> }>>;
+type HookMap = Record<string, Array<{ matcher?: string; hooks: Array<{ type: "command"; command: string; commandWindows?: string; timeout?: number; statusMessage?: string }> }>>;
 
 export async function installHooks(home: string, packageRoot: string, adapters: AdapterName[]): Promise<string[]> {
   const commandBase = `${quote(process.execPath)} ${quote(path.join(packageRoot, "dist", "hook-cli.js"))}`;
@@ -58,7 +59,7 @@ function addContinuityHooks(hooks: HookMap, command: string): void {
   for (const event of ["SessionStart", "UserPromptSubmit", "Stop"]) {
     const groups = hooks[event] ?? [];
     const already = groups.some(group => group.hooks.some(hook => hook.command === command));
-    if (!already) groups.push({ ...(event === "SessionStart" ? { matcher: "startup|resume|compact" } : {}), hooks: [{ type: "command", command, timeout: 10, statusMessage: "Continuity capture" }] });
+    if (!already) groups.push({ ...(event === "SessionStart" ? { matcher: "startup|resume|compact" } : {}), hooks: [{ type: "command", command, commandWindows: windowsCommand(command), timeout: 10, statusMessage: "Continuity capture" }] });
     hooks[event] = groups;
   }
 }
