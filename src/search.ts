@@ -1,5 +1,6 @@
 import path from "node:path";
 import { readJson } from "./io.js";
+import { effectiveMemoryStates } from "./memory-events.js";
 import { vaultPaths } from "./paths.js";
 import { initVault, listJsonFiles } from "./vault.js";
 import type { ProcessedMemory, RawEvent, SearchHit } from "./types.js";
@@ -18,8 +19,9 @@ export async function search(root: string, options: SearchOptions): Promise<Sear
   const tokens = tokenize(options.query);
   if (!tokens.length) return [];
   const files = await listJsonFiles(path.join(p.processed, options.projectId));
+  const controlStates = await effectiveMemoryStates(root, options.projectId);
   const memories = await Promise.all(files.map(readJson<ProcessedMemory>));
-  const active = memories.filter(memory => memory.status === "active" && (options.includeSensitive || memory.sensitivity === "normal"));
+  const active = memories.filter(memory => memory.status === "active" && !controlStates.has(memory.id) && (options.includeSensitive || memory.sensitivity === "normal"));
   const documentFrequency = new Map<string, number>();
   for (const token of tokens) documentFrequency.set(token, active.filter(memory => tokenize(searchable(memory)).includes(token)).length);
   const hits = active.map(memory => scoreMemory(memory, tokens, documentFrequency, active.length)).filter(hit => hit.score > 0);

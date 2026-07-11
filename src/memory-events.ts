@@ -73,12 +73,17 @@ export async function correctMemory(root: string, projectId: string, targetMemor
   const old = await readJson<ProcessedMemory>(path.join(p.processed, project, `${target}.json`));
   const timestamp = new Date().toISOString();
   const id = `mem_${randomUUID().replaceAll("-", "")}`;
+  const text = correction.summary.trim();
+  const tags = [...new Set([...(text.toLowerCase().match(/[a-z][a-z0-9_-]{2,}/g) ?? []), ...(text.match(/[\p{Script=Han}]{2,8}/gu) ?? [])])].slice(0, 12);
   const memory: ProcessedMemory = {
     ...old,
     id,
     type: "correction",
     title: correction.summary.trim().slice(0, 80),
     summary: correction.summary.trim(),
+    tags,
+    predictive_tags: tags,
+    retrieval_phrases: tags.map(tag => `关于 ${tag} 的纠正`),
     source_events: [...new Set(correction.evidenceRefs)],
     confidence: correction.source === "agent_inferred" ? 0.8 : 1,
     source: correction.source ?? "user_explicit",
