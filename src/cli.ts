@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { capture } from "./capture.js";
 import { forget, inspect } from "./control.js";
+import { appendDecision, getDecisionTrail, listDecisionViews, type DecisionKind, type DecisionSource, type DecisionStatus } from "./decisions.js";
 import { doctor } from "./doctor.js";
 import { processQueue } from "./processing.js";
 import { search } from "./search.js";
@@ -20,56 +21,45 @@ function option(name: string): string | undefined {
   args.splice(index, 2);
   return value;
 }
-
-function flag(name: string): boolean {
-  const index = args.indexOf(name);
-  if (index < 0) return false;
-  args.splice(index, 1);
-  return true;
-}
+function required(name: string): string { return option(name) ?? throwError(`${name} is required`); }
+function flag(name: string): boolean { const index = args.indexOf(name); if (index < 0) return false; args.splice(index, 1); return true; }
+function numberOption(name: string, fallback: number): number { const raw = option(name); const value = raw === undefined ? fallback : Number(raw); if (!Number.isFinite(value)) throw new Error(`${name} must be a number`); return value; }
 
 async function main(): Promise<void> {
   switch (command) {
-    case "init":
-      console.log(JSON.stringify(await initVault(vault), null, 2)); break;
-    case "project-id":
-      console.log(await projectId(option("--cwd") ?? process.cwd())); break;
+    case "init": output(await initVault(vault)); break;
+    case "project-id": console.log(await projectId(option("--cwd") ?? process.cwd())); break;
     case "capture": {
-      const project = option("--project") ?? await projectId(process.cwd());
-      const content = option("--content") ?? throwError("--content is required");
       const event = await capture(vault, {
-        projectId: project,
-        sessionId: option("--session") ?? "manual",
-        turnId: option("--turn") ?? `turn-${Date.now()}`,
-        role: (option("--role") ?? "user") as "user" | "assistant" | "system",
-        content,
-        sourceAgent: option("--agent") ?? "manual",
-        savepointStatus: flag("--partial") ? "partial" : "complete",
-        explicit: flag("--explicit"),
-        sensitivity: flag("--secret") ? "secret" : flag("--sensitive") ? "sensitive" : "normal"
+        projectId: option("--project") ?? await projectId(process.cwd()), sessionId: option("--session") ?? "manual",
+        turnId: option("--turn") ?? `turn-${Date.now()}`, role: (option("--role") ?? "user") as "user" | "assistant" | "system",
+        content: required("--content"), sourceAgent: option("--agent") ?? "manual", savepointStatus: flag("--partial") ? "partial" : "complete",
+        explicit: flag("--explicit"), sensitivity: flag("--secret") ? "secret" : flag("--sensitive") ? "sensitive" : "normal"
       });
-      console.log(JSON.stringify(event ?? { skipped: "paused" }, null, 2)); break;
+      output(event ?? { skipped: "paused" }); break;
     }
-    case "process":
-      console.log(JSON.stringify(await processQueue(vault, option("--project")), null, 2)); break;
-    case "search": {
-      const project = option("--project") ?? await projectId(process.cwd());
-      const query = option("--query") ?? args.join(" ");
-      console.log(JSON.stringify(await search(vault, { projectId: project, query, includeRaw: flag("--include-raw") }), null, 2)); break;
-    }
-    case "forget":
-      console.log(JSON.stringify(await forget(vault, option("--project") ?? throwError("--project is required"), option("--memory") ?? throwError("--memory is required")), null, 2)); break;
-    case "inspect":
-      console.log(JSON.stringify(await inspect(vault, option("--project") ?? throwError("--project is required"), option("--memory") ?? throwError("--memory is required")), null, 2)); break;
-    case "pause": console.log(JSON.stringify(await setPaused(vault, true), null, 2)); break;
-    case "resume": console.log(JSON.stringify(await setPaused(vault, false), null, 2)); break;
-    case "status": console.log(JSON.stringify(await vaultStats(vault), null, 2)); break;
-    case "doctor": console.log(JSON.stringify(await doctor(vault), null, 2)); break;
+    case "process": output(await processQueue(vault, option("--project"))); break;
+    case "search": output(await search(vault, { projectId: option("--project") ?? await projectId(process.cwd()), query: option("--query") ?? args.join(" "), includeRaw: flag("--include-raw") })); break;
+    case "decision-add": output(await appendDecision(vault, {
+      projectId: required("--project"), topic: required("--topic"), kind: (option("--kind") ?? "decision") as DecisionKind,
+      status: (option("--status") ?? "current") as DecisionStatus, statement: required("--statement"), rationale: option("--rationale"),
+      source: (option("--source") ?? "agent_inferred") as DecisionSource, confidence: numberOption("--confidence", 0.8),
+      evidenceRefs: required("--evidence").split(",").filter(Boolean), supersedes: option("--supersedes")?.split(",").filter(Boolean)
+    })); break;
+    case "decision-get": output(await getDecisionTrail(vault, required("--project"), required("--topic")) ?? { found: false }); break;
+    case "decision-list": output(await listDecisionViews(vault, required("--project"))); break;
+    case "forget": output(await forget(vault, required("--project"), required("--memory"))); break;
+    case "inspect": output(await inspect(vault, required("--project"), required("--memory"))); break;
+    case "pause": output(await setPaused(vault, true)); break;
+    case "resume": output(await setPaused(vault, false)); break;
+    case "status": output(await vaultStats(vault)); break;
+    case "doctor": output(await doctor(vault)); break;
     default:
-      console.log("continuity <init|project-id|capture|process|search|forget|inspect|pause|resume|status|doctor> [options]");
+      console.log("continuity <init|project-id|capture|process|search|decision-add|decision-get|decision-list|forget|inspect|pause|resume|status|doctor> [options]");
       if (command) process.exitCode = 2;
   }
 }
 
+function output(value: unknown): void { console.log(JSON.stringify(value, null, 2)); }
 function throwError(message: string): never { throw new Error(message); }
 main().catch(error => { console.error(`continuity: ${(error as Error).message}`); process.exitCode = 1; });
