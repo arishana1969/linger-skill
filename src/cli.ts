@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 import os from "node:os";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { capture } from "./capture.js";
+import { capabilityReport } from "./adapters.js";
 import { forget, inspect } from "./control.js";
 import { appendDecision, getDecisionTrail, listDecisionViews, type DecisionKind, type DecisionSource, type DecisionStatus } from "./decisions.js";
 import { doctor } from "./doctor.js";
+import { install, uninstall } from "./installer.js";
 import { processQueue } from "./processing.js";
 import { search } from "./search.js";
 import { initVault, projectId, setPaused, vaultStats } from "./vault.js";
@@ -12,6 +15,7 @@ import { initVault, projectId, setPaused, vaultStats } from "./vault.js";
 const args = process.argv.slice(2);
 const command = args.shift();
 const vault = option("--vault") ?? process.env.CONTINUITY_VAULT ?? path.join(os.homedir(), ".continuity", "vault");
+const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function option(name: string): string | undefined {
   const index = args.indexOf(name);
@@ -27,6 +31,9 @@ function numberOption(name: string, fallback: number): number { const raw = opti
 
 async function main(): Promise<void> {
   switch (command) {
+    case "install": { const home = option("--home") ?? os.homedir(); flag("--yes"); output(await install({ home, packageRoot })); break; }
+    case "uninstall": { if (!flag("--yes")) throw new Error("uninstall requires --yes; vault will be preserved"); output(await uninstall(option("--home") ?? os.homedir())); break; }
+    case "capabilities": output(await capabilityReport(option("--home") ?? os.homedir())); break;
     case "init": output(await initVault(vault)); break;
     case "project-id": console.log(await projectId(option("--cwd") ?? process.cwd())); break;
     case "capture": {
@@ -55,7 +62,7 @@ async function main(): Promise<void> {
     case "status": output(await vaultStats(vault)); break;
     case "doctor": output(await doctor(vault)); break;
     default:
-      console.log("continuity <init|project-id|capture|process|search|decision-add|decision-get|decision-list|forget|inspect|pause|resume|status|doctor> [options]");
+      console.log("continuity <install|uninstall|capabilities|init|project-id|capture|process|search|decision-add|decision-get|decision-list|forget|inspect|pause|resume|status|doctor> [options]");
       if (command) process.exitCode = 2;
   }
 }
