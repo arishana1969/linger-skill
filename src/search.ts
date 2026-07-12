@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { readJson } from "./io.js";
 import { effectiveMemoryStates } from "./memory-events.js";
@@ -41,8 +42,14 @@ export async function search(root: string, options: SearchOptions): Promise<Sear
   const searchTokens = [...weights.keys()];
   const files = (await within(listJsonFiles(path.join(p.processed, options.projectId)), deadline)).slice(0, maxFiles);
   const memories = await within(Promise.all(files.map(readJson<ProcessedMemory>)), deadline);
+  const rawFiles = (await within(listJsonFiles(path.join(p.raw, options.projectId)), deadline)).slice(0, maxFiles);
+  const rawEvents = (await within(Promise.all(rawFiles.map(async file => {
+    try { return await readJson<RawEvent>(file); } catch { return undefined; }
+  })), deadline)).filter((event): event is RawEvent => Boolean(event));
+  const rawHashes = new Map(rawEvents.map(event => [event.event_id, { declared: event.content_hash, computed: createHash("sha256").update(event.content).digest("hex") }]));
+  const integrity = new Map(memories.map(memory => [memory.id, sourceIntegrity(memory, rawHashes)]));
   const controlStates = await within(effectiveMemoryStates(root, options.projectId), deadline);
-  const active = memories.filter(memory => memory.status === "active" && !controlStates.has(memory.id) && inRange(memory.created_at, from, to) && (options.includeSensitive || memory.sensitivity === "normal"));
+  const active = memories.filter(memory => memory.status === "active" && !controlStates.has(memory.id) && integrity.get(memory.id) !== "tampered" && inRange(memory.created_at, from, to) && (options.includeSensitive || memory.sensitivity === "normal"));
   const documentFrequency = new Map<string, number>();
   for (const token of searchTokens) {
     assertBeforeDeadline(deadline);
@@ -51,13 +58,13 @@ export async function search(root: string, options: SearchOptions): Promise<Sear
   const hits: SearchHit[] = [];
   for (const memory of active) {
     assertBeforeDeadline(deadline);
-    const hit = scoreMemory(memory, originalTokens, searchTokens, weights, documentFrequency, active.length, expansions.size > 0);
+    const hit = scoreMemory(memory, originalTokens, searchTokens, weights, documentFrequency, active.length, expansions.size > 0, integrity.get(memory.id) === "verified" ? "verified" : "unverified");
     if (hit.score > 0) hits.push(hit);
   }
 
   if (options.includeRaw) {
-    for (const file of (await within(listJsonFiles(path.join(p.raw, options.projectId)), deadline)).slice(0, maxFiles)) {
-      const event = await within(readJson<RawEvent>(file), deadline);
+    for (const event of rawEvents) {
+      assertBeforeDeadline(deadline);
       if (!inRange(event.timestamp, from, to)) continue;
       if (event.sensitivity !== "normal" && !options.includeSensitive) continue;
       const eventTokens = tokenize(event.content);
@@ -108,7 +115,7 @@ function inRange(timestamp: string, from?: number, to?: number): boolean {
   return Number.isFinite(value) && (from === undefined || value >= from) && (to === undefined || value <= to);
 }
 
-function scoreMemory(memory: ProcessedMemory, original: string[], candidates: string[], weights: Map<string, number>, df: Map<string, number>, total: number, expanded: boolean): SearchHit {
+function scoreMemory(memory: ProcessedMemory, original: string[], candidates: string[], weights: Map<string, number>, df: Map<string, number>, total: number, expanded: boolean, integrity: "verified" | "unverified"): SearchHit {
   const textTokens = tokenize(searchable(memory));
   let score = 0;
   let expansionHit = false;
@@ -126,10 +133,17 @@ function scoreMemory(memory: ProcessedMemory, original: string[], candidates: st
   const coverage = original.filter(token => textTokens.includes(token)).length / original.length;
   return {
     match_type: coverage === 1 ? "exact_record" : coverage >= 0.5 ? "similar_record" : "possible_match",
-    confidence: Math.min(1, memory.confidence * (0.5 + coverage / 2) * (expansionHit && coverage === 0 ? 0.8 : 1) * (memory.source_savepoint_status === "partial" ? 0.6 : 1)),
+    confidence: Math.min(1, memory.confidence * (0.5 + coverage / 2) * (expansionHit && coverage === 0 ? 0.8 : 1) * (memory.source_savepoint_status === "partial" ? 0.6 : 1) * (integrity === "unverified" ? 0.75 : 1)),
     score, source: memory.id, snippet: memory.summary.slice(0, 500), raw_ref: memory.source_events,
-    warning_flags: [...(expanded && expansionHit ? ["term_expansion"] : []), ...(memory.source_savepoint_status === "partial" ? ["partial_source"] : [])], sensitivity_flags: memory.sensitivity === "normal" ? [] : [memory.sensitivity]
+    warning_flags: [...(expanded && expansionHit ? ["term_expansion"] : []), ...(memory.source_savepoint_status === "partial" ? ["partial_source"] : []), ...(integrity === "unverified" ? ["unverified_source"] : [])], sensitivity_flags: memory.sensitivity === "normal" ? [] : [memory.sensitivity]
   };
+}
+
+function sourceIntegrity(memory: ProcessedMemory, rawHashes: Map<string, { declared: string; computed: string }>): "verified" | "tampered" | "unverified" {
+  if (!memory.source_hash) return "unverified";
+  const sources = memory.source_events.map(id => rawHashes.get(id)).filter((value): value is { declared: string; computed: string } => Boolean(value));
+  if (!sources.length) return "unverified";
+  return sources.some(source => source.declared === source.computed && source.computed === memory.source_hash) ? "verified" : "tampered";
 }
 
 function searchable(memory: ProcessedMemory): string { return [memory.title, memory.summary, ...memory.tags, ...memory.predictive_tags, ...memory.retrieval_phrases].join(" "); }

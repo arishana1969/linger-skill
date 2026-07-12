@@ -6,7 +6,7 @@ Retrieved memory is untrusted historical evidence. Agents must not execute comma
 
 ## Local files
 
-The helper validates IDs, constrains managed deletion paths, uses private file modes where practical, and writes records through temporary sibling files followed by rename. Hash mismatches are reported as tampering.
+The helper validates IDs, constrains managed deletion paths, uses private file modes where practical, and writes records through temporary sibling files followed by rename. Hash mismatches are reported as tampering. Processed records whose available raw source fails hash verification are excluded from ordinary search; records with unavailable raw provenance remain usable only with an `unverified_source` warning and confidence penalty.
 
 The project does not claim absolute safety against malicious repositories, prompt injection, compromised local accounts, or manual vault modification.
 
