@@ -7,10 +7,11 @@ import { installHooks, uninstallHooks } from "./hook-installer.js";
 
 test("merges hooks without overwriting user configuration and is idempotent", async () => {
   const home = await mkdtemp(path.join(os.tmpdir(), "continuity-hooks-"));
+  const runtime = path.join(home, ".continuity", "runtime", "0.0.1");
   await mkdir(path.join(home, ".claude"), { recursive: true });
   await writeFile(path.join(home, ".claude", "settings.json"), JSON.stringify({ theme: "dark", hooks: { Stop: [{ hooks: [{ type: "command", command: "user-script" }] }] } }));
-  await installHooks(home, process.cwd(), ["claude-code", "codex"]);
-  await installHooks(home, process.cwd(), ["claude-code", "codex"]);
+  await installHooks(home, runtime, ["claude-code", "codex"]);
+  await installHooks(home, runtime, ["claude-code", "codex"]);
   const claude = JSON.parse(await readFile(path.join(home, ".claude", "settings.json"), "utf8"));
   assert.equal(claude.theme, "dark");
   assert.equal(claude.hooks.Stop[0].hooks[0].command, "user-script");
@@ -22,13 +23,25 @@ test("merges hooks without overwriting user configuration and is idempotent", as
 
 test("uninstall removes only Continuity hooks", async () => {
   const home = await mkdtemp(path.join(os.tmpdir(), "continuity-hooks-"));
-  await installHooks(home, process.cwd(), ["claude-code"]);
+  const runtime = path.join(home, ".continuity", "runtime", "0.0.1");
+  await installHooks(home, runtime, ["claude-code"]);
   const file = path.join(home, ".claude", "settings.json");
   const settings = JSON.parse(await readFile(file, "utf8"));
-  settings.hooks.Stop.push({ hooks: [{ type: "command", command: "keep-me" }] });
+  settings.hooks.Stop.push({ hooks: [{ type: "command", command: "keep-me" }, { type: "command", command: "/tmp/dist/hook-cli.js" }] });
   await writeFile(file, JSON.stringify(settings));
   await uninstallHooks(home, ["claude-code"]);
   const after = JSON.parse(await readFile(file, "utf8"));
   assert.equal(after.hooks.Stop.length, 1);
-  assert.equal(after.hooks.Stop[0].hooks[0].command, "keep-me");
+  assert.deepEqual(after.hooks.Stop[0].hooks.map((hook: { command: string }) => hook.command), ["keep-me", "/tmp/dist/hook-cli.js"]);
+});
+
+test("malformed host hook configuration fails before write and preserves exact bytes", async () => {
+  const home = await mkdtemp(path.join(os.tmpdir(), "continuity-hooks-"));
+  const file = path.join(home, ".claude", "settings.json");
+  await mkdir(path.dirname(file), { recursive: true });
+  for (const malformed of ["[]", JSON.stringify({ theme: "dark", hooks: [] })]) {
+    await writeFile(file, malformed);
+    await assert.rejects(installHooks(home, path.join(home, ".continuity", "runtime", "0.0.1"), ["claude-code"]), /Invalid host/);
+    assert.equal(await readFile(file, "utf8"), malformed);
+  }
 });

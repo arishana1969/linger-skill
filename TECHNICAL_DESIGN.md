@@ -38,6 +38,8 @@ Hook payloads are external input. Event/content types are narrowed at runtime, a
 
 Install/uninstall treats package metadata and the persisted manifest as untrusted input. Runtime versions must be safe path components; runtime removal is limited to a direct managed child of the current home's runtime directory; and Skill targets must exactly match the selected adapters' known Continuity destinations before any uninstall mutation occurs.
 
+Host hook configuration is preserved only when its JSON document and nested hook groups are structurally valid. Malformed structures fail before write. Hook uninstall requires both the matching Continuity adapter marker and a hook path beneath the current home's managed runtime; filename suffix alone is never deletion authority.
+
 ## Local acceptance loop
 
 1. Initialize a temporary vault.

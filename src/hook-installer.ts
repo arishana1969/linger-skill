@@ -11,7 +11,7 @@ export async function installHooks(home: string, packageRoot: string, adapters: 
   const written: string[] = [];
   if (adapters.includes("claude-code")) {
     const file = path.join(home, ".claude", "settings.json");
-    const settings = await jsonOr<Record<string, unknown>>(file, {});
+    const settings = await jsonObjectOr(file);
     const hooks = asHooks(settings.hooks);
     addContinuityHooks(hooks, `CONTINUITY_ADAPTER=claude-code ${commandBase}`, ["SessionStart", "UserPromptSubmit", "Stop", "StopFailure"]);
     await mkdir(path.dirname(file), { recursive: true });
@@ -20,7 +20,7 @@ export async function installHooks(home: string, packageRoot: string, adapters: 
   }
   if (adapters.includes("codex")) {
     const file = path.join(home, ".codex", "hooks.json");
-    const document = await jsonOr<{ hooks?: HookMap }>(file, {});
+    const document = await jsonObjectOr(file);
     const hooks = asHooks(document.hooks);
     addContinuityHooks(hooks, `CONTINUITY_ADAPTER=codex ${commandBase}`, ["SessionStart", "UserPromptSubmit", "Stop"]);
     await mkdir(path.dirname(file), { recursive: true });
@@ -37,14 +37,14 @@ export async function uninstallHooks(home: string, adapters: AdapterName[]): Pro
     ["codex", path.join(home, ".codex", "hooks.json")]
   ] as const) {
     if (!adapters.includes(adapter)) continue;
-    const document = await jsonOr<Record<string, unknown>>(file, {});
+    const document = await jsonObjectOr(file);
     const hooks = asHooks(document.hooks);
     let removed = false;
     for (const event of Object.keys(hooks)) {
       const groups = hooks[event] ?? [];
       for (const group of groups) {
         const before = group.hooks.length;
-        group.hooks = group.hooks.filter(hook => !hook.command.includes("dist/hook-cli.js") && !hook.command.includes("dist\\hook-cli.js"));
+        group.hooks = group.hooks.filter(hook => !isContinuityHookCommand(hook.command, home, adapter));
         removed ||= before !== group.hooks.length;
       }
       hooks[event] = groups.filter(group => group.hooks.length);
@@ -64,6 +64,28 @@ function addContinuityHooks(hooks: HookMap, command: string, events: string[]): 
   }
 }
 
-function asHooks(value: unknown): HookMap { return value && typeof value === "object" && !Array.isArray(value) ? value as HookMap : {}; }
-async function jsonOr<T>(file: string, fallback: T): Promise<T> { try { return JSON.parse(await readFile(file, "utf8")) as T; } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return fallback; throw error; } }
+function asHooks(value: unknown): HookMap {
+  if (value === undefined) return {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid host hooks configuration");
+  for (const groups of Object.values(value)) {
+    if (!Array.isArray(groups)) throw new Error("Invalid host hook groups");
+    for (const group of groups) {
+      if (!group || typeof group !== "object" || Array.isArray(group) || !Array.isArray((group as { hooks?: unknown }).hooks)) throw new Error("Invalid host hook group");
+      for (const hook of (group as { hooks: unknown[] }).hooks) if (!hook || typeof hook !== "object" || Array.isArray(hook) || typeof (hook as { command?: unknown }).command !== "string") throw new Error("Invalid host hook command");
+    }
+  }
+  return value as HookMap;
+}
+async function jsonObjectOr(file: string): Promise<Record<string, unknown>> {
+  try {
+    const value = JSON.parse(await readFile(file, "utf8")) as unknown;
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid host configuration document");
+    return value as Record<string, unknown>;
+  } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return {}; throw error; }
+}
+function isContinuityHookCommand(command: string, home: string, adapter: AdapterName): boolean {
+  const normalized = command.replaceAll("\\", "/");
+  const runtime = path.resolve(home, ".continuity", "runtime").replaceAll("\\", "/");
+  return command.includes(`CONTINUITY_ADAPTER=${adapter}`) && normalized.includes(`${runtime}/`) && normalized.includes("/dist/hook-cli.js");
+}
 function quote(value: string): string { return `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`; }

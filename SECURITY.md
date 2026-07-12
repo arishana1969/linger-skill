@@ -14,6 +14,8 @@ The project does not claim absolute safety against malicious repositories, promp
 
 Installer changes are merged into the host's existing JSON configuration. Existing unmanaged Continuity Skill directories are backed up. Codex may require the user to review and trust newly installed hooks through its hook UI.
 
+Host configuration must be a JSON object with a structurally valid hook map before Continuity writes it; malformed documents fail without byte changes. Uninstall removes only commands carrying the matching Continuity adapter marker and a hook path below the current home's managed runtime, so an unrelated user command with the same `dist/hook-cli.js` suffix is preserved.
+
 Package versions are restricted before they become runtime paths. Uninstall validates the complete manifest before mutation, permits Skill removal only at the selected host's known Continuity directory, and requires the runtime path to be the direct managed version directory under the current home. A managed marker alone does not authorize deletion of an arbitrary manifest target.
 
 Hook payloads are treated as external input. Unknown events, empty or non-string content, and explicit user opt-out are rejected before project registration or Vault initialization, preventing unsupported payloads from creating local state as a side effect.
