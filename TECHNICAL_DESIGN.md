@@ -2,15 +2,15 @@
 
 ## Boundary
 
-The local `0.0.x` slice proves a file-native capture-to-recall loop. It does not claim complete adapter automation, encryption, deletion, term-graph maintenance, or production-grade multi-window coordination.
+The local `0.0.x` slice implements a file-native capture-to-recall loop, destructive controls, a minimal evidence-backed term graph, bounded search, and deterministic evaluation. It does not claim complete adapter automation, encryption, sophisticated semantic processing, or production-grade multi-window coordination.
 
 ## Source of truth
 
-Raw events and processed memories are source records. Queue and registry files are operational state. Search indexes are replaceable derivatives. Mutations use a temporary sibling file followed by atomic rename.
+Raw events, processed memories, and decision events are source records. Queue, derived decision views, registries, and processing-run histories are operational or rebuildable state. Mutations use a temporary sibling file followed by atomic rename.
 
 ## Processing boundary
 
-The deterministic worker provides a local-test baseline. Rich summaries, predictive tags, decision topic merging, and correction linking will be produced by the host agent under the Skill protocol and validated by the CLI before persistence in the GitHub MVP.
+The deterministic worker provides a local baseline for summaries, content/predictive tags, retrieval phrases, decision extraction, correction linking, and registry updates. These outputs are deliberately lexical and heuristic. Richer host-agent processing and decision-topic merging are future improvements and must preserve the same evidence and validation boundaries.
 
 ## Adapter strategy
 
@@ -23,3 +23,4 @@ Adapters report capabilities rather than assuming lifecycle parity. Claude Code 
 3. Persist and consume queue items.
 4. Recall from a new process using an indirect query.
 5. Verify sources, project isolation, secret exclusion, forget, pause, and tamper reporting.
+6. Run the separated year fixture/oracle and adversarial regression gates through a real temporary Vault.

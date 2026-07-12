@@ -12,7 +12,7 @@ Queue items are independent JSON files with pending, processing, failed, or done
 
 ## Processed memory
 
-Processed memories contain summaries, content and predictive tags, retrieval phrases, evidence event IDs, confidence, source type, recall status, and supersession references.
+Each processed memory has a machine-readable JSON record and a human-readable Markdown/frontmatter representation with the same identity and provenance. Records contain summaries, content and predictive tags, retrieval phrases, evidence event IDs and source hash, confidence, source type, recall status, and supersession references. Delete keeps both representations synchronized.
 
 ## Decision trail
 
@@ -20,4 +20,8 @@ Decision events are append-only. A topic's `current.json` is derived from its ev
 
 ## Source-of-truth boundary
 
-Raw events, processed memories, and decision events are durable memory records. Current decision views, registries, and future indexes are derived or operational files.
+Raw events, processed memories, and decision events are durable memory records. Current decision views, tag/term registries, processing histories, queue state, and future indexes are derived or operational files.
+
+## Search contract
+
+Search is project-scoped by default and reads only active, non-revoked records. Options bound scanned files, snippets, total evidence characters, raw fragment characters, an inclusive time range, and a wall-clock deadline. Timeout is an explicit retrieval failure, not a `no_reliable_memory_found` result.

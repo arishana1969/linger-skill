@@ -12,7 +12,7 @@ This audit distinguishes deterministic repository evidence from claims that requ
 
 The repository has the complete local spine of a GitHub MVP: file-native capture, immutable raw events, persistent serial processing, processed Markdown/JSON records, scoped lexical recall, decision trails, user controls, safe install/uninstall/purge, adapter capability reporting, CI, and deterministic long-duration evaluation.
 
-It is not yet a public release candidate. The remaining release blockers are package publication/clean-machine `npx` proof, real-host lifecycle validation, bounded search timeout/file limits, and documentation/schema reconciliation. Interactive install, a persistent in-session timer, richer topic merge, and index fragments can remain post-GitHub-MVP if their degraded behavior is documented honestly.
+It is not yet a public release candidate. The remaining release blockers are package publication/clean-machine `npx` proof, real-host lifecycle validation, and documentation/schema reconciliation. Interactive install, a persistent in-session timer, richer topic merge, and index fragments can remain post-GitHub-MVP if their degraded behavior is documented honestly.
 
 ## P0 implementation matrix
 
@@ -29,7 +29,7 @@ It is not yet a public release candidate. The remaining release blockers are pac
 | Processed memory | Complete | Canonical JSON plus human-readable Markdown/frontmatter mirror, provenance, and deletion synchronization are tested. |
 | Tag registry and search phrases | Complete | Content/predictive tags, retrieval phrases, rebuildable active counts, and forget exclusion exist. Generation is deterministic and intentionally basic. |
 | Minimal term graph and alias expansion | Complete | Evidence-backed, project-scoped relations with confidence/context guards expand recall without replacing original terms. Automatic discovery is not claimed. |
-| Project scope and BM25-style search | Partial | Project isolation, CJK bigrams, English terms, IDF-style ranking, tags, phrases, and bounded snippets/characters exist. Time filters, max-files, raw-fragment limit, and hard timeout remain. |
+| Project scope and BM25-style search | Complete | Project isolation, CJK bigrams, English terms, IDF-style ranking, tags, phrases, max-files, bounded snippets/characters/raw fragments, inclusive time filters, and an explicit wall-clock timeout are tested. |
 | Decision trail | Complete | Append-only events, current view, A→B→A, evidence requirement, explicit priority, automatic visible-decision extraction, supersession, and conflict reporting are tested. Topic extraction remains heuristic. |
 | User-explicit memory | Complete | Hook recognition sets highest confidence/priority; opt-out is skipped before capture. Natural-language coverage is deliberately finite. |
 | Forget, delete, correct | Complete | Forget/correct are append-only control events; raw/processed deletion is ID-scoped and confirmed; Markdown/JSON stay synchronized. |
@@ -41,7 +41,7 @@ It is not yet a public release candidate. The remaining release blockers are pac
 | Area | Current state | Gap that still matters |
 | --- | --- | --- |
 | Processing triggers/budget | 50KB threshold, max wait, startup/manual/explicit triggers, max runs/hour, max items/run, pause, and backlog status exist. | No token budget, durable-content classifier, or persistent session timer. Automatic processing currently runs at SessionStart; hook capture itself stays fast. |
-| Recall bounds | Snippet count and total character budget exist; insufficient clues return topic/decision/tag candidates; empty retrieval abstains. | Add max-files, query time range, search timeout, and max raw fragment size before release candidate. Candidate time ranges are not produced. |
+| Recall bounds | File, snippet, evidence-character, raw-fragment, time-range, and wall-clock bounds exist; insufficient clues return topic/decision/tag candidates; empty retrieval abstains. | Candidate fallback does not yet suggest likely time ranges. File selection is deterministic rather than recency-aware. |
 | Sensitive/secret handling | Secret patterns are classified and redacted before hook persistence; secret records do not enter processing or normal recall; sensitive records are excluded by default. | No encryption-at-rest flow and no exhaustive detector. PRD allows stronger encryption UX after MVP, but limitations must stay explicit. |
 | Tamper handling | Raw/processed provenance hashes are checked; invalid files can be explicitly quarantined and doctor remains usable. | Tampered-source ranking penalties are not implemented because invalid processed records are excluded/repaired instead. |
 | Scheduler | Startup scan and processing are implemented. | No daemon and no guaranteed timer while a long session stays open. This is an honest degraded mode, not L3. |
@@ -79,11 +79,10 @@ It is not yet a public release candidate. The remaining release blockers are pac
 
 ## GitHub MVP blocker order
 
-1. Add search max-files, time filters, hard timeout, and raw-fragment bounds with tests.
-2. Reconcile README, DATA_MODEL, TECHNICAL_DESIGN, ROADMAP, and adapter docs against current behavior.
-3. Run disposable-home host smoke tests where installed Claude Code/Codex versions expose supported lifecycle events; record exact capability evidence and degraded paths.
-4. Perform a package-consumer audit from the generated tarball and add a release checklist. Keep npm publication as an explicit user-owned release action.
-5. Expand generated evaluation with held-out paraphrases, noisy near-collisions, corrections, partial answers, tampering, and larger vault sizes.
+1. Reconcile README, DATA_MODEL, TECHNICAL_DESIGN, ROADMAP, and adapter docs against current behavior.
+2. Run disposable-home host smoke tests where installed Claude Code/Codex versions expose supported lifecycle events; record exact capability evidence and degraded paths.
+3. Perform a package-consumer audit from the generated tarball and add a release checklist. Keep npm publication as an explicit user-owned release action.
+4. Expand generated evaluation with held-out paraphrases, noisy near-collisions, corrections, partial answers, tampering, and larger vault sizes.
 
 ## Explicitly deferred from the first GitHub MVP
 

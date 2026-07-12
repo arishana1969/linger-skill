@@ -2,16 +2,21 @@
 
 ## Local 0.0.x slice
 
-- Prove capture, processing, recall, decision trail, hooks, and safe installation in disposable homes.
-- Add deterministic regression fixtures.
+- Completed: capture, persistent serial processing, bounded recall, decision trails, controls, hook installation, stable runtime copy, and safe disposable-home installation.
+- Completed: CI on Node 20/22/24, Skill/package validation, a 99-event year fixture, and a focused adversarial regression fixture.
 
 ## GitHub MVP 0.1.0
 
-- Complete correction and delete flows.
-- Add pending recovery, backlog budgets, tag registry, aliases, and minimal term graph.
-- Add Windows command hooks and host-version capability probes.
-- Add CI, supported Node matrix, privacy/security review, and synthetic year-long evaluation fixtures.
-- Publish only after clean-machine installation tests.
+- Reconcile the public docs and freeze the initial file/schema contract.
+- Validate exact lifecycle payloads and degraded behavior in disposable Claude Code and Codex homes.
+- Expand held-out evaluation with paraphrases, near-collisions, partial answers, correction chains, tampering, and larger vaults.
+- Add a package-consumer release checklist and run a clean-machine install from the packed artifact.
+- Publish only after repository checks and host evidence are recorded; npm publication is a user-owned release action.
+
+## Post-MVP hardening
+
+- Add persistent in-session scheduling, token-aware processing budgets, richer decision-topic merge, dedicated index fragments, and optional global preference recall.
+- Improve encryption and secret-handling UX without weakening explicit local/cloud disclosure.
 
 ## Later
 

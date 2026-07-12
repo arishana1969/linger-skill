@@ -14,7 +14,7 @@ The local slice consumes these verified shared hook fields:
 - `last_assistant_message` for `Stop`
 - `model` when available
 
-Supported lifecycle events are `SessionStart`, `UserPromptSubmit`, and `Stop`. Capture errors must not block the conversation.
+Installed lifecycle events are `SessionStart`, `UserPromptSubmit`, and `Stop`. The handler also understands `StopFailure` as a partial answer when a host can provide it, but the installer does not claim that unverified event for either host. Capture errors must not block the conversation.
 
 ## Claude Code
 
@@ -30,4 +30,4 @@ Copying a Skill yields at most L1. Verified hook configuration yields L2. L3 and
 
 ## Current limitations
 
-The generated hook command is POSIX-oriented. Windows command overrides, real interrupted-answer coverage, host-version probing, and multi-window conflict testing remain GitHub MVP work.
+Hook entries include both the POSIX command and a PowerShell `commandWindows` override. Windows execution still needs a real-host smoke test. Real interrupted-answer coverage, host-version probing, trust/review UX, and multi-window conflict testing remain GitHub MVP work.
