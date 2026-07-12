@@ -18,7 +18,7 @@ It is not yet a public release candidate. The remaining release blockers are pac
 
 | PRD P0 requirement | Status | Repository evidence / remaining gap |
 | --- | --- | --- |
-| npx installer | External release step | Packed tarball consumer install, stable copied runtime, install/capabilities/uninstall are tested. npm publication and clean-machine `npx -y continuity-skill install` remain external. |
+| npx installer | External release step | The actual packed tarball is unpacked and run through install/capabilities/uninstall in CI; required runtime and policy documents are asserted. npm publication and public clean-machine `npx -y continuity-skill install` remain external. |
 | Vault initialization and helper CLI | Complete | `initVault`, safe project IDs, CLI commands, atomic I/O, and path-bound destructive operations are tested. |
 | Claude Code adapter | Needs host validation | Skill and lifecycle hook configuration install idempotently without replacing user config. Real completed/partial answer payloads remain unverified in the host. |
 | Codex adapter | Needs host validation | Skill and hook artifacts install and capability evidence is honest. Current Codex surface lifecycle coverage remains unverified. |
@@ -55,7 +55,7 @@ It is not yet a public release candidate. The remaining release blockers are pac
 ### Installation and lifecycle
 
 - Idempotent managed Skill copy, backup of unmanaged Skill directories, hook merge, stable versioned runtime, capability reporting, uninstall preservation, and double-confirmed purge are automated tests.
-- A packed tarball is installed and executed after its source directory is no longer the runtime path.
+- The actual packed tarball is unpacked in a temporary directory and run through install, capability reporting, and uninstall after separation from the source tree. Required package documents and runtime files are asserted.
 - Remaining proof: published package, clean machine, real Claude Code, and real Codex event capture.
 
 ### Capture, processing, and recovery
@@ -81,7 +81,7 @@ It is not yet a public release candidate. The remaining release blockers are pac
 
 1. Reconcile README, DATA_MODEL, TECHNICAL_DESIGN, ROADMAP, and adapter docs against current behavior.
 2. Run disposable-home host smoke tests where installed Claude Code/Codex versions expose supported lifecycle events; record exact capability evidence and degraded paths.
-3. Perform a package-consumer audit from the generated tarball and add a release checklist. Keep npm publication as an explicit user-owned release action.
+3. Resolve maintainer release metadata in `RELEASE_CHECKLIST.md`, including license, repository URL, package ownership, and security contact. Keep npm publication as an explicit user-owned release action.
 4. Expand generated evaluation with held-out paraphrases, noisy near-collisions, corrections, partial answers, tampering, and larger vault sizes.
 
 ## Explicitly deferred from the first GitHub MVP

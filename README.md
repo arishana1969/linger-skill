@@ -61,6 +61,8 @@ node dist/cli.js capabilities --home /tmp/continuity-home
 
 The intended public command is `npx -y continuity-skill install --yes`, but the package has not been published.
 
+Before a GitHub or npm release, follow [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md). In particular, real host lifecycle behavior and public package installation must not be inferred from disposable file-level tests.
+
 ## Safety model
 
 - Default recall is current-project only.

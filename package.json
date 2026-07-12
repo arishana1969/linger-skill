@@ -13,7 +13,8 @@
     "SECURITY.md",
     "DATA_MODEL.md",
     "ADAPTER_SPEC.md",
-    "AGENT_COMPATIBILITY.md"
+    "AGENT_COMPATIBILITY.md",
+    "RELEASE_CHECKLIST.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
