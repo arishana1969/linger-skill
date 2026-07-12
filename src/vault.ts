@@ -1,9 +1,9 @@
-import { readdir, stat } from "node:fs/promises";
+import { readdir, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { atomicJson, ensureDir, readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
-import { assertQueueItem } from "./schema-validation.js";
+import { assertProjectRecord, assertQueueItem } from "./schema-validation.js";
 
 export interface VaultConfig {
   schema_version: 1;
@@ -16,6 +16,16 @@ export interface VaultConfig {
   max_raw_fragment_characters: number;
   search_timeout_ms: number;
   created_at: string;
+}
+
+export interface ProjectRecord {
+  schema_version: 1;
+  project_id: string;
+  display_name: string;
+  root_path: string;
+  identity_source: "git_remote_root" | "git_root" | "absolute_path";
+  created_at: string;
+  last_seen: string;
 }
 
 function defaultConfig(createdAt = new Date().toISOString()): VaultConfig {
@@ -61,11 +71,39 @@ export async function setPaused(root: string, paused: boolean): Promise<VaultCon
 }
 
 export async function projectId(cwd: string): Promise<string> {
-  const resolved = path.resolve(cwd);
+  return (await projectIdentity(cwd)).project_id;
+}
+
+export async function registerProject(root: string, cwd: string): Promise<ProjectRecord> {
+  const identity = await projectIdentity(cwd);
+  const file = path.join(vaultPaths(root).projects, `${identity.project_id}.json`);
+  const now = new Date().toISOString();
+  let createdAt = now;
+  try { const existing = await readJson<unknown>(file); assertProjectRecord(existing); createdAt = existing.created_at; } catch { }
+  const record: ProjectRecord = { schema_version: 1, ...identity, created_at: createdAt, last_seen: now };
+  await atomicJson(file, record);
+  return record;
+}
+
+export async function listProjects(root: string): Promise<ProjectRecord[]> {
+  return (await Promise.all((await listJsonFiles(vaultPaths(root).projects)).map(async file => {
+    try { const value = await readJson<unknown>(file); assertProjectRecord(value); return value; } catch { return undefined; }
+  }))).filter((record): record is ProjectRecord => Boolean(record)).sort((a, b) => b.last_seen.localeCompare(a.last_seen) || a.project_id.localeCompare(b.project_id));
+}
+
+async function projectIdentity(cwd: string): Promise<Pick<ProjectRecord, "project_id" | "display_name" | "root_path" | "identity_source">> {
+  const requested = path.resolve(cwd);
+  const resolved = await realpath(requested).catch(() => requested);
   const remote = await gitValue(resolved, ["config", "--get", "remote.origin.url"]);
   const gitRoot = await gitValue(resolved, ["rev-parse", "--show-toplevel"]);
-  const material = remote && gitRoot ? `${remote}\0${gitRoot}` : resolved;
-  return `p_${createHash("sha256").update(material).digest("hex").slice(0, 16)}`;
+  const rootPath = gitRoot ?? resolved;
+  const material = remote && gitRoot ? `${remote}\0${gitRoot}` : rootPath;
+  return {
+    project_id: `p_${createHash("sha256").update(material).digest("hex").slice(0, 16)}`,
+    display_name: path.basename(rootPath) || rootPath,
+    root_path: rootPath,
+    identity_source: remote && gitRoot ? "git_remote_root" : gitRoot ? "git_root" : "absolute_path"
+  };
 }
 
 async function gitValue(cwd: string, args: string[]): Promise<string | undefined> {

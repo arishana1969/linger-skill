@@ -2,7 +2,7 @@ import { rename } from "node:fs/promises";
 import path from "node:path";
 import { readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
-import { assertDecisionEvent, assertDecisionView, assertMemoryControlEvent, assertPendingCapture, assertProcessedMemory, assertQueueItem, assertRawEvent, assertTagRegistry, assertTermRelation } from "./schema-validation.js";
+import { assertDecisionEvent, assertDecisionView, assertMemoryControlEvent, assertPendingCapture, assertProcessedMemory, assertProjectRecord, assertQueueItem, assertRawEvent, assertTagRegistry, assertTermRelation } from "./schema-validation.js";
 import { listJsonFiles } from "./vault.js";
 
 export async function quarantineInvalidFiles(root: string): Promise<{ quarantined: string[]; skipped: string[] }> {
@@ -17,7 +17,8 @@ export async function quarantineInvalidFiles(root: string): Promise<{ quarantine
     { dir: p.decisions, kind: "decision", read: async file => { const value = await readJson<unknown>(file); if (path.basename(file) === "current.json") assertDecisionView(value); else assertDecisionEvent(value); } },
     { dir: path.join(p.registry, "tags"), kind: "tag-registry", read: async file => { const value = await readJson<unknown>(file); assertTagRegistry(value); } },
     { dir: path.join(p.registry, "memory-events"), kind: "memory-control", read: async file => { const value = await readJson<unknown>(file); assertMemoryControlEvent(value); } },
-    { dir: path.join(p.registry, "term-graph"), kind: "term-relation", read: async file => { const value = await readJson<unknown>(file); assertTermRelation(value); } }
+    { dir: path.join(p.registry, "term-graph"), kind: "term-relation", read: async file => { const value = await readJson<unknown>(file); assertTermRelation(value); } },
+    { dir: p.projects, kind: "project-record", read: async file => { const value = await readJson<unknown>(file); assertProjectRecord(value); } }
   ];
   for (const group of groups) {
     for (const file of await listJsonFiles(group.dir)) {

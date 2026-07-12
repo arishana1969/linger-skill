@@ -18,7 +18,7 @@ import { addTermRelation, type TermRelationType } from "./term-graph.js";
 import { quarantineInvalidFiles } from "./repair.js";
 import { recall } from "./recall.js";
 import { search } from "./search.js";
-import { initVault, projectId, setPaused, vaultStats } from "./vault.js";
+import { initVault, listProjects, registerProject, setPaused, vaultStats } from "./vault.js";
 
 const args = process.argv.slice(2);
 const command = args.shift();
@@ -52,10 +52,11 @@ async function main(): Promise<void> {
     case "purge": output(await purge(option("--home") ?? os.homedir(), { yes: flag("--yes"), phrase: required("--confirm") })); break;
     case "capabilities": output(await capabilityReport(option("--home") ?? os.homedir())); break;
     case "init": output(await initVault(vault)); break;
-    case "project-id": console.log(await projectId(option("--cwd") ?? process.cwd())); break;
+    case "project-id": console.log((await registerProject(vault, option("--cwd") ?? process.cwd())).project_id); break;
+    case "projects": output(await listProjects(vault)); break;
     case "capture": {
       const event = await capture(vault, {
-        projectId: option("--project") ?? await projectId(process.cwd()), sessionId: option("--session") ?? "manual",
+        projectId: option("--project") ?? (await registerProject(vault, process.cwd())).project_id, sessionId: option("--session") ?? "manual",
         turnId: option("--turn") ?? `turn-${Date.now()}`, role: (option("--role") ?? "user") as "user" | "assistant" | "system",
         content: required("--content"), sourceAgent: option("--agent") ?? "manual", savepointStatus: flag("--partial") ? "partial" : "complete",
         explicit: flag("--explicit"), sensitivity: flag("--secret") ? "secret" : flag("--sensitive") ? "sensitive" : "normal"
@@ -66,8 +67,8 @@ async function main(): Promise<void> {
     case "process": output(await processQueue(vault, option("--project"))); break;
     case "tags-rebuild": output(await rebuildTagRegistry(vault, required("--project"))); break;
     case "term-add": output(await addTermRelation(vault, { project_id: required("--project"), term_a: required("--term-a"), term_b: required("--term-b"), relation_type: required("--relation") as TermRelationType, confidence: numberOption("--confidence", 0.8), context_tags: option("--context")?.split(",").filter(Boolean) ?? [], evidence_refs: required("--evidence").split(",").filter(Boolean) })); break;
-    case "recall": output(await recall(vault, { projectId: option("--project") ?? await projectId(process.cwd()), query: option("--query") ?? args.join(" "), includeRaw: flag("--include-raw"), maxCharacters: numberOption("--max-characters", 12000), maxFiles: numberOption("--max-files", 5000), maxRawFragmentCharacters: numberOption("--max-raw-fragment-characters", 500), timeoutMs: numberOption("--timeout-ms", 2000), from: option("--from"), to: option("--to") })); break;
-    case "search": output(await search(vault, { projectId: option("--project") ?? await projectId(process.cwd()), query: option("--query") ?? args.join(" "), includeRaw: flag("--include-raw"), maxFiles: numberOption("--max-files", 5000), maxRawFragmentCharacters: numberOption("--max-raw-fragment-characters", 500), timeoutMs: numberOption("--timeout-ms", 2000), from: option("--from"), to: option("--to") })); break;
+    case "recall": output(await recall(vault, { projectId: option("--project") ?? (await registerProject(vault, process.cwd())).project_id, query: option("--query") ?? args.join(" "), includeRaw: flag("--include-raw"), maxCharacters: numberOption("--max-characters", 12000), maxFiles: numberOption("--max-files", 5000), maxRawFragmentCharacters: numberOption("--max-raw-fragment-characters", 500), timeoutMs: numberOption("--timeout-ms", 2000), from: option("--from"), to: option("--to") })); break;
+    case "search": output(await search(vault, { projectId: option("--project") ?? (await registerProject(vault, process.cwd())).project_id, query: option("--query") ?? args.join(" "), includeRaw: flag("--include-raw"), maxFiles: numberOption("--max-files", 5000), maxRawFragmentCharacters: numberOption("--max-raw-fragment-characters", 500), timeoutMs: numberOption("--timeout-ms", 2000), from: option("--from"), to: option("--to") })); break;
     case "decision-add": output(await appendDecision(vault, {
       projectId: required("--project"), topic: required("--topic"), kind: (option("--kind") ?? "decision") as DecisionKind,
       status: (option("--status") ?? "current") as DecisionStatus, statement: required("--statement"), rationale: option("--rationale"),
@@ -87,7 +88,7 @@ async function main(): Promise<void> {
     case "doctor": output(await doctor(vault)); break;
     case "doctor-repair": { if (!flag("--yes")) throw new Error("doctor-repair requires --yes"); output(await quarantineInvalidFiles(vault)); break; }
     default:
-      console.log("continuity <install|uninstall|purge|capabilities|init|project-id|capture|recover|process|tags-rebuild|term-add|recall|search|decision-add|decision-get|decision-list|forget|correct|delete|delete-last|inspect|pause|resume|status|doctor|doctor-repair> [options]");
+      console.log("continuity <install|uninstall|purge|capabilities|init|project-id|projects|capture|recover|process|tags-rebuild|term-add|recall|search|decision-add|decision-get|decision-list|forget|correct|delete|delete-last|inspect|pause|resume|status|doctor|doctor-repair> [options]");
       if (command) process.exitCode = 2;
   }
 }

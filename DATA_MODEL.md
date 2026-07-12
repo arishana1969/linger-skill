@@ -10,6 +10,10 @@ Raw files contain mechanical capture data only. Topic boundaries and semantic su
 
 Queue items are independent JSON files with pending, processing, failed, or done state. Explicit user memories receive priority. One process lock serializes the local worker.
 
+## Project registry
+
+Project records map a stable project ID to a local display name, root path, identity source, and last-seen time. Git projects use remote plus Git root when a remote exists, Git root otherwise; non-Git directories use their absolute path. Remote URLs are hashed into the ID but are not persisted. Listing known projects never broadens recall automatically.
+
 ## Processed memory
 
 Each processed memory has a machine-readable JSON record and a human-readable Markdown/frontmatter representation with the same identity and provenance. Records contain summaries, content and predictive tags, retrieval phrases, evidence event IDs and source hash, source savepoint status, confidence, source type, recall status, and supersession references. Delete keeps both representations synchronized. Recall labels evidence derived from interrupted answers with `partial_source` rather than presenting it as complete.

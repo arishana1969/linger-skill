@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
-import { assertDecisionEvent, assertDecisionView, assertMemoryControlEvent, assertPendingCapture, assertProcessedMemory, assertQueueItem, assertRawEvent, assertTagRegistry, assertTermRelation } from "./schema-validation.js";
+import { assertDecisionEvent, assertDecisionView, assertMemoryControlEvent, assertPendingCapture, assertProcessedMemory, assertProjectRecord, assertQueueItem, assertRawEvent, assertTagRegistry, assertTermRelation } from "./schema-validation.js";
 import { initVault, listJsonFiles } from "./vault.js";
 
 export interface DoctorReport { ok: boolean; errors: string[]; warnings: string[]; }
@@ -50,6 +50,10 @@ export async function doctor(root: string): Promise<DoctorReport> {
   for (const file of await listJsonFiles(path.join(p.registry, "term-graph"))) {
     try { const value = await readJson<unknown>(file); assertTermRelation(value); }
     catch { report.errors.push(`invalid_term_relation:${path.relative(p.root, file)}`); }
+  }
+  for (const file of await listJsonFiles(p.projects)) {
+    try { const value = await readJson<unknown>(file); assertProjectRecord(value); }
+    catch { report.errors.push(`invalid_project_record:${path.relative(p.root, file)}`); }
   }
   for (const file of await listJsonFiles(path.join(p.tmp, "pending"))) {
     try { const pending = await readJson<unknown>(file); assertPendingCapture(pending); report.warnings.push(`pending_capture:${pending.pending_id}`); }

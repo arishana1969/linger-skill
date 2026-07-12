@@ -5,6 +5,7 @@
 Use `--vault <path>` when an adapter supplies a non-default vault.
 
 - `continuity project-id --cwd <path>`: derive project scope.
+- `continuity projects`: list locally registered project IDs, display names, roots, and last-seen times. Use only when the user explicitly asks for cross-project recall; listing does not broaden search automatically.
 - `continuity capture --project ID --session ID --turn ID --role user|assistant --content TEXT [--explicit] [--partial]`: capture an event.
 - `continuity recover`: restore staged raw and queue records after interruption.
 - `continuity process [--project ID]`: consume work serially.

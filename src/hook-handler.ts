@@ -4,7 +4,7 @@ import { recoverPending } from "./pending.js";
 import { processingDecision, recordProcessingRun } from "./processing-policy.js";
 import { processQueue } from "./processing.js";
 import { classifySensitivity } from "./sensitivity.js";
-import { projectId } from "./vault.js";
+import { registerProject } from "./vault.js";
 
 export interface HookInput {
   session_id?: string;
@@ -29,7 +29,7 @@ export interface HookResult {
 export async function handleHook(root: string, input: HookInput, sourceAgent: "claude-code" | "codex"): Promise<HookResult> {
   const eventName = input.hook_event_name ?? "unknown";
   const cwd = input.cwd ?? process.cwd();
-  const project = await projectId(cwd);
+  const project = (await registerProject(root, cwd)).project_id;
   if (eventName === "SessionStart") {
     const recovery = await recoverPending(root).catch(() => ({ recovered: 0, failed: [] }));
     return { recovered: recovery.recovered, processed: await scheduledProcessing(root, project, "startup"), output: contextOutput(eventName) };

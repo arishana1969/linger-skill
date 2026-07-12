@@ -3,6 +3,7 @@ import type { DecisionEvent, DecisionView } from "./decisions.js";
 import type { TagRegistry } from "./tag-registry.js";
 import type { MemoryControlEvent } from "./memory-events.js";
 import type { TermRelation } from "./term-graph.js";
+import type { ProjectRecord } from "./vault.js";
 import type { ProcessedMemory, QueueItem, RawEvent } from "./types.js";
 
 const ROLES = new Set(["user", "assistant", "system"]);
@@ -120,6 +121,13 @@ export function assertTermRelation(value: unknown): asserts value is TermRelatio
   stringArrays(item, ["context_tags", "evidence_refs"], "term relation");
   enumeration(item.relation_type, TERM_RELATION_TYPES, "term relation type");
   if (typeof item.confidence !== "number" || item.confidence < 0 || item.confidence > 1) invalid("term relation confidence");
+}
+
+export function assertProjectRecord(value: unknown): asserts value is ProjectRecord {
+  const item = record(value, "project record");
+  schemaOne(item, "project record");
+  strings(item, ["project_id", "display_name", "root_path", "created_at", "last_seen"], "project record");
+  enumeration(item.identity_source, new Set(["git_remote_root", "git_root", "absolute_path"]), "project record identity_source");
 }
 
 function record(value: unknown, label: string): Record<string, unknown> {
