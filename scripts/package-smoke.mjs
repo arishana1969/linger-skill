@@ -17,7 +17,7 @@ try {
   await exec("tar", ["-xzf", tarball, "-C", extract]);
   const packageRoot = path.join(extract, "package");
   const required = [
-    "README.md", "PRIVACY.md", "SECURITY.md", "DATA_MODEL.md", "ADAPTER_SPEC.md", "AGENT_COMPATIBILITY.md", "RELEASE_CHECKLIST.md",
+    "README.md", "PRIVACY.md", "SECURITY.md", "DATA_MODEL.md", "ADAPTER_SPEC.md", "AGENT_COMPATIBILITY.md", "HOST_VALIDATION.md", "RELEASE_CHECKLIST.md",
     "dist/cli.js", "dist/hook-cli.js", "skills/continuity/SKILL.md", "skills/continuity/agents/openai.yaml"
   ];
   for (const file of required) await access(path.join(packageRoot, file));

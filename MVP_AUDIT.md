@@ -21,7 +21,7 @@ It is not yet a public release candidate. The remaining release blockers are pac
 | npx installer | External release step | The actual packed tarball is unpacked and run through install/capabilities/uninstall in CI; required runtime and policy documents are asserted. npm publication and public clean-machine `npx -y continuity-skill install` remain external. |
 | Vault initialization and helper CLI | Complete | `initVault`, safe project IDs, CLI commands, atomic I/O, and path-bound destructive operations are tested. |
 | Claude Code adapter | Needs host validation | Skill and lifecycle hook configuration install idempotently without replacing user config. Real completed/partial answer payloads remain unverified in the host. |
-| Codex adapter | Needs host validation | Skill and hook artifacts install and capability evidence is honest. Current Codex surface lifecycle coverage remains unverified. |
+| Codex adapter | Needs host validation | Codex `0.144.0-alpha.4` app-server `hooks/list` accepts all three generated hooks with no parse warnings/errors and reports them untrusted. Trust UX, command execution, and live lifecycle payload capture remain unverified. |
 | Adapter capability report | Complete | Reports detected artifacts and L0-L2 only; does not infer L3/L4 from copied files. |
 | Hook capture and pending recovery | Partial | User, assistant, partial, opt-out, redaction, SessionStart recovery, and startup processing are tested through the handler. Real-host event semantics remain. |
 | Raw event, sequence, hash, dedupe | Complete | Atomic independent JSON events, project sequence IDs, SHA-256 content hash, stable IDs, and deduplication are covered. |

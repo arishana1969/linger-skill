@@ -5,7 +5,7 @@ Continuity uses one vault format across adapters, but automation levels differ b
 | Adapter | Local slice | Target MVP | Notes |
 | --- | ---: | ---: | --- |
 | Claude Code | L0-L2 | L2-L4 | Hook coverage must be probed on the installed version. |
-| Codex | L0-L2 | L1-L3 | Skill and file mode are baseline; final-answer capture is capability-dependent. |
+| Codex | L0-L2 | L1-L3 | Current Codex `0.144.0-alpha.4` accepts the generated three-hook configuration in `hooks/list`, but reports it untrusted; live capture remains unverified. |
 
 Levels are reported from detected artifacts, not marketing claims:
 
@@ -16,3 +16,5 @@ Levels are reported from detected artifacts, not marketing claims:
 - L4: capture, processing, recovery, indexing, and recall.
 
 The installer must never report L4 merely because files were copied successfully.
+
+See [HOST_VALIDATION.md](HOST_VALIDATION.md) for versioned host evidence and the distinction between configuration parsing and live capture.
