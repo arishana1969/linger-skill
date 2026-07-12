@@ -26,3 +26,14 @@ test("CLI typo in delete target cannot delete a raw event", async () => {
   await assert.rejects(exec(process.execPath, [cli, "delete", "--vault", vault, "--project", "p_cli", "--type", "processd", "--id", captured.event_id, "--yes"]), /target must be processed or raw/);
   await access(path.join(vault, captured.raw_ref));
 });
+
+test("CLI delete-last removes only the latest raw event after confirmation", async () => {
+  const vault = await mkdtemp(path.join(os.tmpdir(), "continuity-delete-last-cli-"));
+  const first = JSON.parse((await exec(process.execPath, [cli, "capture", "--vault", vault, "--project", "p", "--session", "s1", "--turn", "t1", "--role", "user", "--content", "first"])).stdout) as { event_id: string; raw_ref: string };
+  const second = JSON.parse((await exec(process.execPath, [cli, "capture", "--vault", vault, "--project", "p", "--session", "s2", "--turn", "t2", "--role", "user", "--content", "second"])).stdout) as { event_id: string; raw_ref: string };
+  await assert.rejects(exec(process.execPath, [cli, "delete-last", "--vault", vault, "--project", "p", "--type", "raw"]), /confirmation/);
+  const deleted = JSON.parse((await exec(process.execPath, [cli, "delete-last", "--vault", vault, "--project", "p", "--type", "raw", "--yes"])).stdout) as { id: string };
+  assert.equal(deleted.id, second.event_id);
+  await access(path.join(vault, first.raw_ref));
+  await assert.rejects(access(path.join(vault, second.raw_ref)));
+});

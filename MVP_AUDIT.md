@@ -32,7 +32,7 @@ It is not yet a public release candidate. The remaining release blockers are mai
 | Project scope and BM25-style search | Complete | Project isolation, CJK bigrams, English terms, IDF-style ranking, tags, phrases, max-files, bounded snippets/characters/raw fragments, inclusive time filters, and an explicit wall-clock timeout are tested. |
 | Decision trail | Complete | Append-only typed idea/preference/proposal/rationale/constraint/rejection/decision/current-state/todo/correction events, current view, A→B→A, evidence requirement, explicit priority, automatic visible-event extraction, supersession, and conflict reporting are tested. Topic extraction remains heuristic. |
 | User-explicit memory | Complete | Hook recognition sets highest confidence/priority; opt-out is skipped before capture. Natural-language coverage is deliberately finite. |
-| Forget, delete, correct | Complete | Forget/correct are append-only control events; raw/processed deletion is ID-scoped and confirmed; Markdown/JSON stay synchronized. |
+| Forget, delete, delete-last, correct | Complete | Forget/correct are append-only control events; raw/processed deletion is project/ID-scoped and confirmed; delete-last requires an explicit layer and resolves only within that project; Markdown/JSON stay synchronized. |
 | Pause/resume/status/inspect/doctor | Complete | CLI operations and actionable queue/integrity reports are covered. |
 | Required repository documents | Complete | README, PRIVACY, SECURITY, DATA_MODEL, ADAPTER_SPEC, AGENT_COMPATIBILITY, ROADMAP, and CONTRIBUTING exist. Accuracy updates remain part of release review. |
 

@@ -42,3 +42,20 @@ export async function deleteRecord(root: string, input: { projectId: string; tar
   }
   throw new Error(`Raw event not found: ${id}`);
 }
+
+export async function deleteLastRecord(root: string, input: { projectId: string; target: DeleteTarget; confirmed: boolean; reason?: string }): Promise<DeleteResult> {
+  if (input.target !== "processed" && input.target !== "raw") throw new Error("Delete target must be processed or raw");
+  if (!input.confirmed) throw new Error("Delete last requires explicit confirmation");
+  const project = assertSafeId(input.projectId, "project id");
+  const p = vaultPaths(root);
+  if (input.target === "processed") {
+    const records = await Promise.all((await listJsonFiles(path.join(p.processed, project))).map(readJson<ProcessedMemory>));
+    const latest = records.sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id))[0];
+    if (!latest) throw new Error(`No processed records found for project ${project}`);
+    return await deleteRecord(root, { projectId: project, target: "processed", id: latest.id, confirmed: true, reason: input.reason });
+  }
+  const events = await Promise.all((await listJsonFiles(path.join(p.raw, project))).map(readJson<RawEvent>));
+  const latest = events.sort((a, b) => b.seq_id - a.seq_id || b.timestamp.localeCompare(a.timestamp) || b.event_id.localeCompare(a.event_id))[0];
+  if (!latest) throw new Error(`No raw records found for project ${project}`);
+  return await deleteRecord(root, { projectId: project, target: "raw", id: latest.event_id, confirmed: true, reason: input.reason });
+}

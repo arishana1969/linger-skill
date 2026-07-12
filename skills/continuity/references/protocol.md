@@ -14,6 +14,7 @@ Use `--vault <path>` when an adapter supplies a non-default vault.
 - `continuity forget --project ID --memory ID`: append a recall revocation while preserving raw and processed source records.
 - `continuity correct --project ID --memory ID --summary TEXT --evidence EVENT_IDS [--reason TEXT]`: append a correction and supersede the old recall view.
 - `continuity delete --project ID --type processed|raw --id ID --yes [--reason TEXT]`: delete only a confirmed, ID-addressed record.
+- `continuity delete-last --project ID --type processed|raw --yes [--reason TEXT]`: after explaining the target layer, delete only the latest record in that project (`seq_id` for raw, `created_at` for processed). Never infer the layer.
 - `continuity decision-add --project ID --topic TOPIC --kind idea|preference|proposal|rationale|constraint|rejection|decision|current_state|todo|correction --status proposed|accepted|rejected|superseded|reopened|current|unknown --statement TEXT --source user_explicit|agent_inferred --confidence N --evidence EVENT_IDS [--rationale TEXT] [--supersedes DECISION_EVENT_IDS]`: append a typed, evidence-backed decision event.
 - `continuity decision-get --project ID --topic TOPIC` and `continuity decision-list --project ID`: inspect immutable trails and derived current views.
 - `continuity pause|resume|status|doctor`: control or diagnose the vault.

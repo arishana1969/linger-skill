@@ -6,7 +6,7 @@ import { capture } from "./capture.js";
 import { capabilityReport } from "./adapters.js";
 import { correct, forget, inspect } from "./control.js";
 import { appendDecision, getDecisionTrail, listDecisionViews, type DecisionKind, type DecisionSource, type DecisionStatus } from "./decisions.js";
-import { deleteRecord, type DeleteTarget } from "./delete.js";
+import { deleteLastRecord, deleteRecord, type DeleteTarget } from "./delete.js";
 import { doctor } from "./doctor.js";
 import { install, PRIVACY_NOTICE, uninstall } from "./installer.js";
 import { recoverPending } from "./pending.js";
@@ -74,6 +74,7 @@ async function main(): Promise<void> {
     case "forget": output(await forget(vault, required("--project"), required("--memory"))); break;
     case "correct": output(await correct(vault, required("--project"), required("--memory"), required("--summary"), required("--evidence").split(",").filter(Boolean), option("--reason"))); break;
     case "delete": output(await deleteRecord(vault, { projectId: required("--project"), target: required("--type") as DeleteTarget, id: required("--id"), confirmed: flag("--yes"), reason: option("--reason") })); break;
+    case "delete-last": output(await deleteLastRecord(vault, { projectId: required("--project"), target: required("--type") as DeleteTarget, confirmed: flag("--yes"), reason: option("--reason") })); break;
     case "inspect": output(await inspect(vault, required("--project"), required("--memory"))); break;
     case "pause": output(await setPaused(vault, true)); break;
     case "resume": output(await setPaused(vault, false)); break;
@@ -81,7 +82,7 @@ async function main(): Promise<void> {
     case "doctor": output(await doctor(vault)); break;
     case "doctor-repair": { if (!flag("--yes")) throw new Error("doctor-repair requires --yes"); output(await quarantineInvalidFiles(vault)); break; }
     default:
-      console.log("continuity <install|uninstall|purge|capabilities|init|project-id|capture|recover|process|tags-rebuild|term-add|recall|search|decision-add|decision-get|decision-list|forget|correct|delete|inspect|pause|resume|status|doctor|doctor-repair> [options]");
+      console.log("continuity <install|uninstall|purge|capabilities|init|project-id|capture|recover|process|tags-rebuild|term-add|recall|search|decision-add|decision-get|decision-list|forget|correct|delete|delete-last|inspect|pause|resume|status|doctor|doctor-repair> [options]");
       if (command) process.exitCode = 2;
   }
 }
