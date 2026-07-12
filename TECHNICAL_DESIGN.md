@@ -12,6 +12,8 @@ Raw events, processed memories, and decision events are source records. Queue, d
 
 The deterministic worker provides a local baseline for summaries, content/predictive tags, retrieval phrases, decision extraction, correction linking, and registry updates. These outputs are deliberately lexical and heuristic. Richer host-agent processing and decision-topic merging are future improvements and must preserve the same evidence and validation boundaries.
 
+Search ordering is deterministic: lexical match tier first, then `user_explicit` priority within that tier, then lexical score and confidence. Unprocessed raw evidence remains below processed possible matches and carries its warning/partial penalties.
+
 Successful hook captures run an event-driven scheduling decision. Explicit work, a 50KB pending threshold, or an exceeded maximum wait can trigger bounded serial processing; below-threshold captures return without consuming the queue. SessionStart also recovers pending writes and evaluates the queue. This is not a daemon or a guaranteed timer during an idle long-running session.
 
 Automatic runs bound both item count and estimated input tokens (characters divided by four, default 16K). Once at least one item is consumed, an item that would exceed the remaining budget stays pending for the next run. A single oversized first item is allowed to prevent permanent starvation. This deterministic worker does not claim provider-billed token accuracy.

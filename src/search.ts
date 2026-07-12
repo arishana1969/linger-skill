@@ -56,10 +56,14 @@ export async function search(root: string, options: SearchOptions): Promise<Sear
     documentFrequency.set(token, active.filter(memory => tokenize(searchable(memory)).includes(token)).length);
   }
   const hits: SearchHit[] = [];
+  const explicitPriority = new Map<string, number>();
   for (const memory of active) {
     assertBeforeDeadline(deadline);
     const hit = scoreMemory(memory, originalTokens, searchTokens, weights, documentFrequency, active.length, expansions.size > 0, integrity.get(memory.id) === "verified" ? "verified" : "unverified");
-    if (hit.score > 0) hits.push(hit);
+    if (hit.score > 0) {
+      hits.push(hit);
+      explicitPriority.set(hit.source, memory.source === "user_explicit" ? 1 : 0);
+    }
   }
 
   if (options.includeRaw) {
@@ -72,7 +76,11 @@ export async function search(root: string, options: SearchOptions): Promise<Sear
       if (overlap) hits.push({ match_type: "unprocessed_raw", confidence: Math.min(0.6, overlap / searchTokens.length) * (event.savepoint_status === "partial" ? 0.6 : 1), score: overlap, source: event.event_id, snippet: event.content.slice(0, maxRawFragmentCharacters), raw_ref: [event.raw_ref], warning_flags: ["unprocessed_raw", ...(event.savepoint_status === "partial" ? ["partial_source"] : [])], sensitivity_flags: event.sensitivity === "normal" ? [] : [event.sensitivity] });
     }
   }
-  return hits.sort((a, b) => b.score - a.score || b.confidence - a.confidence).slice(0, options.limit ?? config.max_snippets);
+  return hits.sort((a, b) => matchRank(b.match_type) - matchRank(a.match_type) || (explicitPriority.get(b.source) ?? 0) - (explicitPriority.get(a.source) ?? 0) || b.score - a.score || b.confidence - a.confidence).slice(0, options.limit ?? config.max_snippets);
+}
+
+function matchRank(type: SearchHit["match_type"]): number {
+  return type === "exact_record" ? 3 : type === "similar_record" ? 2 : type === "possible_match" ? 1 : 0;
 }
 
 async function within<T>(promise: Promise<T>, deadline: number): Promise<T> {
