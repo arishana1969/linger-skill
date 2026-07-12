@@ -13,8 +13,8 @@ Implemented locally:
 - atomic raw event capture with deduplication and sequence IDs;
 - persistent file queue and serial deterministic processing;
 - project-scoped CJK/English lexical recall;
-- immutable decision events with derived current views;
-- explicit remember, opt-out, forget, pause, resume, inspect, status, and doctor behavior;
+- immutable typed decision events with derived current views;
+- explicit remember, opt-out, forget, confirmed delete/delete-last, correction, pause, resume, inspect, status, and doctor behavior;
 - Claude Code and Codex Skill installation;
 - `SessionStart`, `UserPromptSubmit`, and `Stop` hooks, plus Claude Code `StopFailure` capture when the host exposes it;
 - capability reporting and safe degraded modes;
@@ -72,5 +72,6 @@ Before a GitHub or npm release, follow [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.
 - `forget` revokes processed recall; it does not delete raw history.
 - Uninstall removes managed integration files but preserves `~/.continuity/vault`.
 - Hook capture failures do not block the agent conversation.
+- Parseable but invalid Vault records are skipped by normal recall, reported by `doctor`, and moved only by confirmed repair.
 
 See [PRIVACY.md](PRIVACY.md), [SECURITY.md](SECURITY.md), and [AGENT_COMPATIBILITY.md](AGENT_COMPATIBILITY.md) before testing with real conversations.

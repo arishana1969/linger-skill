@@ -12,7 +12,7 @@ This audit distinguishes deterministic repository evidence from claims that requ
 
 The repository has the complete local spine of a GitHub MVP: file-native capture, immutable raw events, persistent serial processing, processed Markdown/JSON records, scoped lexical recall, decision trails, user controls, safe install/uninstall/purge, adapter capability reporting, CI, and deterministic long-duration evaluation.
 
-It is not yet a public release candidate. The remaining release blockers are maintainer-owned release metadata, public package publication/clean-machine `npx` proof, Codex trusted live lifecycle validation, and the final candidate-commit review. Interactive install, a persistent in-session timer, richer topic merge, and index fragments can remain post-GitHub-MVP if their degraded behavior is documented honestly.
+The implementation is a local GitHub-MVP candidate, not yet a public repository or npm release. Public GitHub readiness still requires maintainer-owned release metadata and a final clean-checkout gate. Codex can be described only as L1 until trusted live lifecycle execution is observed; that evidence is required before raising its capability claim, not before publishing the experimental repository. Public package publication and clean-machine `npx` proof remain a separate external release step. Interactive install, a persistent in-session timer, richer topic merge, and index fragments can remain post-GitHub-MVP if their degraded behavior is documented honestly.
 
 ## P0 implementation matrix
 
@@ -56,7 +56,7 @@ It is not yet a public release candidate. The remaining release blockers are mai
 
 - Idempotent managed Skill copy, backup of unmanaged Skill directories, hook merge, stable versioned runtime, capability reporting, uninstall preservation, and double-confirmed purge are automated tests.
 - The exact packed tarball is installed offline into a temporary package-manager consumer, then its generated bin shim runs install, capability reporting, capture→process→recall, uninstall, and Vault-preservation checks after separation from the source tree. Required package documents/runtime files and forbidden development-data exclusions are asserted.
-- Remaining proof: published package, public clean-machine npx path, and Codex trusted live execution. Claude Code Ctrl-C partial loss is an observed, documented host degradation rather than an inferred capability.
+- Remaining external evidence: published package and public clean-machine npx path. Codex trusted live execution remains the requirement for any capability claim above L1. Claude Code Ctrl-C partial loss is an observed, documented host degradation rather than an inferred capability.
 
 ### Capture, processing, and recovery
 
@@ -77,17 +77,18 @@ It is not yet a public release candidate. The remaining release blockers are mai
 - High-confidence secrets are redacted at the shared capture persistence boundary; opt-out is skipped; destructive operations are ID/path bounded and confirmation gated. Delete targets and persisted role/decision/relation enum values are runtime-validated rather than trusted from TypeScript casts.
 - Remaining proof: larger adversarial corpus, malicious-repo exercises, and host-level trust UX.
 
-## GitHub MVP blocker order
+## Release decision order
 
-1. Resolve maintainer release metadata in `RELEASE_CHECKLIST.md`, including license, repository URL, package ownership, and security contact. Keep npm publication as an explicit user-owned release action.
-2. Validate Codex trusted live execution and record its exact lifecycle payloads. Preserve the observed Claude Code Ctrl-C limitation in release notes unless a later host version changes it.
-3. Broaden generated scenario families and malicious mutation coverage beyond the current deterministic suites.
-4. Rerun the complete repository, artifact, host, and documentation gates from the final candidate commit.
+1. Resolve public-GitHub metadata in `RELEASE_CHECKLIST.md`: license, repository URL, and security contact.
+2. Rerun repository, artifact, and documentation gates from a clean candidate checkout, then publish the experimental GitHub repository with Claude L2 and Codex L1 limitations explicit.
+3. Treat Codex trusted live execution as the gate for raising Codex above L1, not as evidence that may be inferred from installed files.
+4. Resolve npm package ownership, publish only with maintainer approval, then verify the public clean-machine `npx` path.
 
 ## Explicitly deferred from the first GitHub MVP
 
 - Embeddings, vector database, daemon, sync, GUI, browser extension, extra adapters, and bounded parallel processing.
 - Automatic term-graph discovery and LLM processing quality beyond the deterministic local baseline.
 - Full encryption UX, exhaustive secret detection, dedicated index fragments, global preference recall, and sophisticated decision-topic merge.
+- Broader generated scenario families, malicious-repository exercises, and substantially larger-vault performance evaluation.
 
 The release should continue to describe Continuity as an experimental file-native archive and decision-trail layer, not a complete or universal AI memory system.
