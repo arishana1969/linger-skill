@@ -2,16 +2,17 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
-import { assertDecisionEvent, assertDecisionView, assertMemoryControlEvent, assertPendingCapture, assertProcessedMemory, assertProjectRecord, assertQueueItem, assertRawEvent, assertTagRegistry, assertTermRelation } from "./schema-validation.js";
+import { assertDecisionEvent, assertDecisionView, assertMemoryControlEvent, assertPendingCapture, assertProcessedMemory, assertProcessingRunHistory, assertProjectRecord, assertQueueItem, assertRawEvent, assertSequenceState, assertTagRegistry, assertTermRelation, assertVaultConfig } from "./schema-validation.js";
 import { assertDecisionEventPath, assertDecisionViewPath, assertMemoryControlPath, assertPendingRecordPath, assertProcessedRecordPath, assertProjectRecordPath, assertQueueRecordPath, assertRawRecordPath, assertTagRegistryPath, assertTermRelationPath } from "./record-paths.js";
 import { initVault, listJsonFiles } from "./vault.js";
 
 export interface DoctorReport { ok: boolean; errors: string[]; warnings: string[]; }
 
 export async function doctor(root: string): Promise<DoctorReport> {
-  await initVault(root);
   const p = vaultPaths(root);
   const report: DoctorReport = { ok: true, errors: [], warnings: [] };
+  try { await initVault(root); const config = await readJson<unknown>(p.config); assertVaultConfig(config); }
+  catch { report.errors.push("invalid_vault_config:config.json"); }
   const rawHashes = new Map<string, string>();
   for (const file of await listJsonFiles(p.raw)) {
     try {
@@ -57,6 +58,14 @@ export async function doctor(root: string): Promise<DoctorReport> {
   for (const file of await listJsonFiles(p.projects)) {
     try { const value = await readJson<unknown>(file); assertProjectRecord(value); assertProjectRecordPath(p, file, value); }
     catch { report.errors.push(`invalid_project_record:${path.relative(p.root, file)}`); }
+  }
+  for (const file of (await listJsonFiles(p.registry)).filter(file => path.dirname(file) === p.registry && file.endsWith(".sequence.json"))) {
+    try { const value = await readJson<unknown>(file); assertSequenceState(value); }
+    catch { report.errors.push(`invalid_sequence:${path.relative(p.root, file)}`); }
+  }
+  for (const file of await listJsonFiles(path.join(p.registry, "processing-runs"))) {
+    try { const value = await readJson<unknown>(file); assertProcessingRunHistory(value); }
+    catch { report.errors.push(`invalid_processing_history:${path.relative(p.root, file)}`); }
   }
   for (const file of await listJsonFiles(path.join(p.tmp, "pending"))) {
     try { const pending = await readJson<unknown>(file); assertPendingCapture(pending); assertPendingRecordPath(p, file, pending); report.warnings.push(`pending_capture:${pending.pending_id}`); }

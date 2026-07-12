@@ -2,7 +2,7 @@ import { unlink } from "node:fs/promises";
 import path from "node:path";
 import { atomicJson, readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
-import { assertPendingCapture } from "./schema-validation.js";
+import { assertPendingCapture, assertSequenceState } from "./schema-validation.js";
 import { assertPendingRecordPath } from "./record-paths.js";
 import { listJsonFiles } from "./vault.js";
 import type { QueueItem, RawEvent } from "./types.js";
@@ -45,8 +45,8 @@ export async function recoverPending(root: string): Promise<{ recovered: number;
       assertPendingDestinations(p, pending);
       if (pending.sequence_file) {
         let current = 0;
-        try { current = (await readJson<{ value: number }>(pending.sequence_file)).value; } catch { }
-        if ((pending.sequence_value ?? 0) > current) await atomicJson(pending.sequence_file, { value: pending.sequence_value });
+        try { const state = await readJson<unknown>(pending.sequence_file); assertSequenceState(state); current = state.value; } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+        if ((pending.sequence_value ?? 0) > current) await atomicJson(pending.sequence_file, { schema_version: 1, value: pending.sequence_value });
       }
       await atomicJson(pending.raw_file, pending.event);
       await atomicJson(pending.queue_file, pending.queue_item);

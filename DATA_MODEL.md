@@ -10,6 +10,8 @@ Raw files contain mechanical capture data only. Topic boundaries and semantic su
 
 Queue items are independent JSON files with pending, processing, failed, or done state. Explicit user memories receive priority. One process lock serializes the local worker.
 
+Per-project sequence counters and processing-run histories are operational JSON records. New writes carry `schema_version: 1`; legacy records without that field remain readable when their value/runs shape is valid. Invalid counters are never silently reset, and invalid run history never silently bypasses scheduler accounting. `doctor` reports either condition and confirmed repair quarantines the bad file.
+
 ## Project registry
 
 Project records map a stable project ID to a local display name, root path, identity source, and last-seen time. Git projects use remote plus Git root when a remote exists, Git root otherwise; non-Git directories use their absolute path. Remote URLs are hashed into the ID but are not persisted. Listing known projects never broadens recall automatically.
@@ -28,7 +30,7 @@ Raw events, processed memories, and decision events are durable memory records. 
 
 Forget, correction, and processed deletion rebuild the affected project's tag registry after the append-only control event or confirmed deletion succeeds. Candidate fallback therefore does not continue advertising revoked records.
 
-Opening a schema-v1 Vault backfills newly introduced config defaults while preserving existing values, creation time, and unknown forward-compatible fields. Unsupported schema versions fail explicitly rather than being silently rewritten.
+Opening a schema-v1 Vault backfills missing config defaults while preserving existing values, creation time, and unknown forward-compatible fields. Known config fields are runtime-validated; invalid types/bounds and unsupported schema versions fail explicitly rather than being silently rewritten. `doctor-repair --yes` may quarantine an invalid config, after which initialization creates a fresh default config.
 
 ## Search contract
 

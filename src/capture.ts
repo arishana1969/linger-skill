@@ -4,6 +4,7 @@ import { atomicJson, readJson, withFileLock } from "./io.js";
 import { completePending, stagePending } from "./pending.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { classifySensitivity, redactSecrets } from "./sensitivity.js";
+import { assertSequenceState } from "./schema-validation.js";
 import type { QueueItem, RawEvent, Role, SavepointStatus } from "./types.js";
 import { initVault } from "./vault.js";
 
@@ -49,7 +50,7 @@ export async function capture(root: string, input: CaptureInput): Promise<RawEve
     try { return await readJson<RawEvent>(rawFile); } catch { /* continue */ }
     const sequenceFile = path.join(p.registry, `${project}.sequence.json`);
     let current = 0;
-    try { current = (await readJson<{ value: number }>(sequenceFile)).value; } catch { /* first event */ }
+    try { const state = await readJson<unknown>(sequenceFile); assertSequenceState(state); current = state.value; } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
     const timestamp = input.timestamp ?? new Date().toISOString();
     const event: RawEvent = {
       schema_version: 1, event_id: eventId, session_id: session, project_id: project, seq_id: current + 1, turn_id: turn,
@@ -67,7 +68,7 @@ export async function capture(root: string, input: CaptureInput): Promise<RawEve
       sequence_file: sequenceFile, sequence_value: current + 1, created_at: timestamp
     });
     await atomicJson(rawFile, event);
-    await atomicJson(sequenceFile, { value: current + 1 });
+    await atomicJson(sequenceFile, { schema_version: 1, value: current + 1 });
     await atomicJson(queueFile, queueItem);
     await completePending(pendingFile);
     return event;

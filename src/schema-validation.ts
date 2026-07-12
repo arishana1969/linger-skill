@@ -3,7 +3,7 @@ import type { DecisionEvent, DecisionView } from "./decisions.js";
 import type { TagRegistry } from "./tag-registry.js";
 import type { MemoryControlEvent } from "./memory-events.js";
 import type { TermRelation } from "./term-graph.js";
-import type { ProjectRecord } from "./vault.js";
+import type { ProjectRecord, VaultConfig } from "./vault.js";
 import type { ProcessedMemory, QueueItem, RawEvent } from "./types.js";
 import { assertSafeId } from "./paths.js";
 
@@ -158,16 +158,40 @@ export function assertProjectRecord(value: unknown): asserts value is ProjectRec
   enumeration(item.identity_source, new Set(["git_remote_root", "git_root", "absolute_path"]), "project record identity_source");
 }
 
+export function assertVaultConfig(value: unknown): asserts value is VaultConfig {
+  const item = record(value, "vault config");
+  schemaOne(item, "vault config");
+  for (const field of ["paused", "project_only_recall", "sensitive_exclusion"] as const) if (typeof item[field] !== "boolean") invalid(`vault config ${field}`);
+  for (const field of ["max_snippets", "max_characters", "max_files", "max_raw_fragment_characters"] as const) positiveInteger(item[field], `vault config ${field}`);
+  if (!Number.isInteger(item.search_timeout_ms) || Number(item.search_timeout_ms) < 0) invalid("vault config search_timeout_ms");
+  isoTimestamp(item.created_at, "vault config created_at");
+}
+
+export function assertSequenceState(value: unknown): asserts value is { schema_version?: 1; value: number } {
+  const item = record(value, "sequence state");
+  optionalSchemaOne(item, "sequence state");
+  if (!Number.isInteger(item.value) || Number(item.value) < 0) invalid("sequence state value");
+}
+
+export function assertProcessingRunHistory(value: unknown): asserts value is { schema_version?: 1; runs: string[] } {
+  const item = record(value, "processing run history");
+  optionalSchemaOne(item, "processing run history");
+  if (!Array.isArray(item.runs)) invalid("processing run history runs");
+  for (const value of item.runs) isoTimestamp(value, "processing run history timestamp");
+}
+
 function record(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) invalid(label);
   return value as Record<string, unknown>;
 }
 function schemaOne(item: Record<string, unknown>, label: string): void { if (item.schema_version !== 1) invalid(`${label} schema_version`); }
+function optionalSchemaOne(item: Record<string, unknown>, label: string): void { if (item.schema_version !== undefined && item.schema_version !== 1) invalid(`${label} schema_version`); }
 function strings(item: Record<string, unknown>, fields: string[], label: string): void { for (const field of fields) if (typeof item[field] !== "string" || !(item[field] as string).length) invalid(`${label} ${field}`); }
 function stringArrays(item: Record<string, unknown>, fields: string[], label: string): void { for (const field of fields) if (!Array.isArray(item[field]) || !(item[field] as unknown[]).every(value => typeof value === "string")) invalid(`${label} ${field}`); }
 function safeIds(item: Record<string, unknown>, fields: string[], label: string): void { for (const field of fields) { try { assertSafeId(item[field] as string, `${label} ${field}`); } catch { invalid(`${label} ${field}`); } } }
 function isoTimestamp(value: unknown, label: string): void {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value))) invalid(label);
 }
+function positiveInteger(value: unknown, label: string): void { if (!Number.isInteger(value) || Number(value) < 1) invalid(label); }
 function enumeration(value: unknown, allowed: Set<string>, label: string): void { if (typeof value !== "string" || !allowed.has(value)) invalid(label); }
 function invalid(label: string): never { throw new Error(`Invalid ${label}`); }

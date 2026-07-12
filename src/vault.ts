@@ -3,7 +3,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { atomicJson, ensureDir, readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
-import { assertProjectRecord, assertQueueItem } from "./schema-validation.js";
+import { assertProjectRecord, assertQueueItem, assertVaultConfig } from "./schema-validation.js";
 import { assertProjectRecordPath, assertQueueRecordPath } from "./record-paths.js";
 
 export interface VaultConfig {
@@ -53,6 +53,7 @@ export async function initVault(root: string): Promise<VaultConfig> {
     const existing = await readJson<Partial<VaultConfig> & Record<string, unknown>>(p.config);
     if (existing.schema_version !== 1) throw new Error(`Unsupported vault config schema: ${String(existing.schema_version)}`);
     const next = { ...defaultConfig(typeof existing.created_at === "string" ? existing.created_at : undefined), ...existing } as VaultConfig;
+    assertVaultConfig(next);
     if (JSON.stringify(existing) !== JSON.stringify(next)) await atomicJson(p.config, next);
     return next;
   } catch (error) {

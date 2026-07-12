@@ -10,6 +10,8 @@ Raw events, processed memories, and decision events are source records. Queue, d
 
 Persisted records cross a validation boundary before they can route filesystem work or enter recall. Path-bearing identifiers use a restricted ID alphabet, timestamps must be ISO date-times, and project-scoped source, queue, decision, pending, and registry records must live at the canonical path implied by their own identity. Pending recovery is stricter: its raw, queue, optional sequence, and raw-reference destinations must exactly match paths derived from the validated event and queue item, so a compromised pending record cannot overwrite another Vault file.
 
+Operational state is validated too. Invalid config bounds are rejected; a corrupt sequence counter cannot be silently reset; and malformed processing-run history cannot silently disable rate accounting. Doctor reports these states and confirmed repair quarantines them.
+
 ## Processing boundary
 
 The deterministic worker provides a local baseline for summaries, content/predictive tags, retrieval phrases, decision extraction, correction linking, and registry updates. These outputs are deliberately lexical and heuristic. Richer host-agent processing and decision-topic merging are future improvements and must preserve the same evidence and validation boundaries.

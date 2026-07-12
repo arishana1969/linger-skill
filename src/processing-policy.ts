@@ -3,7 +3,7 @@ import path from "node:path";
 import { atomicJson, readJson } from "./io.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { assertQueueRecordPath, assertRawRecordPath } from "./record-paths.js";
-import { assertQueueItem, assertRawEvent } from "./schema-validation.js";
+import { assertProcessingRunHistory, assertQueueItem, assertRawEvent } from "./schema-validation.js";
 import type { QueueItem } from "./types.js";
 import { listJsonFiles } from "./vault.js";
 
@@ -71,7 +71,10 @@ export async function recordProcessingRun(root: string, projectId: string, times
   const file = path.join(vaultPaths(root).registry, "processing-runs", `${project}.json`);
   const history = await readHistory(file);
   const cutoff = timestamp.getTime() - 24 * 60 * 60 * 1000;
-  await atomicJson(file, { runs: [...history.filter(value => Date.parse(value) >= cutoff), timestamp.toISOString()] });
+  await atomicJson(file, { schema_version: 1, runs: [...history.filter(value => Date.parse(value) >= cutoff), timestamp.toISOString()] });
 }
 
-async function readHistory(file: string): Promise<string[]> { try { return (await readJson<{ runs: string[] }>(file)).runs ?? []; } catch { return []; } }
+async function readHistory(file: string): Promise<string[]> {
+  try { const value = await readJson<unknown>(file); assertProcessingRunHistory(value); return value.runs; }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
+}
