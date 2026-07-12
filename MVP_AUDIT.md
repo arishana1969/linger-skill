@@ -18,7 +18,7 @@ It is not yet a public release candidate. The remaining release blockers are pac
 
 | PRD P0 requirement | Status | Repository evidence / remaining gap |
 | --- | --- | --- |
-| npx installer | External release step | The actual packed tarball is unpacked and run through install/capabilities/uninstall in CI; required runtime and policy documents are asserted. npm publication and public clean-machine `npx -y continuity-skill install` remain external. |
+| npx installer | External release step | CI installs the exact tarball into an offline temporary consumer through pnpm, then runs the generated bin shim through install/capabilities/uninstall; required documents and forbidden development-data exclusions are asserted. npm publication and public clean-machine `npx -y continuity-skill install` remain external. |
 | Vault initialization and helper CLI | Complete | `initVault`, safe project IDs, CLI commands, atomic I/O, and path-bound destructive operations are tested. |
 | Claude Code adapter | Needs host validation | Skill and lifecycle hook configuration install idempotently without replacing user config. Real completed/partial answer payloads remain unverified in the host. |
 | Codex adapter | Needs host validation | Codex `0.144.0-alpha.4` app-server `hooks/list` accepts all three generated hooks with no parse warnings/errors and reports them untrusted. Trust UX, command execution, and live lifecycle payload capture remain unverified. |
@@ -55,7 +55,7 @@ It is not yet a public release candidate. The remaining release blockers are pac
 ### Installation and lifecycle
 
 - Idempotent managed Skill copy, backup of unmanaged Skill directories, hook merge, stable versioned runtime, capability reporting, uninstall preservation, and double-confirmed purge are automated tests.
-- The actual packed tarball is unpacked in a temporary directory and run through install, capability reporting, and uninstall after separation from the source tree. Required package documents and runtime files are asserted.
+- The exact packed tarball is installed offline into a temporary package-manager consumer, then its generated bin shim runs install, capability reporting, and uninstall after separation from the source tree. Required package documents/runtime files and forbidden development-data exclusions are asserted.
 - Remaining proof: published package, clean machine, real Claude Code, and real Codex event capture.
 
 ### Capture, processing, and recovery
