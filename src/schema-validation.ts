@@ -1,6 +1,8 @@
 import type { PendingCapture } from "./pending.js";
 import type { DecisionEvent, DecisionView } from "./decisions.js";
 import type { TagRegistry } from "./tag-registry.js";
+import type { MemoryControlEvent } from "./memory-events.js";
+import type { TermRelation } from "./term-graph.js";
 import type { ProcessedMemory, QueueItem, RawEvent } from "./types.js";
 
 const ROLES = new Set(["user", "assistant", "system"]);
@@ -14,6 +16,8 @@ const QUEUE_STATUSES = new Set(["pending", "processing", "failed", "done"]);
 const DECISION_KINDS = new Set(["idea", "preference", "proposal", "rationale", "constraint", "rejection", "decision", "current_state", "todo", "correction"]);
 const DECISION_STATUSES = new Set(["proposed", "accepted", "rejected", "superseded", "reopened", "current", "unknown"]);
 const DECISION_SOURCES = new Set(["user_explicit", "agent_inferred"]);
+const MEMORY_CONTROL_KINDS = new Set(["forget", "correct", "delete"]);
+const TERM_RELATION_TYPES = new Set(["synonym", "alias", "abbreviation", "related", "contextual_equivalent", "location_mapping", "product_name", "ambiguous"]);
 
 export function assertRawEvent(value: unknown): asserts value is RawEvent {
   const item = record(value, "raw event");
@@ -97,6 +101,25 @@ export function assertTagRegistry(value: unknown): asserts value is TagRegistry 
     if (!Number.isInteger(entry.usage_count) || Number(entry.usage_count) < 0) invalid("tag registry entry usage_count");
     if (typeof entry.confidence !== "number" || entry.confidence < 0 || entry.confidence > 1) invalid("tag registry entry confidence");
   }
+}
+
+export function assertMemoryControlEvent(value: unknown): asserts value is MemoryControlEvent {
+  const item = record(value, "memory control event");
+  schemaOne(item, "memory control event");
+  strings(item, ["event_id", "project_id", "target_memory_id", "timestamp"], "memory control event");
+  stringArrays(item, ["evidence_refs"], "memory control event");
+  enumeration(item.kind, MEMORY_CONTROL_KINDS, "memory control event kind");
+  for (const field of ["replacement_memory_id", "reason"] as const) if (item[field] !== undefined && typeof item[field] !== "string") invalid(`memory control event ${field}`);
+  if (item.kind === "correct" && typeof item.replacement_memory_id !== "string") invalid("memory control event replacement_memory_id");
+}
+
+export function assertTermRelation(value: unknown): asserts value is TermRelation {
+  const item = record(value, "term relation");
+  schemaOne(item, "term relation");
+  strings(item, ["relation_id", "project_id", "term_a", "term_b", "created_at", "last_verified"], "term relation");
+  stringArrays(item, ["context_tags", "evidence_refs"], "term relation");
+  enumeration(item.relation_type, TERM_RELATION_TYPES, "term relation type");
+  if (typeof item.confidence !== "number" || item.confidence < 0 || item.confidence > 1) invalid("term relation confidence");
 }
 
 function record(value: unknown, label: string): Record<string, unknown> {

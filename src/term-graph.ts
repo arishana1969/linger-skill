@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { atomicJson, readJson } from "./io.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
+import { assertTermRelation } from "./schema-validation.js";
 import { listJsonFiles } from "./vault.js";
 
 export type TermRelationType = "synonym" | "alias" | "abbreviation" | "related" | "contextual_equivalent" | "location_mapping" | "product_name" | "ambiguous";
@@ -47,7 +48,7 @@ export async function expandTerms(root: string, projectId: string, queryTerms: s
   const expanded = new Map<string, number>();
   for (const file of await listJsonFiles(path.join(vaultPaths(root).registry, "term-graph", project))) {
     let relation: TermRelation;
-    try { relation = await readJson<TermRelation>(file); } catch { continue; }
+    try { const value = await readJson<unknown>(file); assertTermRelation(value); relation = value; } catch { continue; }
     if (relation.relation_type === "ambiguous" || relation.confidence < 0.6) continue;
     if (relation.context_tags.length && !relation.context_tags.some(tag => context.has(tag))) continue;
     if (query.has(relation.term_a)) expanded.set(relation.term_b, Math.max(expanded.get(relation.term_b) ?? 0, relation.confidence));
