@@ -22,6 +22,8 @@ Decision events are append-only. A topic's `current.json` is derived from its ev
 
 Raw events, processed memories, and decision events are durable memory records. Current decision views, tag/term registries, processing histories, queue state, and future indexes are derived or operational files.
 
+Forget, correction, and processed deletion rebuild the affected project's tag registry after the append-only control event or confirmed deletion succeeds. Candidate fallback therefore does not continue advertising revoked records.
+
 ## Search contract
 
 Search is project-scoped by default and reads only active, non-revoked records. Options bound scanned files, snippets, total evidence characters, raw fragment characters, an inclusive time range, and a wall-clock deadline. Timeout is an explicit retrieval failure, not a `no_reliable_memory_found` result.

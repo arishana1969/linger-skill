@@ -5,6 +5,7 @@ import { readJson } from "./io.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { listJsonFiles } from "./vault.js";
 import type { ProcessedMemory, RawEvent } from "./types.js";
+import { rebuildTagRegistry } from "./tag-registry.js";
 
 export type DeleteTarget = "processed" | "raw";
 
@@ -27,6 +28,7 @@ export async function deleteRecord(root: string, input: { projectId: string; tar
     await unlink(file);
     await unlink(path.join(p.processed, project, `${id}.md`)).catch(error => { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; });
     await appendMemoryControl(root, { kind: "delete", project_id: project, target_memory_id: id, reason: input.reason, evidence_refs: memory.source_events.length ? memory.source_events : [id] });
+    await rebuildTagRegistry(root, project);
     return { deleted: true, target: "processed", id, project_id: project, source_events: memory.source_events };
   }
   const files = await listJsonFiles(path.join(p.raw, project));
