@@ -13,7 +13,7 @@ export async function installHooks(home: string, packageRoot: string, adapters: 
     const file = path.join(home, ".claude", "settings.json");
     const settings = await jsonOr<Record<string, unknown>>(file, {});
     const hooks = asHooks(settings.hooks);
-    addContinuityHooks(hooks, `CONTINUITY_ADAPTER=claude-code ${commandBase}`);
+    addContinuityHooks(hooks, `CONTINUITY_ADAPTER=claude-code ${commandBase}`, ["SessionStart", "UserPromptSubmit", "Stop", "StopFailure"]);
     await mkdir(path.dirname(file), { recursive: true });
     await atomicJson(file, { ...settings, hooks });
     written.push(file);
@@ -22,7 +22,7 @@ export async function installHooks(home: string, packageRoot: string, adapters: 
     const file = path.join(home, ".codex", "hooks.json");
     const document = await jsonOr<{ hooks?: HookMap }>(file, {});
     const hooks = asHooks(document.hooks);
-    addContinuityHooks(hooks, `CONTINUITY_ADAPTER=codex ${commandBase}`);
+    addContinuityHooks(hooks, `CONTINUITY_ADAPTER=codex ${commandBase}`, ["SessionStart", "UserPromptSubmit", "Stop"]);
     await mkdir(path.dirname(file), { recursive: true });
     await atomicJson(file, { ...document, hooks });
     written.push(file);
@@ -55,8 +55,8 @@ export async function uninstallHooks(home: string, adapters: AdapterName[]): Pro
   return changed;
 }
 
-function addContinuityHooks(hooks: HookMap, command: string): void {
-  for (const event of ["SessionStart", "UserPromptSubmit", "Stop"]) {
+function addContinuityHooks(hooks: HookMap, command: string, events: string[]): void {
+  for (const event of events) {
     const groups = hooks[event] ?? [];
     const already = groups.some(group => group.hooks.some(hook => hook.command === command));
     if (!already) groups.push({ ...(event === "SessionStart" ? { matcher: "startup|resume|compact" } : {}), hooks: [{ type: "command", command, commandWindows: windowsCommand(command), timeout: 10, statusMessage: "Continuity capture" }] });

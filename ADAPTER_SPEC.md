@@ -14,13 +14,13 @@ The local slice consumes these verified shared hook fields:
 - `last_assistant_message` for `Stop`
 - `model` when available
 
-Installed lifecycle events are `SessionStart`, `UserPromptSubmit`, and `Stop`. The handler also understands `StopFailure` as a partial answer when a host can provide it, but the installer does not claim that unverified event for either host. Capture errors must not block the conversation.
+Both adapters install `SessionStart`, `UserPromptSubmit`, and `Stop`. Claude Code additionally installs its observed `StopFailure` event and records `last_assistant_message` as partial evidence. The current Codex schema does not expose StopFailure, so the Codex adapter does not write that unsupported event. Capture errors must not block the conversation.
 
 ## Claude Code
 
 The adapter merges command hooks into `~/.claude/settings.json`. User configuration remains intact.
 
-Claude Code `2.1.207` has been observed executing the generated SessionStart, UserPromptSubmit, and Stop hooks successfully in disposable homes. User-pending and assistant-complete events retained the same real session/turn IDs. Partial interruption remains a required host test; see `HOST_VALIDATION.md`.
+Claude Code `2.1.207` has been observed executing SessionStart, UserPromptSubmit, Stop, and StopFailure hooks in disposable homes. User-pending and assistant-complete events retained the same real session/turn IDs. StopFailure marks API errors partial, but a Ctrl-C path did not preserve already-streamed assistant text; see `HOST_VALIDATION.md`.
 
 ## Codex
 

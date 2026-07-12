@@ -4,7 +4,7 @@ Continuity uses one vault format across adapters, but automation levels differ b
 
 | Adapter | Local slice | Target MVP | Notes |
 | --- | ---: | ---: | --- |
-| Claude Code | L0-L2 | L2-L4 | Claude Code `2.1.207` live-smoke confirms SessionStart, user-prompt, and completed assistant/Stop capture in disposable homes without an external model. Partial interruption remains. |
+| Claude Code | L0-L2 | L2-L4 | Claude Code `2.1.207` live-smoke confirms SessionStart, user-prompt, completed assistant/Stop, and API-failure partial marking. Ctrl-C did not preserve the streamed partial assistant text. |
 | Codex | L0-L1 | L1-L3 | Current Codex `0.144.0-alpha.4` accepts the generated three-hook configuration in `hooks/list`, but reports it untrusted. Static capability reporting therefore remains L1 until trust and live execution are verified. |
 
 Levels are reported from detected artifacts, not marketing claims:

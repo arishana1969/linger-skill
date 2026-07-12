@@ -47,10 +47,12 @@ Host inspected: Claude Code `2.1.207` native build (`bc512d563325`) on macOS arm
 
 ### Not yet confirmed
 
-- Host-native interrupted assistant output and whether a future event can provide a partial message payload.
+- Preservation of already-streamed assistant text when the user interrupts generation with Ctrl-C.
 - Long-running/multi-window behavior and Windows execution.
 
-Current evidence supports Claude Code L2 for SessionStart, user-prompt, and completed assistant capture on version `2.1.207`. Partial/interrupted host semantics remain unverified.
+Current evidence supports Claude Code L2 for SessionStart, user-prompt, and completed assistant capture on version `2.1.207`.
+
+Static inspection of the same native build confirms a registered `StopFailure` hook with `error`, `error_details`, and `last_assistant_message` input. Continuity installs this event for Claude only. A loopback stream-error smoke produced real assistant records marked `partial`, confirming hook execution, but Claude supplied synthetic `API Error: ...` as `last_assistant_message` rather than the previously streamed text. A separate Ctrl-C during a held partial stream produced no assistant partial record. Therefore API-failure marking is verified, while user-interruption preservation remains a host limitation on this version/path.
 
 ## Reproduction boundary
 

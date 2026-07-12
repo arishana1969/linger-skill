@@ -53,3 +53,12 @@ test("honors opt-out, marks secrets, and tolerates startup", async () => {
   assert.equal(startup.processed, 0);
   assert.match(JSON.stringify(startup.output), /evidence/);
 });
+
+test("captures Claude StopFailure output as partial evidence", async () => {
+  const { root, cwd, project } = await fixture();
+  const result = await handleHook(root, { hook_event_name: "StopFailure", session_id: "s1", turn_id: "partial", cwd, last_assistant_message: "partial-zephyr interrupted response" }, "claude-code");
+  assert.ok(result.captured);
+  await processQueue(root);
+  const hit = (await search(root, { projectId: project, query: "partial-zephyr" }))[0]!;
+  assert.ok(hit.warning_flags.includes("partial_source"));
+});
