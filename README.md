@@ -16,7 +16,7 @@ Implemented locally:
 - immutable decision events with derived current views;
 - explicit remember, opt-out, forget, pause, resume, inspect, status, and doctor behavior;
 - Claude Code and Codex Skill installation;
-- `SessionStart`, `UserPromptSubmit`, and `Stop` hooks;
+- `SessionStart`, `UserPromptSubmit`, and `Stop` hooks, plus Claude Code `StopFailure` capture when the host exposes it;
 - capability reporting and safe degraded modes;
 - idempotent install and uninstall that preserves the vault.
 

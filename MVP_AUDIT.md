@@ -2,7 +2,7 @@
 
 Audit date: 2026-07-12
 
-Baseline: commit `35ece32` plus the audit-only changes in this file.
+Evidence snapshot: automated repository gates and host observations recorded through 2026-07-12. Rerun `RELEASE_CHECKLIST.md` from the candidate commit before release.
 
 Legend: **Complete**, **Partial**, **Missing**, **Needs host validation**, **External release step**.
 
@@ -12,7 +12,7 @@ This audit distinguishes deterministic repository evidence from claims that requ
 
 The repository has the complete local spine of a GitHub MVP: file-native capture, immutable raw events, persistent serial processing, processed Markdown/JSON records, scoped lexical recall, decision trails, user controls, safe install/uninstall/purge, adapter capability reporting, CI, and deterministic long-duration evaluation.
 
-It is not yet a public release candidate. The remaining release blockers are package publication/clean-machine `npx` proof, real-host lifecycle validation, and documentation/schema reconciliation. Interactive install, a persistent in-session timer, richer topic merge, and index fragments can remain post-GitHub-MVP if their degraded behavior is documented honestly.
+It is not yet a public release candidate. The remaining release blockers are maintainer-owned release metadata, public package publication/clean-machine `npx` proof, Codex trusted live lifecycle validation, and the final candidate-commit review. Interactive install, a persistent in-session timer, richer topic merge, and index fragments can remain post-GitHub-MVP if their degraded behavior is documented honestly.
 
 ## P0 implementation matrix
 
@@ -56,11 +56,11 @@ It is not yet a public release candidate. The remaining release blockers are pac
 
 - Idempotent managed Skill copy, backup of unmanaged Skill directories, hook merge, stable versioned runtime, capability reporting, uninstall preservation, and double-confirmed purge are automated tests.
 - The exact packed tarball is installed offline into a temporary package-manager consumer, then its generated bin shim runs install, capability reporting, and uninstall after separation from the source tree. Required package documents/runtime files and forbidden development-data exclusions are asserted.
-- Remaining proof: published package, public clean-machine npx path, Claude Ctrl-C partial preservation or documented host fallback, and Codex trusted live execution.
+- Remaining proof: published package, public clean-machine npx path, and Codex trusted live execution. Claude Code Ctrl-C partial loss is an observed, documented host degradation rather than an inferred capability.
 
 ### Capture, processing, and recovery
 
-- User/assistant/partial event shapes, content hash, sequence, dedupe, pending recovery, persistent queue, serial processing, retry/failure isolation, 50KB/max-wait policy, and hourly/item budgets are covered.
+- User/assistant/partial event shapes, content hash, sequence, dedupe, pending recovery, persistent queue, serial processing, retry/failure isolation, 50KB/max-wait policy, and hourly/item/estimated-token budgets are covered.
 - Processing failure never mutates the raw source; corrupt operational files do not block valid work.
 - Remaining proof: real interrupted-answer payload and long-open-session scheduling behavior.
 
@@ -79,10 +79,10 @@ It is not yet a public release candidate. The remaining release blockers are pac
 
 ## GitHub MVP blocker order
 
-1. Reconcile README, DATA_MODEL, TECHNICAL_DESIGN, ROADMAP, and adapter docs against current behavior.
-2. Complete host smoke gaps: decide the Claude Ctrl-C fallback from observed evidence and validate Codex trusted live execution; record exact versions, payloads, and degraded paths.
-3. Resolve maintainer release metadata in `RELEASE_CHECKLIST.md`, including license, repository URL, package ownership, and security contact. Keep npm publication as an explicit user-owned release action.
-4. Expand generated evaluation with held-out paraphrases, noisy near-collisions, corrections, partial answers, tampering, and larger vault sizes.
+1. Resolve maintainer release metadata in `RELEASE_CHECKLIST.md`, including license, repository URL, package ownership, and security contact. Keep npm publication as an explicit user-owned release action.
+2. Validate Codex trusted live execution and record its exact lifecycle payloads. Preserve the observed Claude Code Ctrl-C limitation in release notes unless a later host version changes it.
+3. Expand generated evaluation with held-out paraphrases, noisy near-collisions, corrections, partial answers, tampering, and larger vault sizes.
+4. Rerun the complete repository, artifact, host, and documentation gates from the final candidate commit.
 
 ## Explicitly deferred from the first GitHub MVP
 

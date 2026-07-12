@@ -4,18 +4,20 @@
 
 - Completed: capture, persistent serial processing, bounded recall, decision trails, controls, hook installation, stable runtime copy, and safe disposable-home installation.
 - Completed: CI on Node 20/22/24, Skill/package validation, a 99-event year fixture, and a focused adversarial regression fixture.
+- Completed: estimated-token/item/hour processing bounds, a package-consumer release checklist, and offline installation from the exact packed tarball through a generated package-manager bin shim.
+- Completed with documented degradation: Claude Code `2.1.207` lifecycle capture through `StopFailure`; Ctrl-C does not preserve already-streamed partial assistant text on the observed path.
 
 ## GitHub MVP 0.1.0
 
-- Reconcile the public docs and freeze the initial file/schema contract.
-- Validate exact lifecycle payloads and degraded behavior in disposable Claude Code and Codex homes.
+- Freeze the initial public file/schema contract after the final documentation review.
+- Validate Codex hook trust and live lifecycle execution in a disposable trusted home; keep the observed Claude Code Ctrl-C degradation explicit.
 - Expand held-out evaluation with paraphrases, near-collisions, partial answers, correction chains, tampering, and larger vaults.
-- Add a package-consumer release checklist and run a clean-machine install from the packed artifact.
+- Resolve maintainer-owned release metadata: license, repository URL, npm package ownership, and security contact.
 - Publish only after repository checks and host evidence are recorded; npm publication is a user-owned release action.
 
 ## Post-MVP hardening
 
-- Add persistent in-session scheduling, token-aware processing budgets, richer decision-topic merge, dedicated index fragments, and optional global preference recall.
+- Add persistent in-session scheduling, richer decision-topic merge, dedicated index fragments, and optional global preference recall.
 - Improve encryption and secret-handling UX without weakening explicit local/cloud disclosure.
 
 ## Later
