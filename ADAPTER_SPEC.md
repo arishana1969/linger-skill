@@ -20,7 +20,7 @@ Installed lifecycle events are `SessionStart`, `UserPromptSubmit`, and `Stop`. T
 
 The adapter merges command hooks into `~/.claude/settings.json`. User configuration remains intact.
 
-Claude Code `2.1.207` has been observed executing the generated SessionStart and UserPromptSubmit hooks successfully in a disposable HOME. Stop/assistant completion remains a required host test; see `HOST_VALIDATION.md`.
+Claude Code `2.1.207` has been observed executing the generated SessionStart, UserPromptSubmit, and Stop hooks successfully in disposable homes. User-pending and assistant-complete events retained the same real session/turn IDs. Partial interruption remains a required host test; see `HOST_VALIDATION.md`.
 
 ## Codex
 

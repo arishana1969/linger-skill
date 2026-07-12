@@ -39,22 +39,21 @@ Host inspected: Claude Code `2.1.207` native build (`bc512d563325`) on macOS arm
 
 - Continuity was installed into a disposable `/tmp` home. No real `~/.claude` files were changed.
 - `claude doctor` parsed the disposable installation without reporting invalid settings or hooks.
-- A non-interactive Claude session used the disposable HOME, an invalid test API key, and `ANTHROPIC_BASE_URL=http://127.0.0.1:9`. It could not reach a model and reported zero input/output tokens and `$0` cost.
-- Before the deliberate local API failure, Claude emitted successful `SessionStart:startup` and `UserPromptSubmit` hook lifecycle events; both Continuity commands exited 0.
-- The disposable Vault contained one user raw event with the real Claude session ID, generated turn ID, current project ID, exact test prompt, `savepoint_status: pending`, `capture_status: captured`, normal sensitivity, and `source_agent: claude-code`.
-- The corresponding persistent queue item was normal priority, pending, and had zero attempts.
-- Interrupting the failed API retry did not create a fake completed assistant event.
+- One non-interactive failure-path session used an invalid test key and local-unreachable API endpoint. SessionStart and UserPromptSubmit hooks exited 0, the user event/queue item persisted, and interrupting retry did not create a fake completed assistant event. Claude reported zero tokens and `$0` cost.
+- A second non-interactive session used a temporary Anthropic-compatible HTTP stub bound only to `127.0.0.1`. No external model/provider was called. The stub returned fixed assistant text and synthetic one-token usage; Claude's displayed `$0.00003` was local usage accounting, not an external charge.
+- Claude emitted successful `SessionStart:startup`, `UserPromptSubmit`, and `Stop` lifecycle events; all three Continuity commands exited 0.
+- The disposable Vault contained a user raw event (`pending`) and assistant raw event (`complete`) with the exact fixed texts, the same real Claude session ID and turn ID, current project ID, normal sensitivity, and `source_agent: claude-code`.
+- Both events had persistent normal-priority queue items with zero attempts.
 
 ### Not yet confirmed
 
-- A successful model response followed by the real `Stop` hook and `last_assistant_message` capture.
 - Host-native interrupted assistant output and whether a future event can provide a partial message payload.
 - Long-running/multi-window behavior and Windows execution.
 
-Current evidence supports Claude Code L2 for SessionStart and user-prompt capture on version `2.1.207`. Completed assistant capture still needs a controlled successful turn.
+Current evidence supports Claude Code L2 for SessionStart, user-prompt, and completed assistant capture on version `2.1.207`. Partial/interrupted host semantics remain unverified.
 
 ## Reproduction boundary
 
 The Codex check used a disposable `CODEX_HOME`, generated protocol schema, `initialize`, and `hooks/list`. It did not invoke a model, submit a conversation, bypass hook trust, or alter the maintainer's real host configuration.
 
-The Claude check used a disposable HOME and local-unreachable API endpoint. It exercised real SessionStart/UserPromptSubmit hooks without successful inference, tokens, model cost, or changes to the maintainer's real host configuration.
+The Claude checks used disposable homes. One exercised the failure path through a local-unreachable endpoint; the other used a loopback-only fixed-response stub to complete Stop without an external model. Neither changed the maintainer's real host configuration or contacted an external inference provider.
