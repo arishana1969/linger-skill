@@ -6,6 +6,7 @@ import { atomicJson, readJson, withFileLock } from "./io.js";
 import { writeProcessedMarkdown } from "./processed-markdown.js";
 import { DEFAULT_MIN_CONTENT_CHARACTERS } from "./processing-policy.js";
 import { vaultPaths } from "./paths.js";
+import { assertQueueItem, assertRawEvent } from "./schema-validation.js";
 import { rebuildTagRegistry } from "./tag-registry.js";
 import { listJsonFiles } from "./vault.js";
 import type { ProcessedMemory, QueueItem, RawEvent } from "./types.js";
@@ -19,7 +20,7 @@ export async function processQueue(root: string, projectId?: string, maxItems = 
     const queueFiles = (await listJsonFiles(p.queue)).filter((file) => !projectId || file.includes(`${path.sep}${projectId}${path.sep}`));
     const items: Array<{ file: string; item: QueueItem }> = [];
     for (const file of queueFiles) {
-      try { items.push({ file, item: await readJson<QueueItem>(file) }); } catch { continue; }
+      try { const item = await readJson<unknown>(file); assertQueueItem(item); items.push({ file, item }); } catch { continue; }
     }
     items.sort((a, b) => Number(b.item.priority === "explicit") - Number(a.item.priority === "explicit") || a.item.created_at.localeCompare(b.item.created_at));
     let processed = 0;
@@ -32,8 +33,11 @@ export async function processQueue(root: string, projectId?: string, maxItems = 
         const rawFiles = await listJsonFiles(path.join(p.raw, running.project_id));
         let event: RawEvent | undefined;
         for (const file of rawFiles) {
-          const candidate = await readJson<RawEvent>(file);
-          if (candidate.event_id === running.event_id) { event = candidate; break; }
+          try {
+            const candidate = await readJson<unknown>(file);
+            assertRawEvent(candidate);
+            if (candidate.event_id === running.event_id) { event = candidate; break; }
+          } catch { continue; }
         }
         if (!event) throw new Error(`Missing raw event ${running.event_id}`);
         const itemTokens = Math.max(1, Math.ceil(event.content.length / 4));

@@ -19,3 +19,14 @@ test("corrupt queue item does not block valid work", async () => {
   assert.match((await search(root, { projectId: "p", query: "valid queue" }))[0]?.snippet ?? "", /valid/);
   assert.equal((await doctor(root)).errors.some(error => error.startsWith("invalid_queue:")), true);
 });
+
+test("schema-invalid raw file does not block a valid queued event", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-process-raw-failure-"));
+  const bad = path.join(vaultPaths(root).raw, "p", "bad.json");
+  await mkdir(path.dirname(bad), { recursive: true });
+  await writeFile(bad, JSON.stringify({ schema_version: 1, event_id: "bad" }));
+  await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "valid raw isolation work", sourceAgent: "test" });
+  assert.deepEqual(await processQueue(root, "p"), { processed: 1, failed: 0 });
+  assert.match((await search(root, { projectId: "p", query: "valid raw isolation" }))[0]?.snippet ?? "", /valid raw/);
+  assert.equal((await doctor(root)).errors.some(error => error.startsWith("invalid_raw:")), true);
+});

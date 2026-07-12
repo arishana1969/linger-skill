@@ -2,6 +2,7 @@ import { unlink } from "node:fs/promises";
 import path from "node:path";
 import { atomicJson, readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
+import { assertPendingCapture } from "./schema-validation.js";
 import { listJsonFiles } from "./vault.js";
 import type { QueueItem, RawEvent } from "./types.js";
 
@@ -35,7 +36,8 @@ export async function recoverPending(root: string): Promise<{ recovered: number;
   const failed: Array<{ file: string; error: string }> = [];
   for (const file of files) {
     try {
-      const pending = await readJson<PendingCapture>(file);
+      const pending = await readJson<unknown>(file);
+      assertPendingCapture(pending);
       assertInside(p.root, pending.raw_file);
       assertInside(p.root, pending.queue_file);
       if (pending.sequence_file) {

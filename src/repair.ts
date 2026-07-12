@@ -2,7 +2,7 @@ import { rename } from "node:fs/promises";
 import path from "node:path";
 import { readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
-import type { ProcessedMemory, QueueItem, RawEvent } from "./types.js";
+import { assertPendingCapture, assertProcessedMemory, assertQueueItem, assertRawEvent } from "./schema-validation.js";
 import { listJsonFiles } from "./vault.js";
 
 export async function quarantineInvalidFiles(root: string): Promise<{ quarantined: string[]; skipped: string[] }> {
@@ -10,10 +10,10 @@ export async function quarantineInvalidFiles(root: string): Promise<{ quarantine
   const quarantined: string[] = [];
   const skipped: string[] = [];
   const groups: Array<{ dir: string; kind: string; read: (file: string) => Promise<unknown> }> = [
-    { dir: p.raw, kind: "raw", read: file => readJson<RawEvent>(file) },
-    { dir: p.processed, kind: "processed", read: file => readJson<ProcessedMemory>(file) },
-    { dir: p.queue, kind: "queue", read: file => readJson<QueueItem>(file) },
-    { dir: path.join(p.tmp, "pending"), kind: "pending", read: file => readJson<unknown>(file) }
+    { dir: p.raw, kind: "raw", read: async file => { const value = await readJson<unknown>(file); assertRawEvent(value); } },
+    { dir: p.processed, kind: "processed", read: async file => { const value = await readJson<unknown>(file); assertProcessedMemory(value); } },
+    { dir: p.queue, kind: "queue", read: async file => { const value = await readJson<unknown>(file); assertQueueItem(value); } },
+    { dir: path.join(p.tmp, "pending"), kind: "pending", read: async file => { const value = await readJson<unknown>(file); assertPendingCapture(value); } }
   ];
   for (const group of groups) {
     for (const file of await listJsonFiles(group.dir)) {

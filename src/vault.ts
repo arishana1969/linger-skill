@@ -3,7 +3,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { atomicJson, ensureDir, readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
-import type { QueueItem } from "./types.js";
+import { assertQueueItem } from "./schema-validation.js";
 
 export interface VaultConfig {
   schema_version: 1;
@@ -99,7 +99,7 @@ export async function vaultStats(root: string): Promise<Record<string, number | 
   ]);
   const queueCounts = { pending: 0, processing: 0, failed: 0, done: 0, invalid: 0 };
   for (const file of queue) {
-    try { queueCounts[(await readJson<QueueItem>(file)).status] += 1; } catch { queueCounts.invalid += 1; }
+    try { const item = await readJson<unknown>(file); assertQueueItem(item); queueCounts[item.status] += 1; } catch { queueCounts.invalid += 1; }
   }
   let bytes = 0;
   for (const file of [...raw, ...processed]) bytes += (await stat(file)).size;
