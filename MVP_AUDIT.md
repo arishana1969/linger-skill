@@ -12,7 +12,9 @@ This audit distinguishes deterministic repository evidence from claims that requ
 
 The repository has the complete local spine of a GitHub MVP: file-native capture, immutable raw events, persistent serial processing, processed Markdown/JSON records, scoped lexical recall, decision trails, user controls, safe install/uninstall/purge, adapter capability reporting, CI, and deterministic long-duration evaluation.
 
-The implementation is a local GitHub-MVP candidate, not yet a public repository or npm release. Public GitHub readiness still requires maintainer-owned release metadata and a final clean-checkout gate. Codex can be described only as L1 until trusted live lifecycle execution is observed; that evidence is required before raising its capability claim, not before publishing the experimental repository. Public package publication and clean-machine `npx` proof remain a separate external release step. Interactive install, a persistent in-session timer, richer topic merge, and index fragments can remain post-GitHub-MVP if their degraded behavior is documented honestly.
+The implementation is a local GitHub-MVP candidate, not yet a public repository or npm release. Public GitHub readiness still requires maintainer-owned release metadata and a clean-checkout rerun after that metadata changes the candidate commit. Codex can be described only as L1 until trusted live lifecycle execution is observed; that evidence is required before raising its capability claim, not before publishing the experimental repository. Public package publication and clean-machine `npx` proof remain a separate external release step. Interactive install, a persistent in-session timer, richer topic merge, and index fragments can remain post-GitHub-MVP if their degraded behavior is documented honestly.
+
+The local clean-checkout gate is now complete for commit `d19f46465b1cdd7d9e841835a4ff9eeeecd8da15`. A disposable clone installed its frozen lockfile fully offline, passed 150/150 tests, passed the year/adversarial/held-out gates at macro composite `1.0` with no missing predictions, validated the Skill, passed exact-tarball install/capture→recall/uninstall/Vault-preservation smoke, and ended with an empty `git status --short`. This verifies the committed local candidate; it does not resolve the maintainer-owned public metadata or npm publication steps.
 
 ## P0 implementation matrix
 
@@ -83,7 +85,7 @@ The implementation is a local GitHub-MVP candidate, not yet a public repository 
 ## Release decision order
 
 1. Resolve public-GitHub metadata in `RELEASE_CHECKLIST.md`: license, repository URL, and security contact.
-2. Rerun repository, artifact, and documentation gates from a clean candidate checkout, then publish the experimental GitHub repository with Claude L2 and Codex L1 limitations explicit.
+2. Add the maintainer-owned release metadata, rerun the clean candidate gate for that metadata commit, then publish the experimental GitHub repository with Claude L2 and Codex L1 limitations explicit.
 3. Treat Codex trusted live execution as the gate for raising Codex above L1, not as evidence that may be inferred from installed files.
 4. Resolve npm package ownership, publish only with maintainer approval, then verify the public clean-machine `npx` path.
 
