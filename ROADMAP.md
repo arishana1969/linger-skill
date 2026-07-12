@@ -8,6 +8,7 @@
 - Completed with documented degradation: Claude Code `2.1.207` lifecycle capture through `StopFailure`; Ctrl-C does not preserve already-streamed partial assistant text on the observed path.
 - Completed: a separate 250+-event held-out gate covering large-vault noise, paraphrases, near-collisions, correction chains, partial savepoints, project decoys, raw tampering, and raw deletion with warning assertions.
 - Completed: runtime schema isolation and confirmed repair for raw, processed, queue, pending, decision, tag, memory-control, and term-relation records; CI gates held-out evaluation and packed capture-to-recall.
+- Completed: TTY privacy consent plus explicit Claude Code/Codex adapter selection, with non-interactive zero-write refusal unless `--yes` is supplied.
 
 ## GitHub MVP 0.1.0
 

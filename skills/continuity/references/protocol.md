@@ -19,7 +19,8 @@ Use `--vault <path>` when an adapter supplies a non-default vault.
 - `continuity decision-get --project ID --topic TOPIC` and `continuity decision-list --project ID`: inspect immutable trails and derived current views.
 - `continuity pause|resume|status|doctor`: control or diagnose the vault.
 - `continuity doctor-repair --yes`: quarantine invalid files after explicit confirmation.
-- `continuity install|uninstall|purge|capabilities`: manage adapters. Non-interactive install and uninstall require `--yes`; uninstall preserves the vault. Purge requires both `--yes` and `--confirm PURGE`.
+- `continuity install [--adapters claude-code|codex|claude-code,codex] [--yes]`: install both adapters by default. Interactive TTY use prints the privacy boundary and requires exact `YES`; non-interactive use requires `--yes`.
+- `continuity uninstall|purge|capabilities`: manage adapters. Uninstall requires `--yes` and preserves the vault. Purge requires both `--yes` and `--confirm PURGE`.
 
 ## Evidence rules
 

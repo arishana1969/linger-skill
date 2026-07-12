@@ -48,7 +48,7 @@ The implementation is a local GitHub-MVP candidate, not yet a public repository 
 | Current decision view | Implemented, including current evidence refs, explicit-current supersession, and separate primary-database versus database-cache topics. | Decision topic merge/alias lookup remains heuristic; other unrelated decisions can still share a coarse topic. |
 | Index fragments | Registry and processed records are rebuildable without a database. | Dedicated index fragments described by the PRD are missing. This is not currently required by the deterministic search implementation. |
 | Global memory | Vault structure is project-first and default recall is isolated. | Non-sensitive `global` preference recall is not implemented. No automatic cross-project search exists, which is safer but below the full PRD model. |
-| Interactive installer | `--yes` install path and explicit privacy notice work. The non-interactive MVP rejects missing `--yes` before writing files and includes the privacy boundary in the error. | Interactive adapter selection/acknowledgment is missing. |
+| Interactive installer | Complete | Unit coverage verifies exact consent and zero-write invalid selection. A real PTY smoke in a disposable home displayed the privacy boundary, accepted exact `YES`, installed only the requested Codex adapter, reported L1, uninstalled with Vault preservation, and left the real home untouched. Non-interactive callers require `--yes`; unknown adapters are rejected before persistence. |
 
 ## Acceptance evidence
 

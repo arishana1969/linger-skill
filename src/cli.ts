@@ -8,6 +8,7 @@ import { correct, forget, inspect } from "./control.js";
 import { appendDecision, getDecisionTrail, listDecisionViews, type DecisionKind, type DecisionSource, type DecisionStatus } from "./decisions.js";
 import { deleteLastRecord, deleteRecord, type DeleteTarget } from "./delete.js";
 import { doctor } from "./doctor.js";
+import { confirmPrivacyConsent, parseAdapterSelection } from "./install-consent.js";
 import { install, PRIVACY_NOTICE, uninstall } from "./installer.js";
 import { recoverPending } from "./pending.js";
 import { purge } from "./purge.js";
@@ -40,8 +41,12 @@ async function main(): Promise<void> {
   switch (command) {
     case "install": {
       const home = option("--home") ?? os.homedir();
-      if (!flag("--yes")) throw new Error(`install requires --yes in the non-interactive MVP. Review privacy boundary first: ${PRIVACY_NOTICE}`);
-      output(await install({ home, packageRoot })); break;
+      const adapters = parseAdapterSelection(option("--adapters"));
+      if (!flag("--yes")) {
+        if (!process.stdin.isTTY || !process.stdout.isTTY) throw new Error(`install requires --yes when stdin/stdout are non-interactive. Review privacy boundary first: ${PRIVACY_NOTICE}`);
+        if (!await confirmPrivacyConsent(process.stdin, process.stdout)) throw new Error("install cancelled: privacy consent was not confirmed");
+      }
+      output(await install({ home, packageRoot, adapters })); break;
     }
     case "uninstall": { if (!flag("--yes")) throw new Error("uninstall requires --yes; vault will be preserved"); output(await uninstall(option("--home") ?? os.homedir())); break; }
     case "purge": output(await purge(option("--home") ?? os.homedir(), { yes: flag("--yes"), phrase: required("--confirm") })); break;
