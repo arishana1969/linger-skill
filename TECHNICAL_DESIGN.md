@@ -12,6 +12,8 @@ Raw events, processed memories, and decision events are source records. Queue, d
 
 The deterministic worker provides a local baseline for summaries, content/predictive tags, retrieval phrases, decision extraction, correction linking, and registry updates. These outputs are deliberately lexical and heuristic. Richer host-agent processing and decision-topic merging are future improvements and must preserve the same evidence and validation boundaries.
 
+Successful hook captures run an event-driven scheduling decision. Explicit work, a 50KB pending threshold, or an exceeded maximum wait can trigger bounded serial processing; below-threshold captures return without consuming the queue. SessionStart also recovers pending writes and evaluates the queue. This is not a daemon or a guaranteed timer during an idle long-running session.
+
 ## Adapter strategy
 
 Adapters report capabilities rather than assuming lifecycle parity. Claude Code and Codex are implemented separately. Rule-only and explicit CLI modes remain valid degraded modes.

@@ -19,10 +19,27 @@ test("captures user and assistant turn from shared hook fields", async () => {
   const user = await handleHook(root, { hook_event_name: "UserPromptSubmit", session_id: "s1", turn_id: "t1", cwd, prompt: "记一下：暂时不做 MCP" }, "codex");
   const assistant = await handleHook(root, { hook_event_name: "Stop", session_id: "s1", turn_id: "t1", cwd, last_assistant_message: "已记录，先验证文件方案。" }, "codex");
   assert.ok(user.captured);
+  assert.equal(user.processed, 1);
   assert.ok(assistant.captured);
   await processQueue(root);
   const hits = await search(root, { projectId: project, query: "不做 MCP" });
   assert.equal(hits[0]?.confidence, 1);
+});
+
+test("runs event-driven processing at the 50KB threshold", async () => {
+  const { root, cwd, project } = await fixture();
+  const result = await handleHook(root, { hook_event_name: "UserPromptSubmit", session_id: "s1", turn_id: "large", cwd, prompt: `threshold-zephyr ${"x".repeat(52 * 1024)}` }, "codex");
+  assert.equal(result.processed, 1);
+  assert.match((await search(root, { projectId: project, query: "threshold-zephyr" }))[0]?.snippet ?? "", /threshold-zephyr/);
+});
+
+test("runs overdue work when a later hook event arrives", async () => {
+  const { root, cwd, project } = await fixture();
+  const { capture } = await import("./capture.js");
+  await capture(root, { projectId: project, sessionId: "old", turnId: "old", role: "user", content: "overdue-zephyr durable note", sourceAgent: "test", timestamp: "2020-01-01T00:00:00.000Z" });
+  const result = await handleHook(root, { hook_event_name: "UserPromptSubmit", session_id: "s1", turn_id: "new", cwd, prompt: "ordinary follow-up" }, "codex");
+  assert.equal(result.processed, 2);
+  assert.match((await search(root, { projectId: project, query: "overdue-zephyr" }))[0]?.snippet ?? "", /overdue-zephyr/);
 });
 
 test("honors opt-out, marks secrets, and tolerates startup", async () => {

@@ -32,10 +32,7 @@ export async function handleHook(root: string, input: HookInput, sourceAgent: "c
   const project = await projectId(cwd);
   if (eventName === "SessionStart") {
     const recovery = await recoverPending(root).catch(() => ({ recovered: 0, failed: [] }));
-    const decision = await processingDecision(root, project, "startup").catch(() => ({ should_run: false, limit: 0 }));
-    const result = decision.should_run ? await processQueue(root, project, decision.limit).catch(() => ({ processed: 0, failed: 1 })) : { processed: 0, failed: 0 };
-    if (decision.should_run) await recordProcessingRun(root, project).catch(() => undefined);
-    return { recovered: recovery.recovered, processed: result.processed, output: contextOutput(eventName) };
+    return { recovered: recovery.recovered, processed: await scheduledProcessing(root, project, "startup"), output: contextOutput(eventName) };
   }
   const isUser = eventName === "UserPromptSubmit";
   const isAssistant = eventName === "Stop";
@@ -58,7 +55,16 @@ export async function handleHook(root: string, input: HookInput, sourceAgent: "c
     explicit,
     sensitivity: sensitivity.level
   });
-  return { captured: event?.event_id, skipped: event ? undefined : "paused", output: {} };
+  const processed = event ? await scheduledProcessing(root, project, "automatic") : 0;
+  return { captured: event?.event_id, skipped: event ? undefined : "paused", processed, output: {} };
+}
+
+async function scheduledProcessing(root: string, project: string, trigger: "automatic" | "startup"): Promise<number> {
+  const decision = await processingDecision(root, project, trigger).catch(() => ({ should_run: false, limit: 0 }));
+  if (!decision.should_run) return 0;
+  const result = await processQueue(root, project, decision.limit).catch(() => ({ processed: 0, failed: 1 }));
+  await recordProcessingRun(root, project).catch(() => undefined);
+  return result.processed;
 }
 
 function contextOutput(eventName: string): Record<string, unknown> {
