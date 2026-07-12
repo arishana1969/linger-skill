@@ -21,7 +21,8 @@ test("detects Codex skill and hooks independently", async () => {
   await writeFile(path.join(home, ".codex", "skills", "continuity", "SKILL.md"), "installed");
   await writeFile(path.join(home, ".codex", "config.toml"), "[hooks]\nenabled = true\n");
   const codex = (await capabilityReport(home))[1]!;
-  assert.equal(codex.level, 2);
+  assert.equal(codex.level, 1);
+  assert.equal(codex.capabilities.lifecycle_hooks, false);
   assert.equal(codex.capabilities.async_processing, false);
-  assert.match(codex.limitations.join(" "), /verified/);
+  assert.match(codex.limitations.join(" "), /trust/);
 });

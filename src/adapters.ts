@@ -34,8 +34,8 @@ export async function detectCodex(home: string): Promise<AdapterCapability> {
   let hookEvidence: string | undefined;
   try { hooks = /(^|\n)\s*\[hooks(?:\.|\])/m.test(await readFile(config, "utf8")); if (hooks) hookEvidence = config; } catch { /* absent */ }
   if (!hooks && await exists(hooksFile)) { hooks = true; hookEvidence = hooksFile; }
-  const level: CapabilityLevel = hooks && installed ? 2 : installed ? 1 : 0;
-  return result("codex", detected, installed, level, hooks, [detected ? root : "Codex directory not found", hookEvidence ?? "No active hooks detected"], ["Automatic final-answer capture must be verified against the installed Codex surface.", "When lifecycle coverage is incomplete, use rule-driven explicit CLI capture."]);
+  const level: CapabilityLevel = installed ? 1 : 0;
+  return result("codex", detected, installed, level, false, [detected ? root : "Codex directory not found", hookEvidence ? `${hookEvidence} (configured; execution trust unverified)` : "No hook configuration detected"], ["Codex hook configuration does not prove execution trust; capability remains L1 until the host verifies trust and live execution.", "When lifecycle coverage is incomplete, use rule-driven explicit CLI capture."]);
 }
 
 function result(adapter: AdapterName, detected: boolean, installed: boolean, level: CapabilityLevel, hooks: boolean, evidence: string[], limitations: string[]): AdapterCapability {

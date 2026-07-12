@@ -29,6 +29,8 @@ Host inspected: `codex-cli 0.144.0-alpha.4`, bundled with ChatGPT.app on macOS a
 
 Current evidence supports: the generated Codex configuration is accepted by this host version and is surfaced for trust review. It does not yet support claiming automatic end-to-end capture.
 
+As a result, `continuity capabilities` reports this static Codex installation as L1 even when `hooks.json` is present. A future host probe may raise it only after trust and live execution are demonstrated.
+
 ## Claude Code
 
 No `claude` executable was present on the validation machine. Repository tests cover configuration merge and handler payloads, but no real Claude Code host evidence has been collected.

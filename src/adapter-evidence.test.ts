@@ -12,6 +12,7 @@ test("Codex capability evidence names the actual hook source", async () => {
   const hooks = path.join(home, ".codex", "hooks.json");
   await writeFile(hooks, JSON.stringify({ hooks: { Stop: [] } }));
   const report = await detectCodex(home);
-  assert.equal(report.level, 2);
-  assert.equal(report.evidence[1], hooks);
+  assert.equal(report.level, 1);
+  assert.match(report.evidence[1] ?? "", new RegExp(hooks.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(report.evidence[1] ?? "", /trust unverified/);
 });

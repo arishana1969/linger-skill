@@ -29,7 +29,7 @@ try {
   const installed = JSON.parse((await exec(process.execPath, [cli, "install", "--home", home, "--yes"], { cwd: packageRoot })).stdout);
   if (!installed.privacy_notice || installed.capabilities.length !== 2) throw new Error("packed installer omitted privacy notice or capability report");
   const capabilities = JSON.parse((await exec(process.execPath, [cli, "capabilities", "--home", home], { cwd: packageRoot })).stdout);
-  if (capabilities.some((item) => item.level !== 2)) throw new Error("packed install did not activate expected local hook artifacts");
+  if (capabilities[0]?.level !== 2 || capabilities[1]?.level !== 1) throw new Error("packed capability report did not preserve Claude L2 and trust-gated Codex L1");
   const uninstalled = JSON.parse((await exec(process.execPath, [cli, "uninstall", "--home", home, "--yes"], { cwd: packageRoot })).stdout);
   if (uninstalled.vault_preserved !== true) throw new Error("packed uninstall did not preserve the Vault contract");
   console.log(JSON.stringify({ ok: true, tarball: path.basename(tarball), required_files: required.length, capabilities: capabilities.map((item) => ({ adapter: item.adapter, level: item.level })) }, null, 2));
