@@ -4,7 +4,8 @@ import { atomicJson, readJson, withFileLock } from "./io.js";
 import { completePending, stagePending } from "./pending.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { classifySensitivity, redactSecrets } from "./sensitivity.js";
-import { assertSequenceState } from "./schema-validation.js";
+import { assertRawEvent, assertSequenceState } from "./schema-validation.js";
+import { assertRawRecordPath } from "./record-paths.js";
 import type { QueueItem, RawEvent, Role, SavepointStatus } from "./types.js";
 import { initVault } from "./vault.js";
 
@@ -44,10 +45,13 @@ export async function capture(root: string, input: CaptureInput): Promise<RawEve
   const dedupe = createHash("sha256").update(`${project}\0${session}\0${turn}\0${input.role}\0${contentHash}`).digest("hex").slice(0, 24);
   const eventId = `evt_${dedupe}`;
   const rawFile = path.join(p.raw, project, session, `${eventId}.json`);
-  try { return await readJson<RawEvent>(rawFile); } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+  const expected = { eventId, project, session, turn, role: input.role, contentHash };
+  const existing = await readExistingRaw(p, rawFile, expected);
+  if (existing) return existing;
 
   return await withFileLock(path.join(p.tmp, `${project}.capture.lock`), async () => {
-    try { return await readJson<RawEvent>(rawFile); } catch { /* continue */ }
+    const raced = await readExistingRaw(p, rawFile, expected);
+    if (raced) return raced;
     const sequenceFile = path.join(p.registry, `${project}.sequence.json`);
     let current = 0;
     try { const state = await readJson<unknown>(sequenceFile); assertSequenceState(state); current = state.value; } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
@@ -73,6 +77,19 @@ export async function capture(root: string, input: CaptureInput): Promise<RawEve
     await completePending(pendingFile);
     return event;
   });
+}
+
+async function readExistingRaw(p: ReturnType<typeof vaultPaths>, file: string, expected: { eventId: string; project: string; session: string; turn: string; role: Role; contentHash: string }): Promise<RawEvent | undefined> {
+  let value: unknown;
+  try { value = await readJson<unknown>(file); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; }
+  assertRawEvent(value);
+  assertRawRecordPath(p, file, value);
+  const computed = createHash("sha256").update(value.content).digest("hex");
+  if (value.event_id !== expected.eventId || value.project_id !== expected.project || value.session_id !== expected.session || value.turn_id !== expected.turn || value.role !== expected.role || value.content_hash !== expected.contentHash || computed !== value.content_hash) {
+    throw new Error("Existing raw event failed integrity check");
+  }
+  return value;
 }
 
 function strongerSensitivity(left: "normal" | "sensitive" | "secret", right: "normal" | "sensitive" | "secret"): "normal" | "sensitive" | "secret" {

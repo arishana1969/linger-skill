@@ -14,6 +14,8 @@ Operational state is validated too. Invalid config bounds are rejected; a corrup
 
 Inspect and control operations revalidate the target record and its canonical project path before acting. Correction explicitly rebinds the generated record to the requested project, and delete-last selects only from validated records, so a corrupt high-timestamp file cannot become the destructive target.
 
+Capture applies the same rule to deduplication. An existing raw event is returned only when its schema, canonical location, capture identity, declared hash, and computed content hash all agree with the new capture. Integrity failure preserves the existing bytes for diagnosis instead of replacing the immutable source.
+
 ## Processing boundary
 
 The deterministic worker provides a local baseline for summaries, content/predictive tags, retrieval phrases, decision extraction, correction linking, and registry updates. These outputs are deliberately lexical and heuristic. Richer host-agent processing and decision-topic merging are future improvements and must preserve the same evidence and validation boundaries.

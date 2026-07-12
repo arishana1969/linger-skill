@@ -6,6 +6,8 @@ Each event is an independent JSON file containing schema version, event/session/
 
 Raw files contain mechanical capture data only. Topic boundaries and semantic summaries belong to processed records.
 
+Deduplication never weakens raw immutability. Before returning an already-present event, capture revalidates its schema, canonical path, identity fields, declared content hash, and computed content hash. A malformed or tampered existing file causes an integrity failure and is neither returned nor overwritten.
+
 ## Queue item
 
 Queue items are independent JSON files with pending, processing, failed, or done state. Explicit user memories receive priority. One process lock serializes the local worker.
