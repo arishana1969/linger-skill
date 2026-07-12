@@ -18,6 +18,8 @@ Successful hook captures run an event-driven scheduling decision. Explicit work,
 
 Automatic runs bound both item count and estimated input tokens (characters divided by four, default 16K). Once at least one item is consumed, an item that would exceed the remaining budget stays pending for the next run. A single oversized first item is allowed to prevent permanent starvation. This deterministic worker does not claim provider-billed token accuracy.
 
+Within one serial worker run, validated raw events are loaded once per touched project and indexed by event ID. Queue order, explicit priority, retry state, and token limits remain authoritative; this avoids rescanning the entire raw tree for every backlog item.
+
 The deterministic worker skips non-explicit assistant chatter shorter than the configured 20-character baseline unless it contains a durable decision/preference/constraint signal. The raw event remains intact and may still be inspected explicitly.
 
 ## Adapter strategy

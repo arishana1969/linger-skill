@@ -27,18 +27,23 @@ export async function processQueue(root: string, projectId?: string, maxItems = 
     let failed = 0;
     let estimatedTokens = 0;
     const touchedProjects = new Set<string>();
+    const rawEventsByProject = new Map<string, Map<string, RawEvent>>();
     for (const entry of items.filter(({ item }) => item.status === "pending" || item.status === "failed").slice(0, maxItems)) {
       const running = { ...entry.item, status: "processing" as const, attempts: entry.item.attempts + 1, updated_at: new Date().toISOString() };
       try {
-        const rawFiles = await listJsonFiles(path.join(p.raw, running.project_id));
-        let event: RawEvent | undefined;
-        for (const file of rawFiles) {
-          try {
-            const candidate = await readJson<unknown>(file);
-            assertRawEvent(candidate);
-            if (candidate.event_id === running.event_id) { event = candidate; break; }
-          } catch { continue; }
+        let rawEvents = rawEventsByProject.get(running.project_id);
+        if (!rawEvents) {
+          rawEvents = new Map<string, RawEvent>();
+          for (const file of await listJsonFiles(path.join(p.raw, running.project_id))) {
+            try {
+              const candidate = await readJson<unknown>(file);
+              assertRawEvent(candidate);
+              rawEvents.set(candidate.event_id, candidate);
+            } catch { continue; }
+          }
+          rawEventsByProject.set(running.project_id, rawEvents);
         }
+        const event = rawEvents.get(running.event_id);
         if (!event) throw new Error(`Missing raw event ${running.event_id}`);
         const itemTokens = Math.max(1, Math.ceil(event.content.length / 4));
         if (processed + failed > 0 && estimatedTokens + itemTokens > maxEstimatedTokens) break;
