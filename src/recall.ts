@@ -46,7 +46,7 @@ export async function recall(root: string, options: SearchOptions & { maxCharact
     characters += snippet.length;
     if (snippet.length < hit.snippet.length) { truncated = true; break; }
   }
-  const registry = await readTagRegistry(root, options.projectId);
+  const registry = await readTagRegistry(root, options.projectId).catch(() => undefined);
   const classification = classify(hits, Boolean(matchedDecision?.conflicts.length));
   return {
     classification, hits, truncated, total_characters: characters, current_state: matchedDecision?.current_state, decision_topic: matchedDecision?.topic,

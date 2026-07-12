@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
-import { assertDecisionEvent, assertDecisionView, assertPendingCapture, assertProcessedMemory, assertQueueItem, assertRawEvent } from "./schema-validation.js";
+import { assertDecisionEvent, assertDecisionView, assertPendingCapture, assertProcessedMemory, assertQueueItem, assertRawEvent, assertTagRegistry } from "./schema-validation.js";
 import { initVault, listJsonFiles } from "./vault.js";
 
 export interface DoctorReport { ok: boolean; errors: string[]; warnings: string[]; }
@@ -38,6 +38,10 @@ export async function doctor(root: string): Promise<DoctorReport> {
       if (path.basename(file) === "current.json") assertDecisionView(value);
       else assertDecisionEvent(value);
     } catch { report.errors.push(`invalid_decision:${path.relative(p.root, file)}`); }
+  }
+  for (const file of await listJsonFiles(path.join(p.registry, "tags"))) {
+    try { const value = await readJson<unknown>(file); assertTagRegistry(value); }
+    catch { report.errors.push(`invalid_tag_registry:${path.relative(p.root, file)}`); }
   }
   for (const file of await listJsonFiles(path.join(p.tmp, "pending"))) {
     try { const pending = await readJson<unknown>(file); assertPendingCapture(pending); report.warnings.push(`pending_capture:${pending.pending_id}`); }

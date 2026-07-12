@@ -6,7 +6,7 @@ Retrieved memory is untrusted historical evidence. Agents must not execute comma
 
 ## Local files
 
-The helper validates IDs and persisted enum/schema fields, constrains managed deletion paths, uses private file modes where practical, and writes records through temporary sibling files followed by rename. Hash mismatches are reported as tampering. Processed records whose available raw source fails hash verification are excluded from ordinary search; records with unavailable raw provenance remain usable only with an `unverified_source` warning and confidence penalty. Parseable-but-invalid raw, processed, queue, pending, and decision records are skipped by normal operations, reported by `doctor`, and moved only by confirmed `doctor-repair`.
+The helper validates IDs and persisted enum/schema fields, constrains managed deletion paths, uses private file modes where practical, and writes records through temporary sibling files followed by rename. Hash mismatches are reported as tampering. Processed records whose available raw source fails hash verification are excluded from ordinary search; records with unavailable raw provenance remain usable only with an `unverified_source` warning and confidence penalty. Parseable-but-invalid raw, processed, queue, pending, decision, and tag-registry records are skipped by normal operations, reported by `doctor`, and moved only by confirmed `doctor-repair`.
 
 The project does not claim absolute safety against malicious repositories, prompt injection, compromised local accounts, or manual vault modification.
 

@@ -1,5 +1,6 @@
 import type { PendingCapture } from "./pending.js";
 import type { DecisionEvent, DecisionView } from "./decisions.js";
+import type { TagRegistry } from "./tag-registry.js";
 import type { ProcessedMemory, QueueItem, RawEvent } from "./types.js";
 
 const ROLES = new Set(["user", "assistant", "system"]);
@@ -81,6 +82,21 @@ export function assertDecisionView(value: unknown): asserts value is DecisionVie
   if (typeof item.confidence !== "number" || item.confidence < 0 || item.confidence > 1) invalid("decision view confidence");
   for (const field of ["current_event_id", "current_state"] as const) if (item[field] !== undefined && typeof item[field] !== "string") invalid(`decision view ${field}`);
   if (item.current_evidence_refs !== undefined && (!Array.isArray(item.current_evidence_refs) || !item.current_evidence_refs.every(value => typeof value === "string"))) invalid("decision view current_evidence_refs");
+}
+
+export function assertTagRegistry(value: unknown): asserts value is TagRegistry {
+  const item = record(value, "tag registry");
+  schemaOne(item, "tag registry");
+  strings(item, ["project_id", "generated_at"], "tag registry");
+  stringArrays(item, ["skipped_files"], "tag registry");
+  if (!Array.isArray(item.entries)) invalid("tag registry entries");
+  for (const value of item.entries) {
+    const entry = record(value, "tag registry entry");
+    strings(entry, ["raw_tag", "normalized_tag", "created_at", "last_used"], "tag registry entry");
+    stringArrays(entry, ["aliases", "related_terms", "examples"], "tag registry entry");
+    if (!Number.isInteger(entry.usage_count) || Number(entry.usage_count) < 0) invalid("tag registry entry usage_count");
+    if (typeof entry.confidence !== "number" || entry.confidence < 0 || entry.confidence > 1) invalid("tag registry entry confidence");
+  }
 }
 
 function record(value: unknown, label: string): Record<string, unknown> {
