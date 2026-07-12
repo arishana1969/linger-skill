@@ -9,10 +9,11 @@ import { runEvalDataset } from "./eval-runner.js";
 test("held-out generator is deterministic, scalable, and spans a year", () => {
   const first = generateHeldoutDataset(2025, 240);
   assert.deepEqual(first, generateHeldoutDataset(2025, 240));
-  assert.equal(first.events.length, 250);
+  assert.equal(first.events.length, 252);
   assert.equal(new Set(first.events.map(item => item.event_id)).size, first.events.length);
   assert.equal(first.events.some(item => item.savepoint_status === "partial"), true);
   assert.equal(first.oracle.some(item => item.forbidden_evidence.includes("ho_other_db")), true);
+  assert.equal(first.mutations?.length, 2);
   assert.ok(Date.parse(first.end) - Date.parse(first.start) > 360 * 24 * 60 * 60 * 1000);
 });
 
@@ -22,4 +23,7 @@ test("held-out fixture survives noise, near collisions, correction chains, and p
   assert.equal(result.imported, dataset.events.length);
   assert.equal(result.scores.missing_predictions.length, 0);
   assert.equal(result.scores.macro_composite, 1);
+  assert.deepEqual(result.predictions.find(item => item.query_id === "ho_q_partial")?.warning_flags, ["partial_source"]);
+  assert.deepEqual(result.predictions.find(item => item.query_id === "ho_q_deleted")?.warning_flags, ["unverified_source"]);
+  assert.deepEqual(result.predictions.find(item => item.query_id === "ho_q_tampered")?.evidence_ids, []);
 });

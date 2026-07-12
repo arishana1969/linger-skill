@@ -51,7 +51,7 @@ node dist/eval-cli.js run \
   --vault /tmp/continuity-eval-vault
 ```
 
-The JSON report includes per-query evidence recall/precision, project-scope isolation, classification accuracy, current-state accuracy, claim coverage, forbidden-claim safety, and a macro composite. The year, adversarial, and 250-event held-out gates currently require a macro score of `1.0`. The held-out suite adds large-vault noise, lexical paraphrases, database/cache near-collisions, an A→B→A correction chain, a partial savepoint, and cross-project decoys. These are deterministic regression baselines, not claims of general memory quality.
+The JSON report includes per-query evidence recall/precision, project-scope isolation, classification accuracy, current-state accuracy, claim coverage, forbidden-claim safety, provenance-warning accuracy, and a macro composite. The year, adversarial, and 250+-event held-out gates currently require a macro score of `1.0`. The held-out suite adds large-vault noise, lexical paraphrases, database/cache near-collisions, an A→B→A correction chain, a partial savepoint, cross-project decoys, raw tampering, and raw deletion. These are deterministic regression baselines, not claims of general memory quality.
 
 Install into a disposable home while testing:
 

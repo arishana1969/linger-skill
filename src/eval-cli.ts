@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { generateAdversarialDataset } from "./eval-adversarial.js";
 import { generateHeldoutDataset } from "./eval-heldout.js";
-import type { EvalDataset, EvalEvent, EvalOracle } from "./eval-generator.js";
+import type { EvalDataset, EvalEvent, EvalMutation, EvalOracle } from "./eval-generator.js";
 import { writeYearDataset } from "./eval-io.js";
 import { runEvalDataset } from "./eval-runner.js";
 
@@ -31,7 +31,16 @@ async function readDataset(fixturePath: string, oraclePath: string): Promise<Eva
   const oracle = JSON.parse(await readFile(path.resolve(oraclePath), "utf8")) as { oracle?: EvalOracle[] };
   if (fixture.schema_version !== 1 || !fixture.name || !fixture.start || !fixture.end || !Array.isArray(fixture.events)) throw new Error("invalid fixture dataset");
   if (!Array.isArray(oracle.oracle)) throw new Error("invalid oracle dataset");
-  return { schema_version: 1, name: fixture.name, start: fixture.start, end: fixture.end, events: fixture.events as EvalEvent[], oracle: oracle.oracle };
+  const mutations = (fixture as { mutations?: unknown }).mutations;
+  if (mutations !== undefined && !Array.isArray(mutations)) throw new Error("invalid fixture mutations");
+  if (mutations?.some(item => !isEvalMutation(item))) throw new Error("invalid fixture mutation");
+  return { schema_version: 1, name: fixture.name, start: fixture.start, end: fixture.end, events: fixture.events as EvalEvent[], oracle: oracle.oracle, ...(mutations ? { mutations } : {}) };
+}
+
+function isEvalMutation(value: unknown): value is EvalMutation {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  return ["tamper_raw_content", "delete_raw"].includes(String(item.type)) && typeof item.event_id === "string" && item.event_id.length > 0 && (item.replacement_content === undefined || typeof item.replacement_content === "string");
 }
 
 async function main(): Promise<void> {

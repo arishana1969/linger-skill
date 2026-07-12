@@ -43,7 +43,7 @@ It is not yet a public release candidate. The remaining release blockers are mai
 | Processing triggers/budget | Successful hook events run an event-driven decision for explicit, 50KB, and max-wait triggers; SessionStart recovery/processing, manual runs, max runs/hour, max items/run, estimated input-token budget, pause, and backlog status exist. Short non-explicit assistant chatter is skipped unless it has a durable signal. | No rich durable-content classifier or persistent timer while a session remains idle. |
 | Recall bounds | File, snippet, evidence-character, raw-fragment, time-range, and wall-clock bounds exist; insufficient clues return topic/decision/tag and observed-month candidates; empty retrieval abstains. | File selection is deterministic rather than recency-aware. |
 | Sensitive/secret handling | Secret patterns are classified and redacted before hook persistence; secret records do not enter processing or normal recall; sensitive records are excluded by default. | No encryption-at-rest flow and no exhaustive detector. PRD allows stronger encryption UX after MVP, but limitations must stay explicit. |
-| Tamper handling | Raw/processed provenance hashes are checked; processed records with a present but mismatched raw source are excluded from normal search. Missing raw provenance yields `unverified_source` plus a confidence penalty, preserving the valid raw-delete/processed-retain case. Invalid files can be explicitly quarantined and doctor remains usable. | Larger-vault performance and malicious mutation patterns need further evaluation. |
+| Tamper handling | Raw/processed provenance hashes are checked; processed records with a present but mismatched raw source are excluded from normal search. Missing raw provenance yields `unverified_source` plus a confidence penalty, preserving the valid raw-delete/processed-retain case. The 250+-event held-out gate mutates both cases after processing. Invalid files can be explicitly quarantined and doctor remains usable. | Broader malicious mutation patterns and substantially larger-vault performance need further evaluation. |
 | Scheduler | Startup scan and processing are implemented. | No daemon and no guaranteed timer while a long session stays open. This is an honest degraded mode, not L3. |
 | Current decision view | Implemented, including current evidence refs, explicit-current supersession, and separate primary-database versus database-cache topics. | Decision topic merge/alias lookup remains heuristic; other unrelated decisions can still share a coarse topic. |
 | Index fragments | Registry and processed records are rebuildable without a database. | Dedicated index fragments described by the PRD are missing. This is not currently required by the deterministic search implementation. |
@@ -67,7 +67,7 @@ It is not yet a public release candidate. The remaining release blockers are mai
 ### Recall and decisions
 
 - Project isolation, CJK/English lexical scoring, tags, aliases/term graph, explicit-memory priority, evidence IDs, character budget, candidates, abstention, current state, rationale recall, and conflict classification are covered.
-- A deterministic 99-event year fixture, a focused adversarial fixture, and a separate 250-event held-out fixture run through real temporary Vaults. The held-out gate adds large-vault noise, paraphrases, database/cache near-collisions, an A→B→A correction chain, partial evidence, and project decoys. Their checked-in regression gates require macro composite `1.0` across evidence, scope, classification, state, acceptable claims, and forbidden claims.
+- A deterministic 99-event year fixture, a focused adversarial fixture, and a separate 250+-event held-out fixture run through real temporary Vaults. The held-out gate adds large-vault noise, paraphrases, database/cache near-collisions, an A→B→A correction chain, partial evidence, project decoys, raw tampering, and raw deletion. Their checked-in regression gates require macro composite `1.0` across evidence, scope, classification, state, acceptable claims, forbidden claims, and provenance warnings.
 - These small generated fixtures prevent known regressions; they are not evidence of general-world retrieval quality.
 
 ### Security and controls
@@ -81,7 +81,7 @@ It is not yet a public release candidate. The remaining release blockers are mai
 
 1. Resolve maintainer release metadata in `RELEASE_CHECKLIST.md`, including license, repository URL, package ownership, and security contact. Keep npm publication as an explicit user-owned release action.
 2. Validate Codex trusted live execution and record its exact lifecycle payloads. Preserve the observed Claude Code Ctrl-C limitation in release notes unless a later host version changes it.
-3. Add mutation-driven held-out tampering/deletion cases and broaden the generated scenario families beyond the current deterministic lexical suites.
+3. Broaden generated scenario families and malicious mutation coverage beyond the current deterministic suites.
 4. Rerun the complete repository, artifact, host, and documentation gates from the final candidate commit.
 
 ## Explicitly deferred from the first GitHub MVP

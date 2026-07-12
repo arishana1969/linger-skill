@@ -23,3 +23,10 @@ test("suite reports missing predictions", () => {
   assert.equal(result.macro_composite, 0);
   assert.equal(result.missing_predictions.length, dataset.oracle.length);
 });
+
+test("scores required and forbidden provenance warnings", () => {
+  const oracle = { ...generateYearDataset().oracle[0]!, required_warning_flags: ["partial_source"], forbidden_warning_flags: ["unverified_source"] };
+  const base = { query_id: oracle.query_id, classification: oracle.expected_classification, evidence_ids: oracle.required_evidence, current_state: oracle.expected_current_state, claims: oracle.acceptable_claims };
+  assert.equal(scorePrediction(oracle, { ...base, warning_flags: ["partial_source"] }).warning_accuracy, 1);
+  assert.equal(scorePrediction(oracle, { ...base, warning_flags: ["partial_source", "unverified_source"] }).warning_accuracy, 0);
+});

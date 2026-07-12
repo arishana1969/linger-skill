@@ -22,6 +22,14 @@ export interface EvalOracle {
   acceptable_claims: string[];
   unacceptable_claims: string[];
   expected_classification: string;
+  required_warning_flags?: string[];
+  forbidden_warning_flags?: string[];
+}
+
+export interface EvalMutation {
+  type: "tamper_raw_content" | "delete_raw";
+  event_id: string;
+  replacement_content?: string;
 }
 
 export interface EvalDataset {
@@ -31,6 +39,7 @@ export interface EvalDataset {
   end: string;
   events: EvalEvent[];
   oracle: EvalOracle[];
+  mutations?: EvalMutation[];
 }
 
 export function generateYearDataset(year = 2025): EvalDataset {

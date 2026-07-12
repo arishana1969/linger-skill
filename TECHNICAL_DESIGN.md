@@ -29,4 +29,4 @@ Adapters report capabilities rather than assuming lifecycle parity. Claude Code 
 3. Persist and consume queue items.
 4. Recall from a new process using an indirect query.
 5. Verify sources, project isolation, secret exclusion, forget, pause, and tamper reporting.
-6. Run the separated year fixture/oracle, adversarial, and 250-event held-out regression gates through real temporary Vaults.
+6. Run the separated year fixture/oracle, adversarial, and 250+-event held-out regression gates through real temporary Vaults; apply declared raw mutations only after processing and score provenance warnings.

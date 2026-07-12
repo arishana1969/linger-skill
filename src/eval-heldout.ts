@@ -14,7 +14,9 @@ export function generateHeldoutDataset(year = 2025, noiseEvents = 240): EvalData
     event("ho_storage_current", "p_main", at(8, 9), "user", "Current artifact storage decision: use flat files because inspectability matters more."),
     event("ho_adapter_a2", "p_main", at(10, 10), "user", "Correction: current adapter decision is webhooks because delivery immediacy matters more than polling compatibility."),
     event("ho_other_db", "p_other", at(11, 11), "user", "Current primary database decision: SQLite because the other project is embedded."),
-    event("ho_other_zephyr", "p_other", at(11, 12), "assistant", "Zephyr checkpoint completed successfully in another project.")
+    event("ho_other_zephyr", "p_other", at(11, 12), "assistant", "Zephyr checkpoint completed successfully in another project."),
+    event("ho_tampered", "p_main", at(7, 13), "user", "Nebula archive note: sharded tar files passed the benchmark."),
+    event("ho_deleted_raw", "p_main", at(9, 14), "user", "Orchid retention note: preserve processed summaries after raw deletion.")
   ];
   for (let index = 0; index < noiseEvents; index += 1) {
     const month = index % 12;
@@ -27,10 +29,23 @@ export function generateHeldoutDataset(year = 2025, noiseEvents = 240): EvalData
     query("ho_q_database", queryAt, "What is the current primary database?", ["ho_db_current"], ["ho_cache_current", "ho_other_db"], "Current primary database decision: PostgreSQL because relational constraints matter.", ["PostgreSQL", "relational constraints"], ["Redis", "SQLite"], "exact_record_found"),
     query("ho_q_cache", queryAt, "What is the current database cache?", ["ho_cache_current"], ["ho_db_current", "ho_other_db"], "Current database cache decision: Redis because latency matters.", ["Redis", "latency"], ["PostgreSQL", "SQLite"], "exact_record_found"),
     query("ho_q_correction", queryAt, "What is the current adapter decision?", ["ho_adapter_a2"], ["ho_adapter_a", "ho_adapter_b"], "Correction: current adapter decision is webhooks because delivery immediacy matters more than polling compatibility.", ["webhooks", "delivery immediacy"], ["polling because"], "exact_record_found"),
-    query("ho_q_partial", queryAt, "What did the Zephyr checkpoint identify?", ["ho_partial"], ["ho_other_zephyr"], undefined, ["queue starvation"], ["completed successfully"], "similar_record_found"),
+    { ...query("ho_q_partial", queryAt, "What did the Zephyr checkpoint identify?", ["ho_partial"], ["ho_other_zephyr"], undefined, ["queue starvation"], ["completed successfully"], "similar_record_found"), required_warning_flags: ["partial_source"], forbidden_warning_flags: ["unverified_source"] },
+    { ...query("ho_q_tampered", queryAt, "What did the Nebula archive benchmark show?", [], ["ho_tampered"], undefined, ["no reliable memory"], ["sharded tar"], "no_reliable_memory_found"), forbidden_warning_flags: ["unverified_source"] },
+    { ...query("ho_q_deleted", queryAt, "What does the Orchid retention note say?", ["ho_deleted_raw"], [], undefined, ["preserve processed summaries", "raw deletion"], [], "similar_record_found"), required_warning_flags: ["unverified_source"], forbidden_warning_flags: ["partial_source"] },
     query("ho_q_absent", queryAt, "Did we choose DynamoDB for primary storage?", [], [], undefined, ["no reliable memory"], ["DynamoDB was chosen"], "no_reliable_memory_found")
   ];
-  return { schema_version: 1, name: `continuity-heldout-${year}`, start: `${year}-01-01T00:00:00.000Z`, end: `${year}-12-31T23:59:59.999Z`, events, oracle };
+  return {
+    schema_version: 1,
+    name: `continuity-heldout-${year}`,
+    start: `${year}-01-01T00:00:00.000Z`,
+    end: `${year}-12-31T23:59:59.999Z`,
+    events,
+    oracle,
+    mutations: [
+      { type: "tamper_raw_content", event_id: "ho_tampered", replacement_content: "Nebula archive note: maliciously altered result." },
+      { type: "delete_raw", event_id: "ho_deleted_raw" }
+    ]
+  };
 }
 
 function event(id: string, project: string, timestamp: string, role: "user" | "assistant", content: string, savepoint?: EvalEvent["savepoint_status"]): EvalEvent {

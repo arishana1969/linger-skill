@@ -9,7 +9,7 @@ export async function writeYearDataset(output: string, year = 2025): Promise<{ f
   const oracle = path.join(root, "oracle", `${dataset.name}.oracle.json`);
   await ensureDir(path.dirname(fixture));
   await ensureDir(path.dirname(oracle));
-  await atomicJson(fixture, { schema_version: dataset.schema_version, name: dataset.name, start: dataset.start, end: dataset.end, events: dataset.events });
+  await atomicJson(fixture, { schema_version: dataset.schema_version, name: dataset.name, start: dataset.start, end: dataset.end, events: dataset.events, ...(dataset.mutations ? { mutations: dataset.mutations } : {}) });
   await atomicJson(oracle, { schema_version: dataset.schema_version, name: dataset.name, oracle: dataset.oracle });
   return { fixture, oracle, events: dataset.events.length, queries: dataset.oracle.length };
 }

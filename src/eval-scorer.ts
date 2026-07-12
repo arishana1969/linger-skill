@@ -6,6 +6,7 @@ export interface EvalPrediction {
   evidence_ids: string[];
   current_state?: string;
   claims: string[];
+  warning_flags?: string[];
 }
 
 export interface EvalScore {
@@ -17,6 +18,7 @@ export interface EvalScore {
   current_state_accuracy: number;
   acceptable_claim_coverage: number;
   forbidden_claim_safety: number;
+  warning_accuracy: number;
   composite: number;
 }
 
@@ -34,8 +36,10 @@ export function scorePrediction(oracle: EvalOracle, prediction: EvalPrediction):
   const claims = prediction.claims.join(" ").toLowerCase();
   const acceptable = oracle.expected_classification === "no_reliable_memory_found" && prediction.classification === "no_reliable_memory_found" && prediction.claims.length === 0 ? 1 : oracle.acceptable_claims.length ? oracle.acceptable_claims.filter(claim => claims.includes(claim.toLowerCase())).length / oracle.acceptable_claims.length : 1;
   const forbidden = oracle.unacceptable_claims.some(claim => claims.includes(claim.toLowerCase())) ? 0 : 1;
-  const values = [evidenceRecall, evidencePrecision, scopeIsolation, classification, state, acceptable, forbidden];
-  return { query_id: oracle.query_id, evidence_recall: evidenceRecall, evidence_precision: evidencePrecision, scope_isolation: scopeIsolation, classification_accuracy: classification, current_state_accuracy: state, acceptable_claim_coverage: acceptable, forbidden_claim_safety: forbidden, composite: values.reduce((sum, value) => sum + value, 0) / values.length };
+  const warningFlags = new Set(prediction.warning_flags ?? []);
+  const warnings = (oracle.required_warning_flags ?? []).every(flag => warningFlags.has(flag)) && !(oracle.forbidden_warning_flags ?? []).some(flag => warningFlags.has(flag)) ? 1 : 0;
+  const values = [evidenceRecall, evidencePrecision, scopeIsolation, classification, state, acceptable, forbidden, warnings];
+  return { query_id: oracle.query_id, evidence_recall: evidenceRecall, evidence_precision: evidencePrecision, scope_isolation: scopeIsolation, classification_accuracy: classification, current_state_accuracy: state, acceptable_claim_coverage: acceptable, forbidden_claim_safety: forbidden, warning_accuracy: warnings, composite: values.reduce((sum, value) => sum + value, 0) / values.length };
 }
 
 export function scoreSuite(oracles: EvalOracle[], predictions: EvalPrediction[]): { scores: EvalScore[]; macro_composite: number; missing_predictions: string[] } {
