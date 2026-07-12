@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
-import { atomicJson, readJson, withFileLock } from "./io.js";
+import { assertWritableInside, atomicJson, readJson, withFileLock } from "./io.js";
 import { completePending, stagePending } from "./pending.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { classifySensitivity, redactSecrets } from "./sensitivity.js";
@@ -80,6 +80,7 @@ export async function capture(root: string, input: CaptureInput): Promise<RawEve
 }
 
 async function readExistingRaw(p: ReturnType<typeof vaultPaths>, file: string, expected: { eventId: string; project: string; session: string; turn: string; role: Role; contentHash: string }): Promise<RawEvent | undefined> {
+  await assertWritableInside(p.root, file);
   let value: unknown;
   try { value = await readJson<unknown>(file); }
   catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; }

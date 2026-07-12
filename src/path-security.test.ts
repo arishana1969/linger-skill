@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, symlink, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -13,6 +13,7 @@ import { processingDecision, recordProcessingRun } from "./processing-policy.js"
 import { quarantineInvalidFiles } from "./repair.js";
 import { search } from "./search.js";
 import { addTermRelation, expandTerms } from "./term-graph.js";
+import { initVault } from "./vault.js";
 
 test("filesystem-routing entry points reject unsafe project IDs", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
@@ -107,4 +108,54 @@ test("misplaced derived records cannot cross project scope and are repairable", 
   const repaired = await quarantineInvalidFiles(root);
   assert.equal(repaired.quarantined.length, 4);
   assert.equal((await doctor(root)).ok, true);
+});
+
+test("capture refuses a project directory symlink that would escape the Vault", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
+  const outside = await mkdtemp(path.join(os.tmpdir(), "continuity-path-outside-"));
+  await initVault(root);
+  await symlink(outside, path.join(vaultPaths(root).raw, "p"));
+  await assert.rejects(capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "must stay inside vault", sourceAgent: "test" }), /escapes Vault through symlink/);
+  assert.deepEqual(await readdir(outside), []);
+});
+
+test("pending staging refuses a symlinked pending project directory", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
+  const outside = await mkdtemp(path.join(os.tmpdir(), "continuity-path-outside-"));
+  await initVault(root);
+  const pendingBase = path.join(vaultPaths(root).tmp, "pending");
+  await mkdir(pendingBase, { recursive: true });
+  await symlink(outside, path.join(pendingBase, "p"));
+  await assert.rejects(capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "pending must stay inside vault", sourceAgent: "test" }), /escapes Vault through symlink/);
+  assert.deepEqual(await readdir(outside), []);
+});
+
+test("processing refuses a symlinked processed project directory", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
+  const outside = await mkdtemp(path.join(os.tmpdir(), "continuity-path-outside-"));
+  await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "processed must stay inside vault", sourceAgent: "test" });
+  await symlink(outside, path.join(vaultPaths(root).processed, "p"));
+  assert.deepEqual(await processQueue(root, "p"), { processed: 0, failed: 1 });
+  assert.deepEqual(await readdir(outside), []);
+});
+
+test("decision writes refuse a symlinked project directory", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
+  const outside = await mkdtemp(path.join(os.tmpdir(), "continuity-path-outside-"));
+  await initVault(root);
+  await symlink(outside, path.join(vaultPaths(root).decisions, "p"));
+  await assert.rejects(appendDecision(root, { projectId: "p", topic: "runtime", kind: "decision", status: "current", statement: "stay inside", source: "user_explicit", confidence: 1, evidenceRefs: ["evt_visible"] }), /escapes Vault through symlink/);
+  assert.deepEqual(await readdir(outside), []);
+});
+
+test("Vault initialization refuses a symlinked config file", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
+  const outside = path.join(await mkdtemp(path.join(os.tmpdir(), "continuity-path-outside-")), "outside.json");
+  await initVault(root);
+  const config = vaultPaths(root).config;
+  await unlink(config);
+  await writeFile(outside, "outside-bytes");
+  await symlink(outside, config);
+  await assert.rejects(initVault(root), /Write target is a symlink/);
+  assert.equal(await readFile(outside, "utf8"), "outside-bytes");
 });

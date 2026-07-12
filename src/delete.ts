@@ -1,7 +1,7 @@
 import { unlink } from "node:fs/promises";
 import path from "node:path";
 import { appendMemoryControl } from "./memory-events.js";
-import { readJson } from "./io.js";
+import { assertWritableInside, readJson } from "./io.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { listJsonFiles } from "./vault.js";
 import type { ProcessedMemory, RawEvent } from "./types.js";
@@ -27,6 +27,7 @@ export async function deleteRecord(root: string, input: { projectId: string; tar
   const p = vaultPaths(root);
   if (input.target === "processed") {
     const file = path.join(p.processed, project, `${id}.json`);
+    await assertWritableInside(p.root, file);
     const memory = await readJson<unknown>(file);
     assertProcessedMemory(memory);
     assertProcessedRecordPath(p, file, memory);

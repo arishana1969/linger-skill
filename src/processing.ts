@@ -2,7 +2,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { decisionFromEvent, decisionKindFromContent } from "./decision-extraction.js";
 import { appendDecision, getDecisionTrail } from "./decisions.js";
-import { atomicJson, readJson, withFileLock } from "./io.js";
+import { assertWritableInside, atomicJson, readJson, withFileLock } from "./io.js";
 import { writeProcessedMarkdown } from "./processed-markdown.js";
 import { DEFAULT_MIN_CONTENT_CHARACTERS } from "./processing-policy.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
@@ -63,7 +63,9 @@ export async function processQueue(root: string, projectId?: string, maxItems = 
           processed += 1;
           continue;
         }
-        await atomicJson(path.join(p.processed, event.project_id, `${memory.id}.json`), memory);
+        const memoryFile = path.join(p.processed, event.project_id, `${memory.id}.json`);
+        await assertWritableInside(p.root, memoryFile);
+        await atomicJson(memoryFile, memory);
         await writeProcessedMarkdown(root, memory);
         if (memory.type !== "conversation") {
           const decision = decisionFromEvent(event, memory.source === "user_explicit");

@@ -1,6 +1,6 @@
 import { rename } from "node:fs/promises";
 import path from "node:path";
-import { readJson } from "./io.js";
+import { assertWritableInside, readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
 import { assertDecisionEvent, assertDecisionView, assertMemoryControlEvent, assertPendingCapture, assertProcessedMemory, assertProcessingRunHistory, assertProjectRecord, assertQueueItem, assertRawEvent, assertSequenceState, assertTagRegistry, assertTermRelation, assertVaultConfig } from "./schema-validation.js";
 import { assertDecisionEventPath, assertDecisionViewPath, assertMemoryControlPath, assertPendingRecordPath, assertProcessedRecordPath, assertProjectRecordPath, assertQueueRecordPath, assertRawRecordPath, assertTagRegistryPath, assertTermRelationPath } from "./record-paths.js";
@@ -43,6 +43,7 @@ async function quarantineFile(p: ReturnType<typeof vaultPaths>, kind: string, ba
   const relative = path.relative(base, file);
   if (relative.startsWith("..") || path.isAbsolute(relative)) { skipped.push(file); return; }
   const destination = path.join(p.quarantine, kind, `${Date.now()}-${relative}`);
+  await assertWritableInside(p.root, destination);
   const { ensureDir } = await import("./io.js");
   await ensureDir(path.dirname(destination));
   await rename(file, destination);

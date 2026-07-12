@@ -28,7 +28,7 @@ async function runHook(file: string, home: string, payload: unknown): Promise<vo
     let stderr = "";
     child.stderr.on("data", chunk => { stderr += chunk.toString(); });
     child.on("error", reject);
-    child.on("exit", code => code === 0 ? resolve() : reject(new Error(stderr || `hook exited ${code}`)));
+    child.on("exit", code => code === 0 && !stderr ? resolve() : reject(new Error(stderr || `hook exited ${code}`)));
     child.stdin.end(JSON.stringify(payload));
   });
 }

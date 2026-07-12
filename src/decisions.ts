@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
-import { atomicJson, readJson, withFileLock } from "./io.js";
+import { assertWritableInside, atomicJson, readJson, withFileLock } from "./io.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { assertDecisionEvent, assertDecisionView } from "./schema-validation.js";
 import { assertDecisionEventPath, assertDecisionViewPath } from "./record-paths.js";
@@ -90,7 +90,9 @@ export async function appendDecision(root: string, input: AppendDecisionInput): 
       timestamp
     };
     assertDecisionEvent(event);
-    await atomicJson(path.join(topicDir, "events", `${timestamp.replaceAll(":", "-")}-${event.event_id}.json`), event);
+    const eventFile = path.join(topicDir, "events", `${timestamp.replaceAll(":", "-")}-${event.event_id}.json`);
+    await assertWritableInside(p.root, eventFile);
+    await atomicJson(eventFile, event);
     const view = await rebuildDecisionView(root, project, canonicalId);
     return { event, view };
   });
@@ -127,21 +129,25 @@ export async function rebuildDecisionView(root: string, projectId: string, canon
     conflicts,
     updated_at: last.timestamp
   };
-  await atomicJson(path.join(topicDir, "current.json"), view);
+  const viewFile = path.join(topicDir, "current.json");
+  await assertWritableInside(p.root, viewFile);
+  await atomicJson(viewFile, view);
   return view;
 }
 
 export async function getDecisionTrail(root: string, projectId: string, topic: string): Promise<{ view: DecisionView; events: DecisionEvent[] } | undefined> {
   const project = assertSafeId(projectId, "project id");
   const id = canonicalDecisionId(project, topic);
-  const topicDir = path.join(vaultPaths(root).decisions, project, id);
+  const p = vaultPaths(root);
+  const topicDir = path.join(p.decisions, project, id);
   try {
     const viewFile = path.join(topicDir, "current.json");
+    await assertWritableInside(p.root, viewFile);
     const view = await readJson<unknown>(viewFile);
     assertDecisionView(view);
-    assertDecisionViewPath(vaultPaths(root), viewFile, view);
+    assertDecisionViewPath(p, viewFile, view);
     const events = (await Promise.all((await listJsonFiles(path.join(topicDir, "events"))).map(async file => {
-      try { const value = await readJson<unknown>(file); assertDecisionEvent(value); assertDecisionEventPath(vaultPaths(root), file, value); return value; } catch { return undefined; }
+      try { const value = await readJson<unknown>(file); assertDecisionEvent(value); assertDecisionEventPath(p, file, value); return value; } catch { return undefined; }
     }))).filter((event): event is DecisionEvent => Boolean(event)).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
     return { view, events };
   } catch (error) {

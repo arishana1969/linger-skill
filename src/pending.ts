@@ -1,6 +1,6 @@
 import { unlink } from "node:fs/promises";
 import path from "node:path";
-import { atomicJson, readJson } from "./io.js";
+import { assertWritableInside, atomicJson, readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
 import { assertPendingCapture, assertSequenceState } from "./schema-validation.js";
 import { assertPendingRecordPath } from "./record-paths.js";
@@ -22,8 +22,9 @@ export interface PendingCapture {
 export async function stagePending(root: string, pending: PendingCapture): Promise<string> {
   const p = vaultPaths(root);
   assertPendingCapture(pending);
-  assertPendingDestinations(p, pending);
+  await assertPendingDestinations(p, pending);
   const file = path.join(p.tmp, "pending", pending.event.project_id, `${pending.pending_id}.json`);
+  await assertWritableInside(p.root, file);
   await atomicJson(file, pending);
   return file;
 }
@@ -42,7 +43,7 @@ export async function recoverPending(root: string): Promise<{ recovered: number;
       const pending = await readJson<unknown>(file);
       assertPendingCapture(pending);
       assertPendingRecordPath(p, file, pending);
-      assertPendingDestinations(p, pending);
+      await assertPendingDestinations(p, pending);
       if (pending.sequence_file) {
         let current = 0;
         try { const state = await readJson<unknown>(pending.sequence_file); assertSequenceState(state); current = state.value; } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
@@ -59,7 +60,7 @@ export async function recoverPending(root: string): Promise<{ recovered: number;
   return { recovered, failed };
 }
 
-function assertPendingDestinations(p: ReturnType<typeof vaultPaths>, pending: PendingCapture): void {
+async function assertPendingDestinations(p: ReturnType<typeof vaultPaths>, pending: PendingCapture): Promise<void> {
   const expectedRaw = path.join(p.raw, pending.event.project_id, pending.event.session_id, `${pending.event.event_id}.json`);
   const expectedQueue = path.join(p.queue, pending.queue_item.project_id, `${pending.queue_item.task_id}.json`);
   const expectedSequence = path.join(p.registry, `${pending.event.project_id}.sequence.json`);
@@ -67,6 +68,9 @@ function assertPendingDestinations(p: ReturnType<typeof vaultPaths>, pending: Pe
   assertSamePath(pending.queue_file, expectedQueue, "queue");
   if (pending.sequence_file) assertSamePath(pending.sequence_file, expectedSequence, "sequence");
   if (pending.event.raw_ref !== path.relative(p.root, expectedRaw)) throw new Error("Pending raw reference mismatch");
+  await assertWritableInside(p.root, expectedRaw);
+  await assertWritableInside(p.root, expectedQueue);
+  if (pending.sequence_file) await assertWritableInside(p.root, expectedSequence);
 }
 
 function assertSamePath(actual: string, expected: string, label: string): void {

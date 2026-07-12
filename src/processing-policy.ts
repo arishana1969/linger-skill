@@ -1,6 +1,6 @@
 import { stat } from "node:fs/promises";
 import path from "node:path";
-import { atomicJson, readJson } from "./io.js";
+import { assertWritableInside, atomicJson, readJson } from "./io.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { assertQueueRecordPath, assertRawRecordPath } from "./record-paths.js";
 import { assertProcessingRunHistory, assertQueueItem, assertRawEvent } from "./schema-validation.js";
@@ -69,6 +69,7 @@ export async function processingDecision(root: string, projectId: string, trigge
 export async function recordProcessingRun(root: string, projectId: string, timestamp = new Date()): Promise<void> {
   const project = assertSafeId(projectId, "project id");
   const file = path.join(vaultPaths(root).registry, "processing-runs", `${project}.json`);
+  await assertWritableInside(vaultPaths(root).root, file);
   const history = await readHistory(file);
   const cutoff = timestamp.getTime() - 24 * 60 * 60 * 1000;
   await atomicJson(file, { schema_version: 1, runs: [...history.filter(value => Date.parse(value) >= cutoff), timestamp.toISOString()] });

@@ -1,7 +1,7 @@
 import { readdir, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { atomicJson, ensureDir, readJson } from "./io.js";
+import { assertWritableInside, atomicJson, ensureDir, readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
 import { assertProjectRecord, assertQueueItem, assertVaultConfig } from "./schema-validation.js";
 import { assertProjectRecordPath, assertQueueRecordPath } from "./record-paths.js";
@@ -49,17 +49,19 @@ export async function initVault(root: string): Promise<VaultConfig> {
   await Promise.all([
     p.projects, p.raw, p.processed, p.queue, p.tmp, p.registry, p.decisions, p.quarantine
   ].map(ensureDir));
+  await assertWritableInside(p.root, p.config);
   try {
     const existing = await readJson<Partial<VaultConfig> & Record<string, unknown>>(p.config);
     if (existing.schema_version !== 1) throw new Error(`Unsupported vault config schema: ${String(existing.schema_version)}`);
     const next = { ...defaultConfig(typeof existing.created_at === "string" ? existing.created_at : undefined), ...existing } as VaultConfig;
     assertVaultConfig(next);
-    if (JSON.stringify(existing) !== JSON.stringify(next)) await atomicJson(p.config, next);
+    if (JSON.stringify(existing) !== JSON.stringify(next)) { await assertWritableInside(p.root, p.config); await atomicJson(p.config, next); }
     return next;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
   const config = defaultConfig();
+  await assertWritableInside(p.root, p.config);
   await atomicJson(p.config, config);
   return config;
 }
@@ -68,6 +70,7 @@ export async function setPaused(root: string, paused: boolean): Promise<VaultCon
   const p = vaultPaths(root);
   const config = await initVault(root);
   const next = { ...config, paused };
+  await assertWritableInside(p.root, p.config);
   await atomicJson(p.config, next);
   return next;
 }
@@ -77,13 +80,16 @@ export async function projectId(cwd: string): Promise<string> {
 }
 
 export async function registerProject(root: string, cwd: string): Promise<ProjectRecord> {
+  await initVault(root);
   const identity = await projectIdentity(cwd);
   const p = vaultPaths(root);
   const file = path.join(p.projects, `${identity.project_id}.json`);
+  await assertWritableInside(p.root, file);
   const now = new Date().toISOString();
   let createdAt = now;
   try { const existing = await readJson<unknown>(file); assertProjectRecord(existing); assertProjectRecordPath(p, file, existing); createdAt = existing.created_at; } catch { }
   const record: ProjectRecord = { schema_version: 1, ...identity, created_at: createdAt, last_seen: now };
+  await assertWritableInside(p.root, file);
   await atomicJson(file, record);
   return record;
 }

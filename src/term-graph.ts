@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { atomicJson, readJson } from "./io.js";
+import { assertWritableInside, atomicJson, readJson } from "./io.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { assertTermRelation } from "./schema-validation.js";
 import { assertTermRelationPath } from "./record-paths.js";
@@ -39,7 +39,10 @@ export async function addTermRelation(root: string, input: Omit<TermRelation, "s
     evidence_refs: [...new Set(input.evidence_refs)], created_at: timestamp, last_verified: timestamp
   };
   assertTermRelation(relation);
-  await atomicJson(path.join(vaultPaths(root).registry, "term-graph", project, `${relation.relation_id}.json`), relation);
+  const p = vaultPaths(root);
+  const file = path.join(p.registry, "term-graph", project, `${relation.relation_id}.json`);
+  await assertWritableInside(p.root, file);
+  await atomicJson(file, relation);
   return relation;
 }
 

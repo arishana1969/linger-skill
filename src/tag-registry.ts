@@ -1,5 +1,5 @@
 import path from "node:path";
-import { atomicJson, readJson } from "./io.js";
+import { assertWritableInside, atomicJson, readJson } from "./io.js";
 import { effectiveMemoryStates } from "./memory-events.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { assertProcessedMemory, assertTagRegistry } from "./schema-validation.js";
@@ -55,13 +55,16 @@ export async function rebuildTagRegistry(root: string, projectId: string): Promi
     } catch { skipped.push(path.relative(p.root, file)); }
   }
   const registry: TagRegistry = { schema_version: 1, project_id: project, generated_at: new Date().toISOString(), entries: [...entries.values()].sort((a, b) => b.usage_count - a.usage_count || a.normalized_tag.localeCompare(b.normalized_tag)), skipped_files: skipped };
-  await atomicJson(path.join(p.registry, "tags", `${project}.json`), registry);
+  const file = path.join(p.registry, "tags", `${project}.json`);
+  await assertWritableInside(p.root, file);
+  await atomicJson(file, registry);
   return registry;
 }
 
 export async function readTagRegistry(root: string, projectId: string): Promise<TagRegistry | undefined> {
   const p = vaultPaths(root);
   const file = path.join(p.registry, "tags", `${assertSafeId(projectId, "project id")}.json`);
+  await assertWritableInside(p.root, file);
   try { const value = await readJson<unknown>(file); assertTagRegistry(value); assertTagRegistryPath(p, file, value); return value; }
   catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; }
 }

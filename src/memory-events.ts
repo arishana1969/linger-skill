@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { atomicJson, readJson, withFileLock } from "./io.js";
+import { assertWritableInside, atomicJson, readJson, withFileLock } from "./io.js";
 import { writeProcessedMarkdown } from "./processed-markdown.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { assertMemoryControlEvent, assertProcessedMemory } from "./schema-validation.js";
@@ -47,7 +47,9 @@ export async function appendMemoryControl(root: string, input: Omit<MemoryContro
       timestamp: input.timestamp ?? new Date().toISOString()
     };
     assertMemoryControlEvent(event);
-    await atomicJson(path.join(p.registry, "memory-events", project, `${event.timestamp.replaceAll(":", "-")}-${event.event_id}.json`), event);
+    const eventFile = path.join(p.registry, "memory-events", project, `${event.timestamp.replaceAll(":", "-")}-${event.event_id}.json`);
+    await assertWritableInside(p.root, eventFile);
+    await atomicJson(eventFile, event);
     return event;
   });
 }
@@ -78,6 +80,7 @@ export async function correctMemory(root: string, projectId: string, targetMemor
   const target = assertSafeId(targetMemoryId, "memory id");
   const p = vaultPaths(root);
   const oldFile = path.join(p.processed, project, `${target}.json`);
+  await assertWritableInside(p.root, oldFile);
   const old = await readJson<unknown>(oldFile);
   assertProcessedMemory(old);
   assertProcessedRecordPath(p, oldFile, old);
@@ -108,7 +111,9 @@ export async function correctMemory(root: string, projectId: string, targetMemor
     agent: "continuity-correction"
   };
   assertProcessedMemory(memory);
-  await atomicJson(path.join(p.processed, project, `${id}.json`), memory);
+  const memoryFile = path.join(p.processed, project, `${id}.json`);
+  await assertWritableInside(p.root, memoryFile);
+  await atomicJson(memoryFile, memory);
   await writeProcessedMarkdown(root, memory);
   const event = await appendMemoryControl(root, { kind: "correct", project_id: project, target_memory_id: target, replacement_memory_id: id, reason: correction.reason, evidence_refs: correction.evidenceRefs });
   return { memory, event };

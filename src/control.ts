@@ -1,5 +1,5 @@
 import path from "node:path";
-import { readJson } from "./io.js";
+import { assertWritableInside, readJson } from "./io.js";
 import { appendMemoryControl, correctMemory, effectiveMemoryStates, type MemoryControlEvent } from "./memory-events.js";
 import { vaultPaths, assertSafeId } from "./paths.js";
 import { rebuildTagRegistry } from "./tag-registry.js";
@@ -12,6 +12,7 @@ export async function forget(root: string, projectId: string, memoryId: string, 
   const memory = assertSafeId(memoryId, "memory id");
   const p = vaultPaths(root);
   const file = path.join(p.processed, project, `${memory}.json`);
+  await assertWritableInside(p.root, file);
   const record = await readJson<unknown>(file);
   assertProcessedMemory(record);
   assertProcessedRecordPath(p, file, record);
@@ -31,6 +32,7 @@ export async function inspect(root: string, projectId: string, memoryId: string)
   const memory = assertSafeId(memoryId, "memory id");
   const p = vaultPaths(root);
   const file = path.join(p.processed, project, `${memory}.json`);
+  await assertWritableInside(p.root, file);
   const record = await readJson<unknown>(file);
   assertProcessedMemory(record);
   assertProcessedRecordPath(p, file, record);
