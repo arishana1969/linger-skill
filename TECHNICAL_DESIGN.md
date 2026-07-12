@@ -14,6 +14,8 @@ The deterministic worker provides a local baseline for summaries, content/predic
 
 Successful hook captures run an event-driven scheduling decision. Explicit work, a 50KB pending threshold, or an exceeded maximum wait can trigger bounded serial processing; below-threshold captures return without consuming the queue. SessionStart also recovers pending writes and evaluates the queue. This is not a daemon or a guaranteed timer during an idle long-running session.
 
+The deterministic worker skips non-explicit assistant chatter shorter than the configured 20-character baseline unless it contains a durable decision/preference/constraint signal. The raw event remains intact and may still be inspected explicitly.
+
 ## Adapter strategy
 
 Adapters report capabilities rather than assuming lifecycle parity. Claude Code and Codex are implemented separately. Rule-only and explicit CLI modes remain valid degraded modes.

@@ -21,7 +21,8 @@ export interface ProcessingDecision {
   limit: number;
 }
 
-const DEFAULT_POLICY: ProcessingPolicy = { threshold_bytes: 50 * 1024, max_wait_ms: 30 * 60 * 1000, max_runs_per_hour: 4, max_items_per_run: 100, min_content_characters: 20 };
+export const DEFAULT_MIN_CONTENT_CHARACTERS = 20;
+const DEFAULT_POLICY: ProcessingPolicy = { threshold_bytes: 50 * 1024, max_wait_ms: 30 * 60 * 1000, max_runs_per_hour: 4, max_items_per_run: 100, min_content_characters: DEFAULT_MIN_CONTENT_CHARACTERS };
 
 export async function processingDecision(root: string, projectId: string, trigger: "automatic" | "manual" | "startup", now = new Date(), policy: Partial<ProcessingPolicy> = {}): Promise<ProcessingDecision> {
   const config = { ...DEFAULT_POLICY, ...policy };

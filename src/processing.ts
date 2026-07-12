@@ -4,6 +4,7 @@ import { decisionFromEvent } from "./decision-extraction.js";
 import { appendDecision, getDecisionTrail } from "./decisions.js";
 import { atomicJson, readJson, withFileLock } from "./io.js";
 import { writeProcessedMarkdown } from "./processed-markdown.js";
+import { DEFAULT_MIN_CONTENT_CHARACTERS } from "./processing-policy.js";
 import { vaultPaths } from "./paths.js";
 import { rebuildTagRegistry } from "./tag-registry.js";
 import { listJsonFiles } from "./vault.js";
@@ -40,6 +41,11 @@ export async function processQueue(root: string, projectId?: string, maxItems = 
           continue;
         }
         const memory = memoryFromEvent(event, running.priority === "explicit");
+        if (!memory) {
+          await atomicJson(entry.file, { ...running, status: "done", updated_at: new Date().toISOString() });
+          processed += 1;
+          continue;
+        }
         await atomicJson(path.join(p.processed, event.project_id, `${memory.id}.json`), memory);
         await writeProcessedMarkdown(root, memory);
         if (memory.type === "decision") {
@@ -63,8 +69,10 @@ export async function processQueue(root: string, projectId?: string, maxItems = 
   });
 }
 
-function memoryFromEvent(event: RawEvent, explicit: boolean): ProcessedMemory {
+function memoryFromEvent(event: RawEvent, explicit: boolean): ProcessedMemory | undefined {
   const clean = event.content.replace(/\s+/g, " ").trim();
+  const durableSignal = /(?:决定|采用|选择|偏好|约束|不做|拒绝|提案|暂缓|当前|记住|decision|decided|choose|preference|constraint|proposal|current)/i.test(clean);
+  if (event.role === "assistant" && !explicit && clean.length < DEFAULT_MIN_CONTENT_CHARACTERS && !durableSignal) return undefined;
   const tags = keywords(clean);
   const id = `mem_${createHash("sha256").update(event.event_id).digest("hex").slice(0, 24)}`;
   const isCorrection = /(?:不是这个意思|这条不对|纠正|correct)/i.test(clean);
