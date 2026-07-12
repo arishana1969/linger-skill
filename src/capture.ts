@@ -20,13 +20,20 @@ export interface CaptureInput {
   timestamp?: string;
 }
 
+const ROLES = new Set<Role>(["user", "assistant", "system"]);
+const SAVEPOINT_STATUSES = new Set<SavepointStatus>(["pending", "complete", "partial"]);
+const SENSITIVITIES = new Set(["normal", "sensitive", "secret"]);
+
 export async function capture(root: string, input: CaptureInput): Promise<RawEvent | undefined> {
-  const config = await initVault(root);
-  if (config.paused) return undefined;
   if (!input.content.trim()) throw new Error("Content must not be empty");
+  if (!ROLES.has(input.role)) throw new Error("Role must be user, assistant, or system");
+  if (input.savepointStatus !== undefined && !SAVEPOINT_STATUSES.has(input.savepointStatus)) throw new Error("Savepoint status must be pending, complete, or partial");
+  if (input.sensitivity !== undefined && !SENSITIVITIES.has(input.sensitivity)) throw new Error("Sensitivity must be normal, sensitive, or secret");
   const project = assertSafeId(input.projectId, "project id");
   const session = assertSafeId(input.sessionId, "session id");
   const turn = assertSafeId(input.turnId, "turn id");
+  const config = await initVault(root);
+  if (config.paused) return undefined;
   const p = vaultPaths(root);
   const contentHash = createHash("sha256").update(input.content).digest("hex");
   const dedupe = createHash("sha256").update(`${project}\0${session}\0${turn}\0${input.role}\0${contentHash}`).digest("hex").slice(0, 24);

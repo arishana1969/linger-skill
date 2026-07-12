@@ -8,6 +8,10 @@ export type DecisionKind = "idea" | "preference" | "proposal" | "rationale" | "c
 export type DecisionStatus = "proposed" | "accepted" | "rejected" | "superseded" | "reopened" | "current" | "unknown";
 export type DecisionSource = "user_explicit" | "agent_inferred";
 
+const DECISION_KINDS = new Set<DecisionKind>(["idea", "preference", "proposal", "rationale", "constraint", "rejection", "decision", "current_state", "todo", "correction"]);
+const DECISION_STATUSES = new Set<DecisionStatus>(["proposed", "accepted", "rejected", "superseded", "reopened", "current", "unknown"]);
+const DECISION_SOURCES = new Set<DecisionSource>(["user_explicit", "agent_inferred"]);
+
 export interface DecisionEvent {
   schema_version: 1;
   event_id: string;
@@ -150,6 +154,9 @@ function validateInput(input: AppendDecisionInput): void {
   if (!input.topic.trim() || !input.statement.trim()) throw new Error("Decision topic and statement are required");
   if (!input.evidenceRefs.length) throw new Error("Decision events require evidence");
   if (input.confidence < 0 || input.confidence > 1) throw new Error("Confidence must be between 0 and 1");
+  if (!DECISION_KINDS.has(input.kind)) throw new Error("Invalid decision kind");
+  if (!DECISION_STATUSES.has(input.status)) throw new Error("Invalid decision status");
+  if (!DECISION_SOURCES.has(input.source)) throw new Error("Invalid decision source");
 }
 
 function canSetCurrent(event: DecisionEvent): boolean {

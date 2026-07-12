@@ -18,6 +18,7 @@ export interface DeleteResult {
 }
 
 export async function deleteRecord(root: string, input: { projectId: string; target: DeleteTarget; id: string; confirmed: boolean; reason?: string }): Promise<DeleteResult> {
+  if (input.target !== "processed" && input.target !== "raw") throw new Error("Delete target must be processed or raw");
   if (!input.confirmed) throw new Error("Delete requires explicit confirmation");
   const project = assertSafeId(input.projectId, "project id");
   const id = assertSafeId(input.id, `${input.target} id`);

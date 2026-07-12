@@ -38,3 +38,12 @@ test("requires evidence and detects conflicting explicit states", async () => {
   const result = await appendDecision(root, { projectId: "p_test", topic: "runtime", kind: "decision", status: "current", statement: "Deno", source: "user_explicit", confidence: 1, evidenceRefs: ["evt_2"] });
   assert.equal(result.view.conflicts.length, 2);
 });
+
+test("rejects invalid decision enum values before persistence", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-decisions-invalid-"));
+  const base = { projectId: "p_test", topic: "runtime", kind: "decision" as const, status: "current" as const, statement: "Use Node", source: "user_explicit" as const, confidence: 1, evidenceRefs: ["evt_1"] };
+  await assert.rejects(appendDecision(root, { ...base, kind: "guess" as never }), /Invalid decision kind/);
+  await assert.rejects(appendDecision(root, { ...base, status: "active" as never }), /Invalid decision status/);
+  await assert.rejects(appendDecision(root, { ...base, source: "imported" as never }), /Invalid decision source/);
+  assert.deepEqual(await listDecisionViews(root, "p_test"), []);
+});

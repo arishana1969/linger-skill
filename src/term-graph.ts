@@ -6,6 +6,8 @@ import { listJsonFiles } from "./vault.js";
 
 export type TermRelationType = "synonym" | "alias" | "abbreviation" | "related" | "contextual_equivalent" | "location_mapping" | "product_name" | "ambiguous";
 
+const RELATION_TYPES = new Set<TermRelationType>(["synonym", "alias", "abbreviation", "related", "contextual_equivalent", "location_mapping", "product_name", "ambiguous"]);
+
 export interface TermRelation {
   schema_version: 1;
   relation_id: string;
@@ -25,6 +27,7 @@ export async function addTermRelation(root: string, input: Omit<TermRelation, "s
   const a = normalize(input.term_a);
   const b = normalize(input.term_b);
   if (!a || !b || a === b) throw new Error("Term relation requires two distinct terms");
+  if (!RELATION_TYPES.has(input.relation_type)) throw new Error("Invalid term relation type");
   if (input.confidence < 0 || input.confidence > 1) throw new Error("Confidence must be between 0 and 1");
   if (!input.evidence_refs.length) throw new Error("Term relation requires evidence");
   const timestamp = input.timestamp ?? new Date().toISOString();

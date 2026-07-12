@@ -74,7 +74,7 @@ It is not yet a public release candidate. The remaining release blockers are mai
 
 - The installed Skill declares retrieved memory to be evidence, never instruction.
 - Default search is one project and excludes sensitive, secret, forgotten, deleted, and invalid processed records.
-- High-confidence secrets are redacted before hook persistence; opt-out is skipped; destructive operations are ID/path bounded and confirmation gated.
+- High-confidence secrets are redacted before hook persistence; opt-out is skipped; destructive operations are ID/path bounded and confirmation gated. Delete targets and persisted role/decision/relation enum values are runtime-validated rather than trusted from TypeScript casts.
 - Remaining proof: larger adversarial corpus, malicious-repo exercises, and host-level trust UX.
 
 ## GitHub MVP blocker order

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp } from "node:fs/promises";
+import { access, mkdtemp } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -18,4 +18,11 @@ test("CLI delete refuses unconfirmed request and accepts --yes", async () => {
   await assert.rejects(exec(process.execPath, base), /confirmation/);
   const deleted = JSON.parse((await exec(process.execPath, [...base, "--yes"])).stdout);
   assert.equal(deleted.deleted, true);
+});
+
+test("CLI typo in delete target cannot delete a raw event", async () => {
+  const vault = await mkdtemp(path.join(os.tmpdir(), "continuity-delete-cli-target-"));
+  const captured = JSON.parse((await exec(process.execPath, [cli, "capture", "--vault", vault, "--project", "p_cli", "--session", "s", "--turn", "t", "--role", "user", "--content", "keep raw"])).stdout) as { event_id: string; raw_ref: string };
+  await assert.rejects(exec(process.execPath, [cli, "delete", "--vault", vault, "--project", "p_cli", "--type", "processd", "--id", captured.event_id, "--yes"]), /target must be processed or raw/);
+  await access(path.join(vault, captured.raw_ref));
 });

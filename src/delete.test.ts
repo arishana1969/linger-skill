@@ -26,3 +26,10 @@ test("deletes raw event by ID without accepting paths", async () => {
   await assert.rejects(access(path.join(root, event!.raw_ref)));
   await assert.rejects(deleteRecord(root, { projectId: "p_test", target: "raw", id: "../../escape", confirmed: true }), /Invalid/);
 });
+
+test("invalid delete target cannot fall through to raw deletion", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-delete-target-"));
+  const event = await capture(root, { projectId: "p_test", sessionId: "s", turnId: "t", role: "user", content: "keep raw", sourceAgent: "test" });
+  await assert.rejects(deleteRecord(root, { projectId: "p_test", target: "processd" as never, id: event!.event_id, confirmed: true }), /target must be processed or raw/);
+  await access(path.join(root, event!.raw_ref));
+});

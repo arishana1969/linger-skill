@@ -20,3 +20,9 @@ test("does not expand ambiguous, low-confidence, or context-mismatched relations
   assert.equal((await expandTerms(root, "p", ["cc", "store", "pg"])).size, 0);
   assert.equal((await expandTerms(root, "p", ["pg"], ["backend"])).get("postgresql"), 0.9);
 });
+
+test("rejects unknown relation types", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-terms-invalid-"));
+  await assert.rejects(addTermRelation(root, { project_id: "p", term_a: "db", term_b: "database", relation_type: "equivalent" as never, confidence: 0.9, context_tags: [], evidence_refs: ["m1"] }), /Invalid term relation type/);
+  assert.equal((await expandTerms(root, "p", ["db"])).size, 0);
+});
