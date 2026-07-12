@@ -11,6 +11,8 @@ const cli = path.resolve("dist/cli.js");
 
 test("CLI install, capabilities, and confirmed uninstall", async () => {
   const home = await mkdtemp(path.join(os.tmpdir(), "continuity-install-cli-"));
+  await assert.rejects(exec(process.execPath, [cli, "install", "--home", home]), /privacy boundary/);
+  assert.equal(await readFile(path.join(home, ".continuity", "install-manifest.json"), "utf8").catch(() => "missing"), "missing");
   const installed = JSON.parse((await exec(process.execPath, [cli, "install", "--home", home, "--yes"])).stdout);
   assert.equal(installed.capabilities[0].level, 2);
   await access(path.join(home, ".codex", "skills", "continuity", "SKILL.md"));

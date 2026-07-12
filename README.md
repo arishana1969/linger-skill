@@ -59,7 +59,7 @@ node dist/cli.js install --home /tmp/continuity-home --yes
 node dist/cli.js capabilities --home /tmp/continuity-home
 ```
 
-The intended public command is `npx -y continuity-skill install --yes`, but the package has not been published.
+The intended public command is `npx -y continuity-skill install --yes`, but the package has not been published. The non-interactive MVP refuses installation without `--yes` and prints the privacy boundary; interactive consent remains future work.
 
 Before a GitHub or npm release, follow [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md). In particular, real host lifecycle behavior and public package installation must not be inferred from disposable file-level tests.
 
