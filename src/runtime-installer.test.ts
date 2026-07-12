@@ -23,3 +23,13 @@ test("refuses unmanaged or out-of-scope runtime deletion", async () => {
   assert.equal(await uninstallRuntime(home, unmanaged), false);
   await assert.rejects(uninstallRuntime(home, path.join(home, "outside")), /outside managed root/);
 });
+
+test("rejects a package version that could escape the managed runtime directory", async () => {
+  const home = await mkdtemp(path.join(os.tmpdir(), "continuity-runtime-"));
+  const packageRoot = await mkdtemp(path.join(os.tmpdir(), "continuity-runtime-package-"));
+  await mkdir(path.join(packageRoot, "dist"), { recursive: true });
+  await writeFile(path.join(packageRoot, "dist", "hook-cli.js"), "runtime");
+  await writeFile(path.join(packageRoot, "package.json"), JSON.stringify({ version: "../../escape" }));
+  await assert.rejects(installRuntime(home, packageRoot), /Invalid package version/);
+  await assert.rejects(access(path.join(home, "escape")));
+});

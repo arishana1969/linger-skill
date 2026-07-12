@@ -33,3 +33,27 @@ test("backs up unmanaged skill and uninstall preserves vault", async () => {
   assert.equal(removed.vault_preserved, true);
   assert.equal(await readFile(vaultSentinel, "utf8"), "keep");
 });
+
+test("uninstall refuses a tampered manifest target before deleting anything", async () => {
+  const fakeHome = await home();
+  await install({ home: fakeHome, packageRoot, adapters: ["codex"] });
+  const arbitrary = path.join(fakeHome, "arbitrary-managed-directory");
+  await mkdir(arbitrary, { recursive: true });
+  await writeFile(path.join(arbitrary, ".continuity-managed"), "forged marker");
+  const manifestFile = path.join(fakeHome, ".continuity", "install-manifest.json");
+  const manifest = JSON.parse(await readFile(manifestFile, "utf8"));
+  manifest.files = [arbitrary];
+  await writeFile(manifestFile, JSON.stringify(manifest));
+
+  await assert.rejects(uninstall(fakeHome), /Invalid install manifest target/);
+  await access(arbitrary);
+  await access(path.join(fakeHome, ".codex", "skills", "continuity", "SKILL.md"));
+  await access(manifestFile);
+});
+
+test("programmatic install rejects invalid or duplicate adapters before writes", async () => {
+  const fakeHome = await home();
+  await assert.rejects(install({ home: fakeHome, packageRoot, adapters: ["codex", "codex"] }), /Invalid install adapters/);
+  await assert.rejects(install({ home: fakeHome, packageRoot, adapters: ["unknown" as never] }), /Invalid install adapters/);
+  await assert.rejects(access(path.join(fakeHome, ".continuity")));
+});

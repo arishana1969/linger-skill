@@ -48,13 +48,13 @@ The implementation is a local GitHub-MVP candidate, not yet a public repository 
 | Current decision view | Implemented, including current evidence refs, explicit-current supersession, and separate primary-database versus database-cache topics. | Decision topic merge/alias lookup remains heuristic; other unrelated decisions can still share a coarse topic. |
 | Index fragments | Registry and processed records are rebuildable without a database. | Dedicated index fragments described by the PRD are missing. This is not currently required by the deterministic search implementation. |
 | Global memory | Vault structure is project-first and default recall is isolated. | Non-sensitive `global` preference recall is not implemented. No automatic cross-project search exists, which is safer but below the full PRD model. |
-| Interactive installer | Complete | Unit coverage verifies exact consent and zero-write invalid selection. A real PTY smoke in a disposable home displayed the privacy boundary, accepted exact `YES`, installed only the requested Codex adapter, reported L1, uninstalled with Vault preservation, and left the real home untouched. Non-interactive callers require `--yes`; unknown adapters are rejected before persistence. |
+| Interactive installer | Complete | Unit coverage verifies exact consent and zero-write invalid selection. A real PTY smoke in a disposable home displayed the privacy boundary, accepted exact `YES`, installed only the requested Codex adapter, reported L1, uninstalled with Vault preservation, and left the real home untouched. Non-interactive callers require `--yes`; invalid/duplicate adapters are rejected before persistence. Package versions and uninstall manifests cannot redirect managed runtime or Skill deletion outside exact allowed destinations. |
 
 ## Acceptance evidence
 
 ### Installation and lifecycle
 
-- Idempotent managed Skill copy, backup of unmanaged Skill directories, hook merge, stable versioned runtime, capability reporting, uninstall preservation, and double-confirmed purge are automated tests.
+- Idempotent managed Skill copy, backup of unmanaged Skill directories, hook merge, stable versioned runtime, capability reporting, uninstall preservation, and double-confirmed purge are automated tests. Forged manifest targets, duplicate/invalid adapters, and path-traversing package versions fail before deletion or install-state writes.
 - The exact packed tarball is installed offline into a temporary package-manager consumer, then its generated bin shim runs install, capability reporting, capture→process→recall, uninstall, and Vault-preservation checks after separation from the source tree. Required package documents/runtime files and forbidden development-data exclusions are asserted.
 - Remaining external evidence: published package and public clean-machine npx path. Codex trusted live execution remains the requirement for any capability claim above L1. Claude Code Ctrl-C partial loss is an observed, documented host degradation rather than an inferred capability.
 

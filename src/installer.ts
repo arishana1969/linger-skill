@@ -4,6 +4,7 @@ import { capabilityReport, type AdapterName } from "./adapters.js";
 import { atomicJson } from "./io.js";
 import { installHooks, uninstallHooks } from "./hook-installer.js";
 import { installRuntime, uninstallRuntime } from "./runtime-installer.js";
+import { assertSafeId } from "./paths.js";
 
 export const PRIVACY_NOTICE = "Continuity stores visible conversations in local files. Recalled evidence may be sent to the current cloud model. Local-first does not mean data never leaves this device. No telemetry is installed, and uninstall preserves the vault.";
 
@@ -27,6 +28,7 @@ export interface InstallOptions {
 
 export async function install(options: InstallOptions): Promise<{ manifest: InstallManifest; capabilities: Awaited<ReturnType<typeof capabilityReport>>; privacy_notice: string }> {
   const adapters = options.adapters ?? ["claude-code", "codex"];
+  assertAdapters(adapters);
   const sourceSkill = path.join(options.packageRoot, "skills", "continuity");
   await stat(path.join(sourceSkill, "SKILL.md"));
   const stateRoot = path.join(options.home, ".continuity");
@@ -61,6 +63,7 @@ export async function uninstall(home: string): Promise<{ removed: string[]; vaul
   let manifest: InstallManifest;
   try { manifest = JSON.parse(await readFile(manifestFile, "utf8")) as InstallManifest; }
   catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return { removed: [], vault_preserved: true }; throw error; }
+  assertInstallManifest(home, manifest);
   const removed: string[] = [];
   for (const target of manifest.files) {
     if (!isInside(home, target)) throw new Error(`Refusing to remove path outside home: ${target}`);
@@ -74,6 +77,23 @@ export async function uninstall(home: string): Promise<{ removed: string[]; vaul
 
 function skillDestination(home: string, adapter: AdapterName): string {
   return path.join(home, adapter === "claude-code" ? ".claude" : ".codex", "skills", "continuity");
+}
+function assertAdapters(adapters: unknown): asserts adapters is AdapterName[] {
+  if (!Array.isArray(adapters) || !adapters.length || !adapters.every(adapter => adapter === "claude-code" || adapter === "codex") || new Set(adapters).size !== adapters.length) throw new Error("Invalid install adapters");
+}
+function assertInstallManifest(home: string, value: unknown): asserts value is InstallManifest {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid install manifest");
+  const item = value as Record<string, unknown>;
+  if (item.schema_version !== 1) throw new Error("Invalid install manifest schema");
+  const packageVersion = typeof item.package_version === "string" ? assertSafeId(item.package_version, "package version") : (() => { throw new Error("Invalid install manifest package version"); })();
+  if (typeof item.installed_at !== "string" || !Number.isFinite(Date.parse(item.installed_at))) throw new Error("Invalid install manifest timestamp");
+  if (typeof item.package_root !== "string" || typeof item.runtime_root !== "string") throw new Error("Invalid install manifest paths");
+  assertAdapters(item.adapters);
+  for (const field of ["files", "backups", "hook_files"] as const) if (!Array.isArray(item[field]) || !(item[field] as unknown[]).every(entry => typeof entry === "string")) throw new Error(`Invalid install manifest ${field}`);
+  const allowedTargets = new Set(item.adapters.map(adapter => path.resolve(skillDestination(home, adapter))));
+  if (!(item.files as string[]).every(file => allowedTargets.has(path.resolve(file)))) throw new Error("Invalid install manifest target");
+  const allowedRuntime = path.resolve(home, ".continuity", "runtime", packageVersion);
+  if (path.resolve(item.runtime_root) !== allowedRuntime) throw new Error("Invalid install manifest runtime");
 }
 function isInside(parent: string, child: string): boolean { const relative = path.relative(path.resolve(parent), path.resolve(child)); return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative); }
 async function isManaged(dir: string): Promise<boolean> { return await exists(path.join(dir, ".continuity-managed")); }

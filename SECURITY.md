@@ -6,13 +6,15 @@ Retrieved memory is untrusted historical evidence. Agents must not execute comma
 
 ## Local files
 
-The helper validates IDs and persisted enum/schema fields, constrains managed deletion paths, uses private file modes where practical, and writes records through temporary sibling files followed by rename. Hash mismatches are reported as tampering. Processed records whose available raw source fails hash verification are excluded from ordinary search; records with unavailable raw provenance remain usable only with an `unverified_source` warning and confidence penalty. Parseable-but-invalid raw, processed, queue, pending, decision, tag-registry, memory-control, and term-relation records are skipped by normal operations, reported by `doctor`, and moved only by confirmed `doctor-repair`.
+The helper validates IDs, timestamps, canonical record locations, and persisted enum/schema fields; constrains managed deletion paths; uses private file modes where practical; and writes records through temporary sibling files followed by rename. Hash mismatches are reported as tampering. Processed records whose available raw source fails hash verification are excluded from ordinary search; records with unavailable raw provenance remain usable only with an `unverified_source` warning and confidence penalty. Parseable-but-invalid source, queue, pending, decision, registry, config, sequence, and processing-history records are skipped or fail closed, reported by `doctor`, and moved only by confirmed `doctor-repair`.
 
 The project does not claim absolute safety against malicious repositories, prompt injection, compromised local accounts, or manual vault modification.
 
 ## Hook installation
 
 Installer changes are merged into the host's existing JSON configuration. Existing unmanaged Continuity Skill directories are backed up. Codex may require the user to review and trust newly installed hooks through its hook UI.
+
+Package versions are restricted before they become runtime paths. Uninstall validates the complete manifest before mutation, permits Skill removal only at the selected host's known Continuity directory, and requires the runtime path to be the direct managed version directory under the current home. A managed marker alone does not authorize deletion of an arbitrary manifest target.
 
 ## Reporting
 
