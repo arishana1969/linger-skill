@@ -47,6 +47,7 @@ export interface ProcessedMemory {
   retrieval_phrases: string[];
   source_events: string[];
   source_hash?: string;
+  source_savepoint_status: SavepointStatus;
   confidence: number;
   source: MemorySource;
   status: "active" | "revoked" | "superseded";

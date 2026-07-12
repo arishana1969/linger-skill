@@ -7,7 +7,7 @@ export function serializeProcessedMarkdown(memory: ProcessedMemory): string {
   const frontmatter: Record<string, unknown> = {
     schema_version: memory.schema_version, id: memory.id, type: memory.type, scope: memory.scope, project_id: memory.project_id,
     tags: memory.tags, predictive_tags: memory.predictive_tags, retrieval_phrases: memory.retrieval_phrases,
-    source_events: memory.source_events, source_hash: memory.source_hash, confidence: memory.confidence, source: memory.source,
+    source_events: memory.source_events, source_hash: memory.source_hash, source_savepoint_status: memory.source_savepoint_status, confidence: memory.confidence, source: memory.source,
     status: memory.status, sensitivity: memory.sensitivity, supersedes: memory.supersedes, superseded_by: memory.superseded_by,
     created_at: memory.created_at, updated_at: memory.updated_at, agent: memory.agent, model: memory.model
   };

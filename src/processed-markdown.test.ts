@@ -17,5 +17,6 @@ test("processing writes human-readable Markdown with complete provenance frontma
   assert.match(content, /^---\nschema_version:/);
   assert.match(content, /source_events:/);
   assert.match(content, /source_hash:/);
+  assert.match(content, /source_savepoint_status: "complete"/);
   assert.match(content, /# Markdown processed decision/);
 });

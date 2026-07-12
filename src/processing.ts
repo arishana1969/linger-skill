@@ -82,6 +82,7 @@ function memoryFromEvent(event: RawEvent, explicit: boolean): ProcessedMemory {
     retrieval_phrases: tags.map(tag => `关于 ${tag} 的讨论`),
     source_events: [event.event_id],
     source_hash: event.content_hash,
+    source_savepoint_status: event.savepoint_status,
     confidence: explicit ? 1 : 0.65,
     source: explicit ? "user_explicit" : "agent_inferred",
     status: "active",

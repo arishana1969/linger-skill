@@ -86,6 +86,7 @@ export async function correctMemory(root: string, projectId: string, targetMemor
     predictive_tags: tags,
     retrieval_phrases: tags.map(tag => `关于 ${tag} 的纠正`),
     source_events: [...new Set(correction.evidenceRefs)],
+    source_savepoint_status: "complete",
     confidence: correction.source === "agent_inferred" ? 0.8 : 1,
     source: correction.source ?? "user_explicit",
     status: "active",

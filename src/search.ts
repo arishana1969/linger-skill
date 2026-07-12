@@ -62,7 +62,7 @@ export async function search(root: string, options: SearchOptions): Promise<Sear
       if (event.sensitivity !== "normal" && !options.includeSensitive) continue;
       const eventTokens = tokenize(event.content);
       const overlap = searchTokens.filter(token => eventTokens.includes(token)).length;
-      if (overlap) hits.push({ match_type: "unprocessed_raw", confidence: Math.min(0.6, overlap / searchTokens.length), score: overlap, source: event.event_id, snippet: event.content.slice(0, maxRawFragmentCharacters), raw_ref: [event.raw_ref], warning_flags: ["unprocessed_raw"], sensitivity_flags: event.sensitivity === "normal" ? [] : [event.sensitivity] });
+      if (overlap) hits.push({ match_type: "unprocessed_raw", confidence: Math.min(0.6, overlap / searchTokens.length) * (event.savepoint_status === "partial" ? 0.6 : 1), score: overlap, source: event.event_id, snippet: event.content.slice(0, maxRawFragmentCharacters), raw_ref: [event.raw_ref], warning_flags: ["unprocessed_raw", ...(event.savepoint_status === "partial" ? ["partial_source"] : [])], sensitivity_flags: event.sensitivity === "normal" ? [] : [event.sensitivity] });
     }
   }
   return hits.sort((a, b) => b.score - a.score || b.confidence - a.confidence).slice(0, options.limit ?? config.max_snippets);
@@ -126,9 +126,9 @@ function scoreMemory(memory: ProcessedMemory, original: string[], candidates: st
   const coverage = original.filter(token => textTokens.includes(token)).length / original.length;
   return {
     match_type: coverage === 1 ? "exact_record" : coverage >= 0.5 ? "similar_record" : "possible_match",
-    confidence: Math.min(1, memory.confidence * (0.5 + coverage / 2) * (expansionHit && coverage === 0 ? 0.8 : 1)),
+    confidence: Math.min(1, memory.confidence * (0.5 + coverage / 2) * (expansionHit && coverage === 0 ? 0.8 : 1) * (memory.source_savepoint_status === "partial" ? 0.6 : 1)),
     score, source: memory.id, snippet: memory.summary.slice(0, 500), raw_ref: memory.source_events,
-    warning_flags: expanded && expansionHit ? ["term_expansion"] : [], sensitivity_flags: memory.sensitivity === "normal" ? [] : [memory.sensitivity]
+    warning_flags: [...(expanded && expansionHit ? ["term_expansion"] : []), ...(memory.source_savepoint_status === "partial" ? ["partial_source"] : [])], sensitivity_flags: memory.sensitivity === "normal" ? [] : [memory.sensitivity]
   };
 }
 

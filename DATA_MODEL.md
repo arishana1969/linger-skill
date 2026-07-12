@@ -12,7 +12,7 @@ Queue items are independent JSON files with pending, processing, failed, or done
 
 ## Processed memory
 
-Each processed memory has a machine-readable JSON record and a human-readable Markdown/frontmatter representation with the same identity and provenance. Records contain summaries, content and predictive tags, retrieval phrases, evidence event IDs and source hash, confidence, source type, recall status, and supersession references. Delete keeps both representations synchronized.
+Each processed memory has a machine-readable JSON record and a human-readable Markdown/frontmatter representation with the same identity and provenance. Records contain summaries, content and predictive tags, retrieval phrases, evidence event IDs and source hash, source savepoint status, confidence, source type, recall status, and supersession references. Delete keeps both representations synchronized. Recall labels evidence derived from interrupted answers with `partial_source` rather than presenting it as complete.
 
 ## Decision trail
 
