@@ -4,6 +4,8 @@ Use this checklist for the first GitHub MVP and any npm prerelease. Repository c
 
 ## Maintainer decisions
 
+Run `pnpm verify:release-metadata` for a machine-readable check of the GitHub-owned fields below. It intentionally exits non-zero until they are complete.
+
 - [ ] Choose and add an open-source `LICENSE`; set the matching SPDX value in `package.json`.
 - [ ] Confirm the public GitHub repository name and URL; add `repository`, `homepage`, and `bugs` metadata.
 - [ ] Confirm ownership and availability of the npm package name `continuity-skill`, or choose a scoped name.

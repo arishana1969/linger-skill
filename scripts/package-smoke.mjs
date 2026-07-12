@@ -21,11 +21,13 @@ try {
   const packageRoot = path.join(extract, "package");
   const required = [
     "README.md", "PRIVACY.md", "SECURITY.md", "DATA_MODEL.md", "ADAPTER_SPEC.md", "AGENT_COMPATIBILITY.md", "HOST_VALIDATION.md", "RELEASE_CHECKLIST.md",
-    "dist/cli.js", "dist/eval-cli.js", "dist/hook-cli.js", "skills/continuity/SKILL.md", "skills/continuity/agents/openai.yaml", "skills/continuity/references/protocol.md"
+    "dist/cli.js", "dist/eval-cli.js", "dist/hook-cli.js", "scripts/release-readiness.mjs", "skills/continuity/SKILL.md", "skills/continuity/agents/openai.yaml", "skills/continuity/references/protocol.md"
   ];
   for (const file of required) await access(path.join(packageRoot, file));
   const packedManifest = JSON.parse(await readFile(path.join(packageRoot, "package.json"), "utf8"));
   if (packedManifest.name !== "continuity-skill" || packedManifest.bin?.continuity !== "dist/cli.js") throw new Error("packed manifest has an invalid name or CLI bin");
+  const readiness = JSON.parse((await exec(process.execPath, [path.join(packageRoot, "scripts", "release-readiness.mjs"), "--root", packageRoot, "--allow-blocked"])).stdout);
+  if (readiness.github_ready !== false || !readiness.blockers?.includes("license_file")) throw new Error("packed release-readiness verifier did not report repository metadata blockers");
 
   const consumer = path.join(temporary, "consumer");
   await mkdir(consumer, { recursive: true });

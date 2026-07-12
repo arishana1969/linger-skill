@@ -16,6 +16,8 @@ The implementation is a local GitHub-MVP candidate, not yet a public repository 
 
 The local clean-checkout gate is now complete for commit `d19f46465b1cdd7d9e841835a4ff9eeeecd8da15`. A disposable clone installed its frozen lockfile fully offline, passed 150/150 tests, passed the year/adversarial/held-out gates at macro composite `1.0` with no missing predictions, validated the Skill, passed exact-tarball install/capture→recall/uninstall/Vault-preservation smoke, and ended with an empty `git status --short`. This verifies the committed local candidate; it does not resolve the maintainer-owned public metadata or npm publication steps.
 
+`pnpm verify:release-metadata` now reports the remaining GitHub blockers mechanically. On this candidate they are: `license_file`, `package_license`, `repository_url`, `homepage_url`, `bugs_url`, and `security_contact`. The verifier is included and executed from the exact packed artifact so the published manifest does not expose a missing script.
+
 ## P0 implementation matrix
 
 | PRD P0 requirement | Status | Repository evidence / remaining gap |
