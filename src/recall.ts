@@ -6,7 +6,7 @@ import type { SearchHit } from "./types.js";
 export interface RecallPackage {
   classification: "exact_record_found" | "similar_record_found" | "possible_match" | "no_reliable_memory_found" | "conflicting_memories_found" | "unprocessed_raw_match";
   hits: SearchHit[];
-  candidates: { topics: string[]; decisions: string[]; tags: string[] };
+  candidates: { topics: string[]; decisions: string[]; tags: string[]; time_ranges: string[] };
   truncated: boolean;
   total_characters: number;
   current_state?: string;
@@ -45,10 +45,11 @@ export async function recall(root: string, options: SearchOptions & { maxCharact
   const classification = classify(hits, Boolean(matchedDecision?.conflicts.length));
   return {
     classification, hits, truncated, total_characters: characters, current_state: matchedDecision?.current_state, decision_topic: matchedDecision?.topic,
-    candidates: hits.length ? { topics: [], decisions: [], tags: [] } : {
+    candidates: hits.length ? { topics: [], decisions: [], tags: [], time_ranges: [] } : {
       topics: decisions.map(view => view.topic).slice(0, 5),
       decisions: decisions.map(view => view.current_state).filter((value): value is string => Boolean(value)).slice(0, 5),
-      tags: (registry?.entries ?? []).slice(0, 8).map(entry => entry.normalized_tag)
+      tags: (registry?.entries ?? []).slice(0, 8).map(entry => entry.normalized_tag),
+      time_ranges: [...new Set((registry?.entries ?? []).map(entry => entry.last_used.slice(0, 7)).filter(value => /^\d{4}-\d{2}$/.test(value)))].sort().reverse().slice(0, 5)
     }
   };
 }

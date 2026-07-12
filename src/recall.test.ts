@@ -24,3 +24,14 @@ test("enforces evidence character budget", async () => {
   assert.equal(result.total_characters, 40);
   assert.equal(result.truncated, true);
 });
+
+test("candidate fallback includes observed month ranges without inventing hits", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-recall-"));
+  const { capture } = await import("./capture.js");
+  const { processQueue } = await import("./processing.js");
+  await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "timeline-zephyr durable project note", sourceAgent: "test", timestamp: "2025-07-14T00:00:00.000Z" });
+  await processQueue(root);
+  const result = await recall(root, { projectId: "p", query: "unknown-cassandra" });
+  assert.equal(result.classification, "no_reliable_memory_found");
+  assert.deepEqual(result.candidates.time_ranges, ["2025-07"]);
+});
