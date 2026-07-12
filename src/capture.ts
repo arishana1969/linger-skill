@@ -3,6 +3,7 @@ import path from "node:path";
 import { atomicJson, readJson, withFileLock } from "./io.js";
 import { completePending, stagePending } from "./pending.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
+import { classifySensitivity, redactSecrets } from "./sensitivity.js";
 import type { QueueItem, RawEvent, Role, SavepointStatus } from "./types.js";
 import { initVault } from "./vault.js";
 
@@ -34,8 +35,11 @@ export async function capture(root: string, input: CaptureInput): Promise<RawEve
   const turn = assertSafeId(input.turnId, "turn id");
   const config = await initVault(root);
   if (config.paused) return undefined;
+  const detected = classifySensitivity(input.content);
+  const sensitivity = strongerSensitivity(input.sensitivity ?? "normal", detected.level);
+  const storedContent = detected.level === "secret" ? redactSecrets(input.content) : input.content;
   const p = vaultPaths(root);
-  const contentHash = createHash("sha256").update(input.content).digest("hex");
+  const contentHash = createHash("sha256").update(storedContent).digest("hex");
   const dedupe = createHash("sha256").update(`${project}\0${session}\0${turn}\0${input.role}\0${contentHash}`).digest("hex").slice(0, 24);
   const eventId = `evt_${dedupe}`;
   const rawFile = path.join(p.raw, project, session, `${eventId}.json`);
@@ -49,9 +53,9 @@ export async function capture(root: string, input: CaptureInput): Promise<RawEve
     const timestamp = input.timestamp ?? new Date().toISOString();
     const event: RawEvent = {
       schema_version: 1, event_id: eventId, session_id: session, project_id: project, seq_id: current + 1, turn_id: turn,
-      role: input.role, timestamp, source_agent: input.sourceAgent, source_model: input.sourceModel, content: input.content,
+      role: input.role, timestamp, source_agent: input.sourceAgent, source_model: input.sourceModel, content: storedContent,
       content_hash: contentHash, savepoint_status: input.savepointStatus ?? "complete", capture_status: "captured",
-      sensitivity: input.sensitivity ?? "normal", raw_ref: path.relative(p.root, rawFile)
+      sensitivity, raw_ref: path.relative(p.root, rawFile)
     };
     const queueItem: QueueItem = {
       schema_version: 1, task_id: `task_${randomUUID()}`, event_id: eventId, project_id: project,
@@ -68,4 +72,9 @@ export async function capture(root: string, input: CaptureInput): Promise<RawEve
     await completePending(pendingFile);
     return event;
   });
+}
+
+function strongerSensitivity(left: "normal" | "sensitive" | "secret", right: "normal" | "sensitive" | "secret"): "normal" | "sensitive" | "secret" {
+  const levels = ["normal", "sensitive", "secret"] as const;
+  return levels[Math.max(levels.indexOf(left), levels.indexOf(right))]!;
 }

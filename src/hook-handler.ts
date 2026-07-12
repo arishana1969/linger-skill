@@ -3,7 +3,7 @@ import { capture } from "./capture.js";
 import { recoverPending } from "./pending.js";
 import { processingDecision, recordProcessingRun } from "./processing-policy.js";
 import { processQueue } from "./processing.js";
-import { classifySensitivity, redactSecrets } from "./sensitivity.js";
+import { classifySensitivity } from "./sensitivity.js";
 import { projectId } from "./vault.js";
 
 export interface HookInput {
@@ -42,13 +42,12 @@ export async function handleHook(root: string, input: HookInput, sourceAgent: "c
   if (isUser && /(?:不要记|不要保存|don't save|do not save)/i.test(content)) return { skipped: "user_opt_out", output: {} };
   const explicit = isUser && /(?:记一下|记住|保存这个|remember this)/i.test(content);
   const sensitivity = classifySensitivity(content);
-  const storedContent = sensitivity.level === "secret" ? redactSecrets(content) : content;
   const event = await capture(root, {
     projectId: project,
     sessionId: safeId(input.session_id ?? "unknown-session"),
     turnId: safeId(input.turn_id ?? input.prompt_id ?? `${eventName}-${Date.now()}`),
     role: isUser ? "user" : "assistant",
-    content: storedContent,
+    content,
     sourceAgent,
     sourceModel: input.model,
     savepointStatus: isPartial ? "partial" : isUser ? "pending" : "complete",
