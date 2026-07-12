@@ -27,7 +27,7 @@ git diff --check
 git status --short
 ```
 
-Expected result: all tests and validators pass, all deterministic evaluation gates report macro composite `1.0`, the packed-package smoke test succeeds, and the worktree is clean. The generated scores are regression baselines, not general-quality claims.
+Expected result: all tests and validators pass, all deterministic evaluation gates report macro composite `1.0`, the packed-package smoke test reports package-manager installation plus capture-to-recall and Vault preservation, and the worktree is clean. The generated scores are regression baselines, not general-quality claims.
 
 ## Host smoke gate
 

@@ -21,7 +21,7 @@ try {
   const packageRoot = path.join(extract, "package");
   const required = [
     "README.md", "PRIVACY.md", "SECURITY.md", "DATA_MODEL.md", "ADAPTER_SPEC.md", "AGENT_COMPATIBILITY.md", "HOST_VALIDATION.md", "RELEASE_CHECKLIST.md",
-    "dist/cli.js", "dist/hook-cli.js", "skills/continuity/SKILL.md", "skills/continuity/agents/openai.yaml"
+    "dist/cli.js", "dist/eval-cli.js", "dist/hook-cli.js", "skills/continuity/SKILL.md", "skills/continuity/agents/openai.yaml", "skills/continuity/references/protocol.md"
   ];
   for (const file of required) await access(path.join(packageRoot, file));
   const packedManifest = JSON.parse(await readFile(path.join(packageRoot, "package.json"), "utf8"));
@@ -38,9 +38,15 @@ try {
   if (!installed.privacy_notice || installed.capabilities.length !== 2) throw new Error("packed installer omitted privacy notice or capability report");
   const capabilities = JSON.parse((await exec(cli, ["capabilities", "--home", home], { cwd: consumer })).stdout);
   if (capabilities[0]?.level !== 2 || capabilities[1]?.level !== 1) throw new Error("packed capability report did not preserve Claude L2 and trust-gated Codex L1");
+  const vault = path.join(home, ".continuity", "vault");
+  await exec(cli, ["capture", "--vault", vault, "--project", "p_consumer", "--session", "s", "--turn", "t", "--role", "user", "--content", "package-consumer-zephyr durable decision", "--explicit"], { cwd: consumer });
+  await exec(cli, ["process", "--vault", vault, "--project", "p_consumer"], { cwd: consumer });
+  const recalled = JSON.parse((await exec(cli, ["recall", "--vault", vault, "--project", "p_consumer", "--query", "package-consumer-zephyr"], { cwd: consumer })).stdout);
+  if (recalled.hits?.length !== 1 || !recalled.hits[0]?.snippet?.includes("durable decision")) throw new Error("packed consumer failed capture-to-recall smoke");
   const uninstalled = JSON.parse((await exec(cli, ["uninstall", "--home", home, "--yes"], { cwd: consumer })).stdout);
   if (uninstalled.vault_preserved !== true) throw new Error("packed uninstall did not preserve the Vault contract");
-  console.log(JSON.stringify({ ok: true, tarball: path.basename(tarball), package_manager_install: true, required_files: required.length, forbidden_files: forbidden.length, capabilities: capabilities.map((item) => ({ adapter: item.adapter, level: item.level })) }, null, 2));
+  await access(vault);
+  console.log(JSON.stringify({ ok: true, tarball: path.basename(tarball), package_manager_install: true, capture_to_recall: true, vault_preserved: true, required_files: required.length, forbidden_files: forbidden.length, capabilities: capabilities.map((item) => ({ adapter: item.adapter, level: item.level })) }, null, 2));
 } finally {
   await rm(temporary, { recursive: true, force: true });
 }

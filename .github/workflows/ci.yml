@@ -29,6 +29,8 @@ jobs:
         run: pnpm eval:year
       - if: matrix.node == 24
         run: pnpm eval:adversarial
+      - if: matrix.node == 24
+        run: pnpm eval:heldout
 
   artifact-validation:
     runs-on: ubuntu-latest

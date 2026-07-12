@@ -18,7 +18,7 @@ It is not yet a public release candidate. The remaining release blockers are mai
 
 | PRD P0 requirement | Status | Repository evidence / remaining gap |
 | --- | --- | --- |
-| npx installer | External release step | CI installs the exact tarball into an offline temporary consumer through pnpm, then runs the generated bin shim through install/capabilities/uninstall; required documents and forbidden development-data exclusions are asserted. npm publication and public clean-machine `npx -y continuity-skill install` remain external. |
+| npx installer | External release step | CI installs the exact tarball into an offline temporary consumer through pnpm, then runs the generated bin shim through install, capabilities, capture→process→recall, uninstall, and Vault-preservation checks; required documents and forbidden development-data exclusions are asserted. npm publication and public clean-machine `npx -y continuity-skill install` remain external. |
 | Vault initialization and helper CLI | Complete | `initVault`, safe project IDs, CLI commands, atomic I/O, and path-bound destructive operations are tested. |
 | Claude Code adapter | Partial | Claude Code `2.1.207` live-smoke confirms SessionStart, UserPromptSubmit, Stop, and StopFailure API-error marking. User/assistant complete payloads retain real session/turn IDs. On stream error, StopFailure stored Claude's synthetic API error as partial; Ctrl-C did not preserve the streamed assistant fragment. |
 | Codex adapter | Needs host validation | Codex `0.144.0-alpha.4` app-server `hooks/list` accepts all three generated hooks with no parse warnings/errors and reports them untrusted. Trust UX, command execution, and live lifecycle payload capture remain unverified. |
@@ -55,7 +55,7 @@ It is not yet a public release candidate. The remaining release blockers are mai
 ### Installation and lifecycle
 
 - Idempotent managed Skill copy, backup of unmanaged Skill directories, hook merge, stable versioned runtime, capability reporting, uninstall preservation, and double-confirmed purge are automated tests.
-- The exact packed tarball is installed offline into a temporary package-manager consumer, then its generated bin shim runs install, capability reporting, and uninstall after separation from the source tree. Required package documents/runtime files and forbidden development-data exclusions are asserted.
+- The exact packed tarball is installed offline into a temporary package-manager consumer, then its generated bin shim runs install, capability reporting, capture→process→recall, uninstall, and Vault-preservation checks after separation from the source tree. Required package documents/runtime files and forbidden development-data exclusions are asserted.
 - Remaining proof: published package, public clean-machine npx path, and Codex trusted live execution. Claude Code Ctrl-C partial loss is an observed, documented host degradation rather than an inferred capability.
 
 ### Capture, processing, and recovery
