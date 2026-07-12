@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { atomicJson, ensureDir, readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
 import { assertProjectRecord, assertQueueItem } from "./schema-validation.js";
-import { assertQueueRecordPath } from "./record-paths.js";
+import { assertProjectRecordPath, assertQueueRecordPath } from "./record-paths.js";
 
 export interface VaultConfig {
   schema_version: 1;
@@ -77,18 +77,20 @@ export async function projectId(cwd: string): Promise<string> {
 
 export async function registerProject(root: string, cwd: string): Promise<ProjectRecord> {
   const identity = await projectIdentity(cwd);
-  const file = path.join(vaultPaths(root).projects, `${identity.project_id}.json`);
+  const p = vaultPaths(root);
+  const file = path.join(p.projects, `${identity.project_id}.json`);
   const now = new Date().toISOString();
   let createdAt = now;
-  try { const existing = await readJson<unknown>(file); assertProjectRecord(existing); createdAt = existing.created_at; } catch { }
+  try { const existing = await readJson<unknown>(file); assertProjectRecord(existing); assertProjectRecordPath(p, file, existing); createdAt = existing.created_at; } catch { }
   const record: ProjectRecord = { schema_version: 1, ...identity, created_at: createdAt, last_seen: now };
   await atomicJson(file, record);
   return record;
 }
 
 export async function listProjects(root: string): Promise<ProjectRecord[]> {
-  return (await Promise.all((await listJsonFiles(vaultPaths(root).projects)).map(async file => {
-    try { const value = await readJson<unknown>(file); assertProjectRecord(value); return value; } catch { return undefined; }
+  const p = vaultPaths(root);
+  return (await Promise.all((await listJsonFiles(p.projects)).map(async file => {
+    try { const value = await readJson<unknown>(file); assertProjectRecord(value); assertProjectRecordPath(p, file, value); return value; } catch { return undefined; }
   }))).filter((record): record is ProjectRecord => Boolean(record)).sort((a, b) => b.last_seen.localeCompare(a.last_seen) || a.project_id.localeCompare(b.project_id));
 }
 

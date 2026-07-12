@@ -3,7 +3,7 @@ import path from "node:path";
 import { readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
 import { assertDecisionEvent, assertDecisionView, assertMemoryControlEvent, assertPendingCapture, assertProcessedMemory, assertProjectRecord, assertQueueItem, assertRawEvent, assertTagRegistry, assertTermRelation } from "./schema-validation.js";
-import { assertProcessedRecordPath, assertQueueRecordPath, assertRawRecordPath } from "./record-paths.js";
+import { assertDecisionEventPath, assertDecisionViewPath, assertMemoryControlPath, assertPendingRecordPath, assertProcessedRecordPath, assertProjectRecordPath, assertQueueRecordPath, assertRawRecordPath, assertTagRegistryPath, assertTermRelationPath } from "./record-paths.js";
 import { initVault, listJsonFiles } from "./vault.js";
 
 export interface DoctorReport { ok: boolean; errors: string[]; warnings: string[]; }
@@ -38,28 +38,28 @@ export async function doctor(root: string): Promise<DoctorReport> {
   for (const file of await listJsonFiles(p.decisions)) {
     try {
       const value = await readJson<unknown>(file);
-      if (path.basename(file) === "current.json") assertDecisionView(value);
-      else assertDecisionEvent(value);
+      if (path.basename(file) === "current.json") { assertDecisionView(value); assertDecisionViewPath(p, file, value); }
+      else { assertDecisionEvent(value); assertDecisionEventPath(p, file, value); }
     } catch { report.errors.push(`invalid_decision:${path.relative(p.root, file)}`); }
   }
   for (const file of await listJsonFiles(path.join(p.registry, "tags"))) {
-    try { const value = await readJson<unknown>(file); assertTagRegistry(value); }
+    try { const value = await readJson<unknown>(file); assertTagRegistry(value); assertTagRegistryPath(p, file, value); }
     catch { report.errors.push(`invalid_tag_registry:${path.relative(p.root, file)}`); }
   }
   for (const file of await listJsonFiles(path.join(p.registry, "memory-events"))) {
-    try { const value = await readJson<unknown>(file); assertMemoryControlEvent(value); }
+    try { const value = await readJson<unknown>(file); assertMemoryControlEvent(value); assertMemoryControlPath(p, file, value); }
     catch { report.errors.push(`invalid_memory_control:${path.relative(p.root, file)}`); }
   }
   for (const file of await listJsonFiles(path.join(p.registry, "term-graph"))) {
-    try { const value = await readJson<unknown>(file); assertTermRelation(value); }
+    try { const value = await readJson<unknown>(file); assertTermRelation(value); assertTermRelationPath(p, file, value); }
     catch { report.errors.push(`invalid_term_relation:${path.relative(p.root, file)}`); }
   }
   for (const file of await listJsonFiles(p.projects)) {
-    try { const value = await readJson<unknown>(file); assertProjectRecord(value); }
+    try { const value = await readJson<unknown>(file); assertProjectRecord(value); assertProjectRecordPath(p, file, value); }
     catch { report.errors.push(`invalid_project_record:${path.relative(p.root, file)}`); }
   }
   for (const file of await listJsonFiles(path.join(p.tmp, "pending"))) {
-    try { const pending = await readJson<unknown>(file); assertPendingCapture(pending); report.warnings.push(`pending_capture:${pending.pending_id}`); }
+    try { const pending = await readJson<unknown>(file); assertPendingCapture(pending); assertPendingRecordPath(p, file, pending); report.warnings.push(`pending_capture:${pending.pending_id}`); }
     catch { report.errors.push(`invalid_pending:${path.relative(p.root, file)}`); }
   }
   let backlog = 0;

@@ -3,6 +3,7 @@ import path from "node:path";
 import { atomicJson, readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
 import { assertPendingCapture } from "./schema-validation.js";
+import { assertPendingRecordPath } from "./record-paths.js";
 import { listJsonFiles } from "./vault.js";
 import type { QueueItem, RawEvent } from "./types.js";
 
@@ -40,6 +41,7 @@ export async function recoverPending(root: string): Promise<{ recovered: number;
     try {
       const pending = await readJson<unknown>(file);
       assertPendingCapture(pending);
+      assertPendingRecordPath(p, file, pending);
       assertPendingDestinations(p, pending);
       if (pending.sequence_file) {
         let current = 0;

@@ -3,7 +3,7 @@ import { atomicJson, readJson } from "./io.js";
 import { effectiveMemoryStates } from "./memory-events.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { assertProcessedMemory, assertTagRegistry } from "./schema-validation.js";
-import { assertProcessedRecordPath } from "./record-paths.js";
+import { assertProcessedRecordPath, assertTagRegistryPath } from "./record-paths.js";
 import { listJsonFiles } from "./vault.js";
 
 export interface TagRegistryEntry {
@@ -60,7 +60,9 @@ export async function rebuildTagRegistry(root: string, projectId: string): Promi
 }
 
 export async function readTagRegistry(root: string, projectId: string): Promise<TagRegistry | undefined> {
-  try { const value = await readJson<unknown>(path.join(vaultPaths(root).registry, "tags", `${assertSafeId(projectId, "project id")}.json`)); assertTagRegistry(value); return value; }
+  const p = vaultPaths(root);
+  const file = path.join(p.registry, "tags", `${assertSafeId(projectId, "project id")}.json`);
+  try { const value = await readJson<unknown>(file); assertTagRegistry(value); assertTagRegistryPath(p, file, value); return value; }
   catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; }
 }
 

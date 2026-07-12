@@ -4,6 +4,7 @@ import { atomicJson, readJson, withFileLock } from "./io.js";
 import { writeProcessedMarkdown } from "./processed-markdown.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { assertMemoryControlEvent } from "./schema-validation.js";
+import { assertMemoryControlPath } from "./record-paths.js";
 import { listJsonFiles } from "./vault.js";
 import type { ProcessedMemory } from "./types.js";
 
@@ -53,9 +54,10 @@ export async function appendMemoryControl(root: string, input: Omit<MemoryContro
 
 export async function effectiveMemoryStates(root: string, projectId: string): Promise<Map<string, EffectiveMemoryState>> {
   const project = assertSafeId(projectId, "project id");
-  const files = await listJsonFiles(path.join(vaultPaths(root).registry, "memory-events", project));
+  const p = vaultPaths(root);
+  const files = await listJsonFiles(path.join(p.registry, "memory-events", project));
   const events = (await Promise.all(files.map(async file => {
-    try { const value = await readJson<unknown>(file); assertMemoryControlEvent(value); return value; } catch { return undefined; }
+    try { const value = await readJson<unknown>(file); assertMemoryControlEvent(value); assertMemoryControlPath(p, file, value); return value; } catch { return undefined; }
   }))).filter((event): event is MemoryControlEvent => Boolean(event)).sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.event_id.localeCompare(b.event_id));
   const states = new Map<string, EffectiveMemoryState>();
   for (const event of events) {

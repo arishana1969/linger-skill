@@ -4,6 +4,7 @@ import { atomicJson, readJson } from "./io.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { assertQueueRecordPath, assertRawRecordPath } from "./record-paths.js";
 import { assertQueueItem, assertRawEvent } from "./schema-validation.js";
+import type { QueueItem } from "./types.js";
 import { listJsonFiles } from "./vault.js";
 
 export interface ProcessingPolicy {

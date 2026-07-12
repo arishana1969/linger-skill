@@ -3,14 +3,16 @@ import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { appendDecision } from "./decisions.js";
+import { appendDecision, listDecisionViews } from "./decisions.js";
 import { capture } from "./capture.js";
 import { doctor } from "./doctor.js";
+import { appendMemoryControl, effectiveMemoryStates } from "./memory-events.js";
 import { vaultPaths } from "./paths.js";
 import { processQueue } from "./processing.js";
 import { processingDecision, recordProcessingRun } from "./processing-policy.js";
 import { quarantineInvalidFiles } from "./repair.js";
 import { search } from "./search.js";
+import { addTermRelation, expandTerms } from "./term-graph.js";
 
 test("filesystem-routing entry points reject unsafe project IDs", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
@@ -75,4 +77,34 @@ test("timestamps that could alter a decision filename are rejected before persis
     projectId: "p", topic: "runtime", kind: "decision", status: "current", statement: "Use Node", source: "user_explicit", confidence: 1,
     evidenceRefs: ["evt_visible"], timestamp: "2026-01-01T00:00:00.000Z/../../escape"
   }), /Invalid decision event timestamp/);
+});
+
+test("misplaced derived records cannot cross project scope and are repairable", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
+  const p = vaultPaths(root);
+  const decision = await appendDecision(root, {
+    projectId: "p_beta", topic: "runtime", kind: "decision", status: "current", statement: "Use Beta runtime", source: "user_explicit", confidence: 1,
+    evidenceRefs: ["evt_beta"]
+  });
+  const control = await appendMemoryControl(root, { kind: "forget", project_id: "p_beta", target_memory_id: "mem_beta", evidence_refs: [] });
+  const relation = await addTermRelation(root, { project_id: "p_beta", term_a: "db", term_b: "database", relation_type: "abbreviation", confidence: 0.9, context_tags: [], evidence_refs: ["evt_beta"] });
+
+  const wrongDecision = path.join(p.decisions, "p_alpha", decision.event.canonical_id);
+  const wrongEvent = path.join(wrongDecision, "events", `${decision.event.timestamp.replaceAll(":", "-")}-${decision.event.event_id}.json`);
+  const wrongView = path.join(wrongDecision, "current.json");
+  const wrongControl = path.join(p.registry, "memory-events", "p_alpha", `${control.timestamp.replaceAll(":", "-")}-${control.event_id}.json`);
+  const wrongRelation = path.join(p.registry, "term-graph", "p_alpha", `${relation.relation_id}.json`);
+  for (const [file, value] of [[wrongEvent, decision.event], [wrongView, decision.view], [wrongControl, control], [wrongRelation, relation]] as const) {
+    await mkdir(path.dirname(file), { recursive: true });
+    await writeFile(file, JSON.stringify(value));
+  }
+
+  assert.deepEqual(await listDecisionViews(root, "p_alpha"), []);
+  assert.equal((await effectiveMemoryStates(root, "p_alpha")).size, 0);
+  assert.equal((await expandTerms(root, "p_alpha", ["db"])).size, 0);
+  const before = await doctor(root);
+  assert.equal(before.errors.filter(error => /invalid_(decision|memory_control|term_relation):/.test(error)).length, 4);
+  const repaired = await quarantineInvalidFiles(root);
+  assert.equal(repaired.quarantined.length, 4);
+  assert.equal((await doctor(root)).ok, true);
 });
