@@ -4,13 +4,24 @@
   "description": "File-native conversation archive and decision trail continuity for coding agents.",
   "type": "module",
   "bin": { "continuity": "dist/cli.js", "continuity-eval": "dist/eval-cli.js" },
-  "files": ["dist", "!dist/*.test.*", "skills", "templates"],
+  "files": [
+    "dist",
+    "!dist/*.test.*",
+    "skills",
+    "README.md",
+    "PRIVACY.md",
+    "SECURITY.md",
+    "DATA_MODEL.md",
+    "ADAPTER_SPEC.md",
+    "AGENT_COMPATIBILITY.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "pnpm run build && node --test dist/*.test.js",
     "eval:year": "node dist/eval-cli.js generate --output eval-data && node dist/eval-cli.js run --fixture eval-data/fixtures/continuity-year-2025.json --oracle eval-data/oracle/continuity-year-2025.oracle.json",
-    "eval:adversarial": "node dist/eval-cli.js adversarial"
+    "eval:adversarial": "node dist/eval-cli.js adversarial",
+    "verify:package": "node scripts/package-smoke.mjs"
   },
   "engines": { "node": ">=20" },
   "devDependencies": {

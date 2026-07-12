@@ -48,4 +48,4 @@ jobs:
       - run: pip install PyYAML
       - run: pnpm build
       - run: python scripts/validate-skill.py skills/continuity
-      - run: pnpm pack --dry-run
+      - run: pnpm verify:package
