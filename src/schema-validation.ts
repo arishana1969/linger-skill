@@ -1,4 +1,5 @@
 import type { PendingCapture } from "./pending.js";
+import type { DecisionEvent, DecisionView } from "./decisions.js";
 import type { ProcessedMemory, QueueItem, RawEvent } from "./types.js";
 
 const ROLES = new Set(["user", "assistant", "system"]);
@@ -9,6 +10,9 @@ const MEMORY_SOURCES = new Set(["user_explicit", "agent_inferred"]);
 const MEMORY_STATUSES = new Set(["active", "revoked", "superseded"]);
 const QUEUE_PRIORITIES = new Set(["normal", "explicit"]);
 const QUEUE_STATUSES = new Set(["pending", "processing", "failed", "done"]);
+const DECISION_KINDS = new Set(["idea", "preference", "proposal", "rationale", "constraint", "rejection", "decision", "current_state", "todo", "correction"]);
+const DECISION_STATUSES = new Set(["proposed", "accepted", "rejected", "superseded", "reopened", "current", "unknown"]);
+const DECISION_SOURCES = new Set(["user_explicit", "agent_inferred"]);
 
 export function assertRawEvent(value: unknown): asserts value is RawEvent {
   const item = record(value, "raw event");
@@ -54,6 +58,29 @@ export function assertPendingCapture(value: unknown): asserts value is PendingCa
   if (item.sequence_value !== undefined && (!Number.isInteger(item.sequence_value) || Number(item.sequence_value) < 0)) invalid("pending capture sequence_value");
   assertRawEvent(item.event);
   assertQueueItem(item.queue_item);
+}
+
+export function assertDecisionEvent(value: unknown): asserts value is DecisionEvent {
+  const item = record(value, "decision event");
+  schemaOne(item, "decision event");
+  strings(item, ["event_id", "canonical_id", "project_id", "topic", "statement", "timestamp"], "decision event");
+  stringArrays(item, ["aliases", "evidence_refs", "supersedes"], "decision event");
+  enumeration(item.kind, DECISION_KINDS, "decision event kind");
+  enumeration(item.status, DECISION_STATUSES, "decision event status");
+  enumeration(item.source, DECISION_SOURCES, "decision event source");
+  if (typeof item.confidence !== "number" || item.confidence < 0 || item.confidence > 1) invalid("decision event confidence");
+  if (item.rationale !== undefined && typeof item.rationale !== "string") invalid("decision event rationale");
+}
+
+export function assertDecisionView(value: unknown): asserts value is DecisionView {
+  const item = record(value, "decision view");
+  schemaOne(item, "decision view");
+  strings(item, ["canonical_id", "project_id", "topic", "updated_at"], "decision view");
+  stringArrays(item, ["aliases", "event_ids", "source_events", "conflicts"], "decision view");
+  enumeration(item.current_status, DECISION_STATUSES, "decision view current_status");
+  if (typeof item.confidence !== "number" || item.confidence < 0 || item.confidence > 1) invalid("decision view confidence");
+  for (const field of ["current_event_id", "current_state"] as const) if (item[field] !== undefined && typeof item[field] !== "string") invalid(`decision view ${field}`);
+  if (item.current_evidence_refs !== undefined && (!Array.isArray(item.current_evidence_refs) || !item.current_evidence_refs.every(value => typeof value === "string"))) invalid("decision view current_evidence_refs");
 }
 
 function record(value: unknown, label: string): Record<string, unknown> {

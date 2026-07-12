@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import { atomicJson, readJson, withFileLock } from "./io.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
+import { assertDecisionEvent, assertDecisionView } from "./schema-validation.js";
 import { listJsonFiles } from "./vault.js";
 
 export type DecisionKind = "idea" | "preference" | "proposal" | "rationale" | "constraint" | "rejection" | "decision" | "current_state" | "todo" | "correction";
@@ -97,7 +98,9 @@ export async function rebuildDecisionView(root: string, projectId: string, canon
   const p = vaultPaths(root);
   const topicDir = path.join(p.decisions, assertSafeId(projectId, "project id"), assertSafeId(canonicalId, "decision id"));
   const files = await listJsonFiles(path.join(topicDir, "events"));
-  const events = (await Promise.all(files.map(readJson<DecisionEvent>))).sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.event_id.localeCompare(b.event_id));
+  const events = (await Promise.all(files.map(async file => {
+    try { const value = await readJson<unknown>(file); assertDecisionEvent(value); return value; } catch { return undefined; }
+  }))).filter((event): event is DecisionEvent => Boolean(event)).sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.event_id.localeCompare(b.event_id));
   if (!events.length) throw new Error(`No decision events for ${canonicalId}`);
   const superseded = new Set(events.flatMap(event => event.supersedes));
   const eligible = events.filter(event => !superseded.has(event.event_id) && canSetCurrent(event));
@@ -131,8 +134,11 @@ export async function getDecisionTrail(root: string, projectId: string, topic: s
   const id = canonicalDecisionId(project, topic);
   const topicDir = path.join(vaultPaths(root).decisions, project, id);
   try {
-    const view = await readJson<DecisionView>(path.join(topicDir, "current.json"));
-    const events = (await Promise.all((await listJsonFiles(path.join(topicDir, "events"))).map(readJson<DecisionEvent>))).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    const view = await readJson<unknown>(path.join(topicDir, "current.json"));
+    assertDecisionView(view);
+    const events = (await Promise.all((await listJsonFiles(path.join(topicDir, "events"))).map(async file => {
+      try { const value = await readJson<unknown>(file); assertDecisionEvent(value); return value; } catch { return undefined; }
+    }))).filter((event): event is DecisionEvent => Boolean(event)).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
     return { view, events };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
@@ -143,7 +149,9 @@ export async function getDecisionTrail(root: string, projectId: string, topic: s
 export async function listDecisionViews(root: string, projectId: string): Promise<DecisionView[]> {
   const base = path.join(vaultPaths(root).decisions, assertSafeId(projectId, "project id"));
   const files = (await listJsonFiles(base)).filter(file => path.basename(file) === "current.json");
-  return await Promise.all(files.map(readJson<DecisionView>));
+  return (await Promise.all(files.map(async file => {
+    try { const value = await readJson<unknown>(file); assertDecisionView(value); return value; } catch { return undefined; }
+  }))).filter((view): view is DecisionView => Boolean(view));
 }
 
 function canonicalDecisionId(projectId: string, topic: string): string {
