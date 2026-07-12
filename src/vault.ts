@@ -18,17 +18,8 @@ export interface VaultConfig {
   created_at: string;
 }
 
-export async function initVault(root: string): Promise<VaultConfig> {
-  const p = vaultPaths(root);
-  await Promise.all([
-    p.projects, p.raw, p.processed, p.queue, p.tmp, p.registry, p.decisions, p.quarantine
-  ].map(ensureDir));
-  try {
-    return await readJson<VaultConfig>(p.config);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-  }
-  const config: VaultConfig = {
+function defaultConfig(createdAt = new Date().toISOString()): VaultConfig {
+  return {
     schema_version: 1,
     paused: false,
     project_only_recall: true,
@@ -38,8 +29,25 @@ export async function initVault(root: string): Promise<VaultConfig> {
     max_files: 5000,
     max_raw_fragment_characters: 500,
     search_timeout_ms: 2000,
-    created_at: new Date().toISOString()
+    created_at: createdAt
   };
+}
+
+export async function initVault(root: string): Promise<VaultConfig> {
+  const p = vaultPaths(root);
+  await Promise.all([
+    p.projects, p.raw, p.processed, p.queue, p.tmp, p.registry, p.decisions, p.quarantine
+  ].map(ensureDir));
+  try {
+    const existing = await readJson<Partial<VaultConfig> & Record<string, unknown>>(p.config);
+    if (existing.schema_version !== 1) throw new Error(`Unsupported vault config schema: ${String(existing.schema_version)}`);
+    const next = { ...defaultConfig(typeof existing.created_at === "string" ? existing.created_at : undefined), ...existing } as VaultConfig;
+    if (JSON.stringify(existing) !== JSON.stringify(next)) await atomicJson(p.config, next);
+    return next;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  const config = defaultConfig();
   await atomicJson(p.config, config);
   return config;
 }
