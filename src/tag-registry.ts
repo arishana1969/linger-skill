@@ -3,6 +3,7 @@ import { atomicJson, readJson } from "./io.js";
 import { effectiveMemoryStates } from "./memory-events.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { assertProcessedMemory, assertTagRegistry } from "./schema-validation.js";
+import { assertProcessedRecordPath } from "./record-paths.js";
 import { listJsonFiles } from "./vault.js";
 
 export interface TagRegistryEntry {
@@ -35,6 +36,7 @@ export async function rebuildTagRegistry(root: string, projectId: string): Promi
     try {
       const memory = await readJson<unknown>(file);
       assertProcessedMemory(memory);
+      assertProcessedRecordPath(p, file, memory);
       if (memory.status !== "active" || states.has(memory.id)) continue;
       for (const raw of [...new Set([...memory.tags, ...memory.predictive_tags])]) {
         const normalized = normalizeTag(raw);

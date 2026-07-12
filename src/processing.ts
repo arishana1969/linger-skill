@@ -5,8 +5,9 @@ import { appendDecision, getDecisionTrail } from "./decisions.js";
 import { atomicJson, readJson, withFileLock } from "./io.js";
 import { writeProcessedMarkdown } from "./processed-markdown.js";
 import { DEFAULT_MIN_CONTENT_CHARACTERS } from "./processing-policy.js";
-import { vaultPaths } from "./paths.js";
+import { assertSafeId, vaultPaths } from "./paths.js";
 import { assertQueueItem, assertRawEvent } from "./schema-validation.js";
+import { assertQueueRecordPath, assertRawRecordPath } from "./record-paths.js";
 import { rebuildTagRegistry } from "./tag-registry.js";
 import { listJsonFiles } from "./vault.js";
 import type { ProcessedMemory, QueueItem, RawEvent } from "./types.js";
@@ -15,12 +16,13 @@ const STOP = new Set(["the", "and", "for", "that", "this", "with", "have", "from
 
 export async function processQueue(root: string, projectId?: string, maxItems = Number.POSITIVE_INFINITY, maxEstimatedTokens = Number.POSITIVE_INFINITY): Promise<{ processed: number; failed: number }> {
   if (!(maxEstimatedTokens > 0)) throw new Error("maxEstimatedTokens must be greater than zero");
+  if (projectId) assertSafeId(projectId, "project id");
   const p = vaultPaths(root);
   return await withFileLock(path.join(p.tmp, "processor.lock"), async () => {
     const queueFiles = (await listJsonFiles(p.queue)).filter((file) => !projectId || file.includes(`${path.sep}${projectId}${path.sep}`));
     const items: Array<{ file: string; item: QueueItem }> = [];
     for (const file of queueFiles) {
-      try { const item = await readJson<unknown>(file); assertQueueItem(item); items.push({ file, item }); } catch { continue; }
+      try { const item = await readJson<unknown>(file); assertQueueItem(item); assertQueueRecordPath(p, file, item); items.push({ file, item }); } catch { continue; }
     }
     items.sort((a, b) => Number(b.item.priority === "explicit") - Number(a.item.priority === "explicit") || a.item.created_at.localeCompare(b.item.created_at));
     let processed = 0;
@@ -38,6 +40,7 @@ export async function processQueue(root: string, projectId?: string, maxItems = 
             try {
               const candidate = await readJson<unknown>(file);
               assertRawEvent(candidate);
+              assertRawRecordPath(p, file, candidate);
               rawEvents.set(candidate.event_id, candidate);
             } catch { continue; }
           }

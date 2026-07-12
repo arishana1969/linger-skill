@@ -8,6 +8,8 @@ The local `0.0.x` slice implements a file-native capture-to-recall loop, destruc
 
 Raw events, processed memories, and decision events are source records. Queue, derived decision views, registries, and processing-run histories are operational or rebuildable state. Mutations use a temporary sibling file followed by atomic rename.
 
+Persisted records cross a validation boundary before they can route filesystem work or enter recall. Path-bearing identifiers use a restricted ID alphabet, timestamps must be ISO date-times, and raw/queue/processed records must live at the canonical path implied by their own identity. Pending recovery is stricter: its raw, queue, optional sequence, and raw-reference destinations must exactly match paths derived from the validated event and queue item, so a compromised pending record cannot overwrite another Vault file.
+
 ## Processing boundary
 
 The deterministic worker provides a local baseline for summaries, content/predictive tags, retrieval phrases, decision extraction, correction linking, and registry updates. These outputs are deliberately lexical and heuristic. Richer host-agent processing and decision-topic merging are future improvements and must preserve the same evidence and validation boundaries.

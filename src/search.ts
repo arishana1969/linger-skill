@@ -2,9 +2,10 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { readJson } from "./io.js";
 import { effectiveMemoryStates } from "./memory-events.js";
-import { vaultPaths } from "./paths.js";
+import { assertSafeId, vaultPaths } from "./paths.js";
 import { expandTerms } from "./term-graph.js";
 import { assertProcessedMemory, assertRawEvent } from "./schema-validation.js";
+import { assertProcessedRecordPath, assertRawRecordPath } from "./record-paths.js";
 import type { ProcessedMemory, RawEvent, SearchHit } from "./types.js";
 import { initVault, listJsonFiles } from "./vault.js";
 
@@ -25,6 +26,7 @@ export interface SearchOptions {
 }
 
 export async function search(root: string, options: SearchOptions): Promise<SearchHit[]> {
+  const project = assertSafeId(options.projectId, "project id");
   const config = await initVault(root);
   const timeoutMs = nonNegativeInteger(options.timeoutMs ?? config.search_timeout_ms ?? 2000, "timeoutMs");
   const deadline = Date.now() + timeoutMs;
@@ -37,21 +39,21 @@ export async function search(root: string, options: SearchOptions): Promise<Sear
   const maxRawFragmentCharacters = positiveInteger(options.maxRawFragmentCharacters ?? config.max_raw_fragment_characters ?? 500, "maxRawFragmentCharacters");
   const originalTokens = tokenize(options.query).filter(token => !QUERY_STOP.has(token));
   if (!originalTokens.length) return [];
-  const expansions = await within(expandTerms(root, options.projectId, lexicalTerms(options.query), options.contextTags), deadline);
+  const expansions = await within(expandTerms(root, project, lexicalTerms(options.query), options.contextTags), deadline);
   const weights = new Map<string, number>(originalTokens.map(token => [token, 1]));
   for (const [term, confidence] of expansions) for (const token of tokenize(term)) weights.set(token, Math.max(weights.get(token) ?? 0, confidence * 0.75));
   const searchTokens = [...weights.keys()];
-  const files = (await within(listJsonFiles(path.join(p.processed, options.projectId)), deadline)).slice(0, maxFiles);
+  const files = (await within(listJsonFiles(path.join(p.processed, project)), deadline)).slice(0, maxFiles);
   const memories = (await within(Promise.all(files.map(async file => {
-    try { const value = await readJson<unknown>(file); assertProcessedMemory(value); return value; } catch { return undefined; }
+    try { const value = await readJson<unknown>(file); assertProcessedMemory(value); assertProcessedRecordPath(p, file, value); return value; } catch { return undefined; }
   })), deadline)).filter((memory): memory is ProcessedMemory => Boolean(memory));
-  const rawFiles = (await within(listJsonFiles(path.join(p.raw, options.projectId)), deadline)).slice(0, maxFiles);
+  const rawFiles = (await within(listJsonFiles(path.join(p.raw, project)), deadline)).slice(0, maxFiles);
   const rawEvents = (await within(Promise.all(rawFiles.map(async file => {
-    try { const value = await readJson<unknown>(file); assertRawEvent(value); return value; } catch { return undefined; }
+    try { const value = await readJson<unknown>(file); assertRawEvent(value); assertRawRecordPath(p, file, value); return value; } catch { return undefined; }
   })), deadline)).filter((event): event is RawEvent => Boolean(event));
   const rawHashes = new Map(rawEvents.map(event => [event.event_id, { declared: event.content_hash, computed: createHash("sha256").update(event.content).digest("hex") }]));
   const integrity = new Map(memories.map(memory => [memory.id, sourceIntegrity(memory, rawHashes)]));
-  const controlStates = await within(effectiveMemoryStates(root, options.projectId), deadline);
+  const controlStates = await within(effectiveMemoryStates(root, project), deadline);
   const active = memories.filter(memory => memory.status === "active" && !controlStates.has(memory.id) && integrity.get(memory.id) !== "tampered" && inRange(memory.created_at, from, to) && (options.includeSensitive || memory.sensitivity === "normal"));
   const documentFrequency = new Map<string, number>();
   for (const token of searchTokens) {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, mkdtemp } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -23,7 +23,7 @@ test("recovers staged raw event and persistent queue item", async () => {
   await assert.rejects(access(pendingFile));
 });
 
-test("refuses malicious pending paths and preserves failed item", async () => {
+test("refuses malicious pending paths before staging", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "continuity-pending-"));
   const p = vaultPaths(root);
   const pending = {
@@ -31,8 +31,25 @@ test("refuses malicious pending paths and preserves failed item", async () => {
     event: { schema_version: 1, event_id: "evt", session_id: "s", project_id: "p", seq_id: 1, turn_id: "t", role: "user", timestamp: new Date().toISOString(), source_agent: "test", content: "x", content_hash: "x", savepoint_status: "pending", capture_status: "captured", sensitivity: "normal", raw_ref: "x" },
     queue_item: { schema_version: 1, task_id: "q", event_id: "evt", project_id: "p", priority: "normal", status: "pending", attempts: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
   } as PendingCapture;
-  await stagePending(root, pending);
+  await assert.rejects(stagePending(root, pending), /Pending raw path mismatch/);
+});
+
+test("recovery refuses a compromised pending record that targets another Vault file", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-pending-"));
+  const p = vaultPaths(root);
+  const config = path.join(root, "config.json");
+  await writeFile(config, "keep-config");
+  const pending = {
+    schema_version: 1, pending_id: "bad", raw_file: config, queue_file: path.join(p.queue, "p", "q.json"), created_at: new Date().toISOString(),
+    event: { schema_version: 1, event_id: "evt", session_id: "s", project_id: "p", seq_id: 1, turn_id: "t", role: "user", timestamp: new Date().toISOString(), source_agent: "test", content: "x", content_hash: "x", savepoint_status: "pending", capture_status: "captured", sensitivity: "normal", raw_ref: "raw/p/s/evt.json" },
+    queue_item: { schema_version: 1, task_id: "q", event_id: "evt", project_id: "p", priority: "normal", status: "pending", attempts: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+  } as PendingCapture;
+  const staged = path.join(p.tmp, "pending", "p", "bad.json");
+  await mkdir(path.dirname(staged), { recursive: true });
+  await writeFile(staged, JSON.stringify(pending));
   const result = await recoverPending(root);
   assert.equal(result.recovered, 0);
-  assert.match(result.failed[0]?.error ?? "", /escapes vault/);
+  assert.match(result.failed[0]?.error ?? "", /Pending raw path mismatch/);
+  assert.equal(await readFile(config, "utf8"), "keep-config");
+  await access(staged);
 });

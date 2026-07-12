@@ -3,6 +3,7 @@ import path from "node:path";
 import { readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
 import { assertDecisionEvent, assertDecisionView, assertMemoryControlEvent, assertPendingCapture, assertProcessedMemory, assertProjectRecord, assertQueueItem, assertRawEvent, assertTagRegistry, assertTermRelation } from "./schema-validation.js";
+import { assertProcessedRecordPath, assertQueueRecordPath, assertRawRecordPath } from "./record-paths.js";
 import { initVault, listJsonFiles } from "./vault.js";
 
 export interface DoctorReport { ok: boolean; errors: string[]; warnings: string[]; }
@@ -16,6 +17,7 @@ export async function doctor(root: string): Promise<DoctorReport> {
     try {
       const event = await readJson<unknown>(file);
       assertRawEvent(event);
+      assertRawRecordPath(p, file, event);
       const hash = createHash("sha256").update(event.content).digest("hex");
       rawHashes.set(event.event_id, hash);
       if (hash !== event.content_hash) report.warnings.push(`tampered:${path.relative(p.root, file)}`);
@@ -25,6 +27,7 @@ export async function doctor(root: string): Promise<DoctorReport> {
     try {
       const memory = await readJson<unknown>(file);
       assertProcessedMemory(memory);
+      assertProcessedRecordPath(p, file, memory);
       if (!memory.source_events.length) report.warnings.push(`missing_evidence:${memory.id}`);
       if (memory.source_hash) {
         const verified = memory.source_events.some(eventId => rawHashes.get(eventId) === memory.source_hash);
@@ -64,6 +67,7 @@ export async function doctor(root: string): Promise<DoctorReport> {
     try {
       const item = await readJson<unknown>(file);
       assertQueueItem(item);
+      assertQueueRecordPath(p, file, item);
       if (item.status === "pending" || item.status === "failed") backlog += 1;
       if (item.status === "failed") report.warnings.push(`failed_task:${item.task_id}`);
     } catch { report.errors.push(`invalid_queue:${path.relative(p.root, file)}`); }

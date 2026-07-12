@@ -88,6 +88,7 @@ export async function appendDecision(root: string, input: AppendDecisionInput): 
       supersedes: [...new Set(input.supersedes ?? [])],
       timestamp
     };
+    assertDecisionEvent(event);
     await atomicJson(path.join(topicDir, "events", `${timestamp.replaceAll(":", "-")}-${event.event_id}.json`), event);
     const view = await rebuildDecisionView(root, project, canonicalId);
     return { event, view };

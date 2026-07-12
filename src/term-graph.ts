@@ -37,6 +37,7 @@ export async function addTermRelation(root: string, input: Omit<TermRelation, "s
     relation_type: input.relation_type, confidence: input.confidence, context_tags: [...new Set(input.context_tags.map(normalize).filter(Boolean))],
     evidence_refs: [...new Set(input.evidence_refs)], created_at: timestamp, last_verified: timestamp
   };
+  assertTermRelation(relation);
   await atomicJson(path.join(vaultPaths(root).registry, "term-graph", project, `${relation.relation_id}.json`), relation);
   return relation;
 }

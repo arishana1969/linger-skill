@@ -1,8 +1,9 @@
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { atomicJson, readJson } from "./io.js";
-import { vaultPaths } from "./paths.js";
-import type { QueueItem } from "./types.js";
+import { assertSafeId, vaultPaths } from "./paths.js";
+import { assertQueueRecordPath, assertRawRecordPath } from "./record-paths.js";
+import { assertQueueItem, assertRawEvent } from "./schema-validation.js";
 import { listJsonFiles } from "./vault.js";
 
 export interface ProcessingPolicy {
@@ -27,24 +28,32 @@ export const DEFAULT_MIN_CONTENT_CHARACTERS = 20;
 const DEFAULT_POLICY: ProcessingPolicy = { threshold_bytes: 50 * 1024, max_wait_ms: 30 * 60 * 1000, max_runs_per_hour: 4, max_items_per_run: 100, max_estimated_tokens_per_run: 16_000, min_content_characters: DEFAULT_MIN_CONTENT_CHARACTERS };
 
 export async function processingDecision(root: string, projectId: string, trigger: "automatic" | "manual" | "startup", now = new Date(), policy: Partial<ProcessingPolicy> = {}): Promise<ProcessingDecision> {
+  const project = assertSafeId(projectId, "project id");
   const config = { ...DEFAULT_POLICY, ...policy };
   const p = vaultPaths(root);
   const items: QueueItem[] = [];
   let bytes = 0;
-  for (const file of await listJsonFiles(path.join(p.queue, projectId))) {
+  for (const file of await listJsonFiles(path.join(p.queue, project))) {
     try {
-      const item = await readJson<QueueItem>(file);
+      const item = await readJson<unknown>(file);
+      assertQueueItem(item);
+      assertQueueRecordPath(p, file, item);
       if (item.status !== "pending" && item.status !== "failed") continue;
       items.push(item);
-      for (const rawFile of await listJsonFiles(path.join(p.raw, projectId))) {
-        try { if ((await readJson<{ event_id: string }>(rawFile)).event_id === item.event_id) bytes += (await stat(rawFile)).size; } catch { /* doctor reports */ }
+      for (const rawFile of await listJsonFiles(path.join(p.raw, project))) {
+        try {
+          const event = await readJson<unknown>(rawFile);
+          assertRawEvent(event);
+          assertRawRecordPath(p, rawFile, event);
+          if (event.event_id === item.event_id) bytes += (await stat(rawFile)).size;
+        } catch { /* doctor reports */ }
       }
     } catch { /* doctor reports */ }
   }
   const base = { pending_items: items.length, pending_bytes: bytes, limit: config.max_items_per_run, max_estimated_tokens: config.max_estimated_tokens_per_run };
   if (!items.length) return { should_run: false, reason: "no_pending", ...base };
   if (trigger === "manual") return { should_run: true, reason: "manual", ...base };
-  const historyFile = path.join(p.registry, "processing-runs", `${projectId}.json`);
+  const historyFile = path.join(p.registry, "processing-runs", `${project}.json`);
   const history = await readHistory(historyFile);
   const cutoff = now.getTime() - 60 * 60 * 1000;
   if (history.filter(value => Date.parse(value) >= cutoff).length >= config.max_runs_per_hour) return { should_run: false, reason: "rate_limited", ...base };
@@ -57,7 +66,8 @@ export async function processingDecision(root: string, projectId: string, trigge
 }
 
 export async function recordProcessingRun(root: string, projectId: string, timestamp = new Date()): Promise<void> {
-  const file = path.join(vaultPaths(root).registry, "processing-runs", `${projectId}.json`);
+  const project = assertSafeId(projectId, "project id");
+  const file = path.join(vaultPaths(root).registry, "processing-runs", `${project}.json`);
   const history = await readHistory(file);
   const cutoff = timestamp.getTime() - 24 * 60 * 60 * 1000;
   await atomicJson(file, { runs: [...history.filter(value => Date.parse(value) >= cutoff), timestamp.toISOString()] });

@@ -45,6 +45,7 @@ export async function appendMemoryControl(root: string, input: Omit<MemoryContro
       evidence_refs: [...new Set(input.evidence_refs)],
       timestamp: input.timestamp ?? new Date().toISOString()
     };
+    assertMemoryControlEvent(event);
     await atomicJson(path.join(p.registry, "memory-events", project, `${event.timestamp.replaceAll(":", "-")}-${event.event_id}.json`), event);
     return event;
   });

@@ -20,6 +20,8 @@ export interface PendingCapture {
 
 export async function stagePending(root: string, pending: PendingCapture): Promise<string> {
   const p = vaultPaths(root);
+  assertPendingCapture(pending);
+  assertPendingDestinations(p, pending);
   const file = path.join(p.tmp, "pending", pending.event.project_id, `${pending.pending_id}.json`);
   await atomicJson(file, pending);
   return file;
@@ -38,10 +40,8 @@ export async function recoverPending(root: string): Promise<{ recovered: number;
     try {
       const pending = await readJson<unknown>(file);
       assertPendingCapture(pending);
-      assertInside(p.root, pending.raw_file);
-      assertInside(p.root, pending.queue_file);
+      assertPendingDestinations(p, pending);
       if (pending.sequence_file) {
-        assertInside(p.root, pending.sequence_file);
         let current = 0;
         try { current = (await readJson<{ value: number }>(pending.sequence_file)).value; } catch { }
         if ((pending.sequence_value ?? 0) > current) await atomicJson(pending.sequence_file, { value: pending.sequence_value });
@@ -57,7 +57,16 @@ export async function recoverPending(root: string): Promise<{ recovered: number;
   return { recovered, failed };
 }
 
-function assertInside(root: string, target: string): void {
-  const relative = path.relative(path.resolve(root), path.resolve(target));
-  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("Pending path escapes vault");
+function assertPendingDestinations(p: ReturnType<typeof vaultPaths>, pending: PendingCapture): void {
+  const expectedRaw = path.join(p.raw, pending.event.project_id, pending.event.session_id, `${pending.event.event_id}.json`);
+  const expectedQueue = path.join(p.queue, pending.queue_item.project_id, `${pending.queue_item.task_id}.json`);
+  const expectedSequence = path.join(p.registry, `${pending.event.project_id}.sequence.json`);
+  assertSamePath(pending.raw_file, expectedRaw, "raw");
+  assertSamePath(pending.queue_file, expectedQueue, "queue");
+  if (pending.sequence_file) assertSamePath(pending.sequence_file, expectedSequence, "sequence");
+  if (pending.event.raw_ref !== path.relative(p.root, expectedRaw)) throw new Error("Pending raw reference mismatch");
+}
+
+function assertSamePath(actual: string, expected: string, label: string): void {
+  if (path.resolve(actual) !== path.resolve(expected)) throw new Error(`Pending ${label} path mismatch`);
 }
