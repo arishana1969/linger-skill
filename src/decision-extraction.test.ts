@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { decisionFromEvent } from "./decision-extraction.js";
+import { decisionFromEvent, decisionKindFromContent } from "./decision-extraction.js";
 import type { RawEvent } from "./types.js";
 
 test("extracts explicit database decision from visible user evidence", () => {
@@ -25,4 +25,21 @@ test("keeps database cache decisions separate from primary database decisions", 
   const cache = decisionFromEvent({ ...base, event_id: "evt2", content: "当前数据库缓存决定使用 Redis" });
   assert.equal(primary.topic, "database");
   assert.equal(cache.topic, "database-cache");
+});
+
+test("classifies the full visible decision-trail vocabulary", () => {
+  const cases = [
+    ["Idea: add offline import", "idea"],
+    ["Preference: keep files human-readable", "preference"],
+    ["Proposal: batch queue writes", "proposal"],
+    ["Reason: reproducibility matters", "rationale"],
+    ["Constraint: must avoid a daemon", "constraint"],
+    ["Reject remote sync", "rejection"],
+    ["Decided to use JSON files", "decision"],
+    ["Current state uses local hooks", "current_state"],
+    ["Todo: benchmark the parser", "todo"],
+    ["纠正：当前使用 webhooks", "correction"]
+  ] as const;
+  for (const [content, kind] of cases) assert.equal(decisionKindFromContent(content), kind, content);
+  assert.equal(decisionKindFromContent("Routine formatting discussion"), undefined);
 });

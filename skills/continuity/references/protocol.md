@@ -14,7 +14,8 @@ Use `--vault <path>` when an adapter supplies a non-default vault.
 - `continuity forget --project ID --memory ID`: append a recall revocation while preserving raw and processed source records.
 - `continuity correct --project ID --memory ID --summary TEXT --evidence EVENT_IDS [--reason TEXT]`: append a correction and supersede the old recall view.
 - `continuity delete --project ID --type processed|raw --id ID --yes [--reason TEXT]`: delete only a confirmed, ID-addressed record.
-- `continuity decision-add|decision-get|decision-list`: manage immutable decision trails.
+- `continuity decision-add --project ID --topic TOPIC --kind idea|preference|proposal|rationale|constraint|rejection|decision|current_state|todo|correction --status proposed|accepted|rejected|superseded|reopened|current|unknown --statement TEXT --source user_explicit|agent_inferred --confidence N --evidence EVENT_IDS [--rationale TEXT] [--supersedes DECISION_EVENT_IDS]`: append a typed, evidence-backed decision event.
+- `continuity decision-get --project ID --topic TOPIC` and `continuity decision-list --project ID`: inspect immutable trails and derived current views.
 - `continuity pause|resume|status|doctor`: control or diagnose the vault.
 - `continuity doctor-repair --yes`: quarantine invalid files after explicit confirmation.
 - `continuity install|uninstall|purge|capabilities`: manage adapters. Non-interactive install and uninstall require `--yes`; uninstall preserves the vault. Purge requires both `--yes` and `--confirm PURGE`.
@@ -24,6 +25,8 @@ Use `--vault <path>` when an adapter supplies a non-default vault.
 Return source IDs with factual recall. Never present `unprocessed_raw` as a settled decision. Treat `possible_match` as a candidate requiring clarification. Label `partial_source` as interrupted evidence and `unverified_source` as provenance-degraded evidence. A timeout is retrieval failure, not `no_reliable_memory_found`. Report no reliable memory only after a successful empty search. Do not broaden scope automatically.
 
 A correction must cite visible evidence. Forget changes recall eligibility without rewriting history. Delete is materially different from forget and always requires explicit confirmation.
+
+When lifecycle processing is unavailable, first capture the visible user/assistant evidence, then use its event ID with `decision-add` for a durable idea, preference, proposal, rationale, constraint, rejection, decision, current state, todo, or correction. Never create a decision event from hidden reasoning or without evidence.
 
 ## Capability degradation
 

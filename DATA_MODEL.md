@@ -16,7 +16,7 @@ Each processed memory has a machine-readable JSON record and a human-readable Ma
 
 ## Decision trail
 
-Decision events are append-only. A topic's `current.json` is derived from its event stream and may be rebuilt. User-explicit evidence outranks inferred evidence, and low-confidence inference cannot set current state.
+Decision events are append-only and retain typed visible evolution: idea, preference, proposal, rationale, constraint, rejection, decision, current_state, todo, and correction. A topic's `current.json` is derived from its event stream and may be rebuilt. User-explicit evidence outranks inferred evidence, and low-confidence inference cannot set current state.
 
 ## Source-of-truth boundary
 

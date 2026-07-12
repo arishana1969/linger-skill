@@ -1,16 +1,15 @@
-import type { AppendDecisionInput } from "./decisions.js";
+import type { AppendDecisionInput, DecisionKind } from "./decisions.js";
 import type { RawEvent } from "./types.js";
 
 export function decisionFromEvent(event: RawEvent, explicitMemory = false): AppendDecisionInput {
   const content = event.content.replace(/\s+/g, " ").trim();
-  const correction = /(?:不是这个意思|这条不对|纠正|correct(?:ion)?)/i.test(content);
-  const rejection = /(?:拒绝|不做|暂缓|defer|reject)/i.test(content);
-  const current = /(?:当前|决定|选择|采用|current|decided|choose)/i.test(content);
+  const kind = decisionKindFromContent(content) ?? "decision";
+  const current = /(?:当前|现在|目前|决定|选择|采用|current|currently|decided|choose|chosen|adopt)/i.test(content);
   return {
     projectId: event.project_id,
     topic: topic(content),
-    kind: correction ? "correction" : rejection ? "rejection" : "decision",
-    status: rejection ? "rejected" : current ? "current" : "proposed",
+    kind,
+    status: kind === "rejection" ? "rejected" : ["decision", "current_state", "correction"].includes(kind) && current ? "current" : "proposed",
     statement: content,
     source: event.role === "user" ? "user_explicit" : "agent_inferred",
     confidence: event.role === "user" ? (explicitMemory ? 1 : 0.95) : 0.7,
@@ -18,6 +17,20 @@ export function decisionFromEvent(event: RawEvent, explicitMemory = false): Appe
     aliases: aliases(content),
     timestamp: event.timestamp
   };
+}
+
+export function decisionKindFromContent(content: string): DecisionKind | undefined {
+  if (/(?:不是这个意思|这条不对|纠正|correct(?:ion)?)/i.test(content)) return "correction";
+  if (/(?:拒绝|不做|暂缓|否决|defer|reject)/i.test(content)) return "rejection";
+  if (/(?:提案|建议|proposal|propose|suggest)/i.test(content)) return "proposal";
+  if (/(?:想法|灵感|idea)/i.test(content)) return "idea";
+  if (/(?:偏好|更喜欢|preference|prefer)/i.test(content)) return "preference";
+  if (/(?:待办|要做|todo|to-do)/i.test(content)) return "todo";
+  if (/(?:决定|选择|采用|decision|decided|choose|chosen|adopt)/i.test(content)) return "decision";
+  if (/(?:当前|现在|目前|current|currently)/i.test(content)) return "current_state";
+  if (/(?:约束|限制|必须|不能|constraint|must|cannot|can't)/i.test(content)) return "constraint";
+  if (/(?:理由|原因|因为|由于|rationale|reason|because)/i.test(content)) return "rationale";
+  return undefined;
 }
 
 function topic(content: string): string {
