@@ -24,3 +24,10 @@ test("enforces hourly run budget", async () => {
   assert.equal((await processingDecision(root, "p", "automatic", now)).reason, "rate_limited");
   assert.equal((await processingDecision(root, "p", "manual", now)).reason, "manual");
 });
+
+test("exposes the automatic estimated-token budget", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-policy-"));
+  await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "remember token budget", sourceAgent: "test", explicit: true });
+  const decision = await processingDecision(root, "p", "automatic");
+  assert.equal(decision.max_estimated_tokens, 16_000);
+});

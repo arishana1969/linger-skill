@@ -60,9 +60,9 @@ export async function handleHook(root: string, input: HookInput, sourceAgent: "c
 }
 
 async function scheduledProcessing(root: string, project: string, trigger: "automatic" | "startup"): Promise<number> {
-  const decision = await processingDecision(root, project, trigger).catch(() => ({ should_run: false, limit: 0 }));
+  const decision = await processingDecision(root, project, trigger).catch(() => ({ should_run: false, limit: 0, max_estimated_tokens: 0 }));
   if (!decision.should_run) return 0;
-  const result = await processQueue(root, project, decision.limit).catch(() => ({ processed: 0, failed: 1 }));
+  const result = await processQueue(root, project, decision.limit, decision.max_estimated_tokens).catch(() => ({ processed: 0, failed: 1 }));
   await recordProcessingRun(root, project).catch(() => undefined);
   return result.processed;
 }

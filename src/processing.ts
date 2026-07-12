@@ -12,7 +12,8 @@ import type { ProcessedMemory, QueueItem, RawEvent } from "./types.js";
 
 const STOP = new Set(["the", "and", "for", "that", "this", "with", "have", "from", "我们", "这个", "一下", "可以", "就是"]);
 
-export async function processQueue(root: string, projectId?: string, maxItems = Number.POSITIVE_INFINITY): Promise<{ processed: number; failed: number }> {
+export async function processQueue(root: string, projectId?: string, maxItems = Number.POSITIVE_INFINITY, maxEstimatedTokens = Number.POSITIVE_INFINITY): Promise<{ processed: number; failed: number }> {
+  if (!(maxEstimatedTokens > 0)) throw new Error("maxEstimatedTokens must be greater than zero");
   const p = vaultPaths(root);
   return await withFileLock(path.join(p.tmp, "processor.lock"), async () => {
     const queueFiles = (await listJsonFiles(p.queue)).filter((file) => !projectId || file.includes(`${path.sep}${projectId}${path.sep}`));
@@ -23,10 +24,10 @@ export async function processQueue(root: string, projectId?: string, maxItems = 
     items.sort((a, b) => Number(b.item.priority === "explicit") - Number(a.item.priority === "explicit") || a.item.created_at.localeCompare(b.item.created_at));
     let processed = 0;
     let failed = 0;
+    let estimatedTokens = 0;
     const touchedProjects = new Set<string>();
     for (const entry of items.filter(({ item }) => item.status === "pending" || item.status === "failed").slice(0, maxItems)) {
       const running = { ...entry.item, status: "processing" as const, attempts: entry.item.attempts + 1, updated_at: new Date().toISOString() };
-      await atomicJson(entry.file, running);
       try {
         const rawFiles = await listJsonFiles(path.join(p.raw, running.project_id));
         let event: RawEvent | undefined;
@@ -35,6 +36,10 @@ export async function processQueue(root: string, projectId?: string, maxItems = 
           if (candidate.event_id === running.event_id) { event = candidate; break; }
         }
         if (!event) throw new Error(`Missing raw event ${running.event_id}`);
+        const itemTokens = Math.max(1, Math.ceil(event.content.length / 4));
+        if (processed + failed > 0 && estimatedTokens + itemTokens > maxEstimatedTokens) break;
+        await atomicJson(entry.file, running);
+        estimatedTokens += itemTokens;
         if (event.sensitivity === "secret") {
           await atomicJson(entry.file, { ...running, status: "done", updated_at: new Date().toISOString() });
           processed += 1;

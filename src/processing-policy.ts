@@ -10,6 +10,7 @@ export interface ProcessingPolicy {
   max_wait_ms: number;
   max_runs_per_hour: number;
   max_items_per_run: number;
+  max_estimated_tokens_per_run: number;
   min_content_characters: number;
 }
 
@@ -19,10 +20,11 @@ export interface ProcessingDecision {
   pending_items: number;
   pending_bytes: number;
   limit: number;
+  max_estimated_tokens: number;
 }
 
 export const DEFAULT_MIN_CONTENT_CHARACTERS = 20;
-const DEFAULT_POLICY: ProcessingPolicy = { threshold_bytes: 50 * 1024, max_wait_ms: 30 * 60 * 1000, max_runs_per_hour: 4, max_items_per_run: 100, min_content_characters: DEFAULT_MIN_CONTENT_CHARACTERS };
+const DEFAULT_POLICY: ProcessingPolicy = { threshold_bytes: 50 * 1024, max_wait_ms: 30 * 60 * 1000, max_runs_per_hour: 4, max_items_per_run: 100, max_estimated_tokens_per_run: 16_000, min_content_characters: DEFAULT_MIN_CONTENT_CHARACTERS };
 
 export async function processingDecision(root: string, projectId: string, trigger: "automatic" | "manual" | "startup", now = new Date(), policy: Partial<ProcessingPolicy> = {}): Promise<ProcessingDecision> {
   const config = { ...DEFAULT_POLICY, ...policy };
@@ -39,7 +41,7 @@ export async function processingDecision(root: string, projectId: string, trigge
       }
     } catch { /* doctor reports */ }
   }
-  const base = { pending_items: items.length, pending_bytes: bytes, limit: config.max_items_per_run };
+  const base = { pending_items: items.length, pending_bytes: bytes, limit: config.max_items_per_run, max_estimated_tokens: config.max_estimated_tokens_per_run };
   if (!items.length) return { should_run: false, reason: "no_pending", ...base };
   if (trigger === "manual") return { should_run: true, reason: "manual", ...base };
   const historyFile = path.join(p.registry, "processing-runs", `${projectId}.json`);
