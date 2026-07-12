@@ -16,6 +16,8 @@ Installer changes are merged into the host's existing JSON configuration. Existi
 
 Package versions are restricted before they become runtime paths. Uninstall validates the complete manifest before mutation, permits Skill removal only at the selected host's known Continuity directory, and requires the runtime path to be the direct managed version directory under the current home. A managed marker alone does not authorize deletion of an arbitrary manifest target.
 
+Hook payloads are treated as external input. Unknown events, empty or non-string content, and explicit user opt-out are rejected before project registration or Vault initialization, preventing unsupported payloads from creating local state as a side effect.
+
 ## Reporting
 
 Do not include live secrets or private vault files in a public issue. The public vulnerability-reporting channel will be defined before the GitHub MVP is released.

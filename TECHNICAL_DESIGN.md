@@ -34,6 +34,8 @@ The deterministic worker skips non-explicit assistant chatter shorter than the c
 
 Adapters report capabilities rather than assuming lifecycle parity. Claude Code and Codex are implemented separately. Rule-only and explicit CLI modes remain valid degraded modes.
 
+Hook payloads are external input. Event/content types are narrowed at runtime, and unsupported, empty, malformed-content, or user-opt-out events return before project registration or Vault initialization. SessionStart remains the sole content-free event allowed to initialize and recover state.
+
 Install/uninstall treats package metadata and the persisted manifest as untrusted input. Runtime versions must be safe path components; runtime removal is limited to a direct managed child of the current home's runtime directory; and Skill targets must exactly match the selected adapters' known Continuity destinations before any uninstall mutation occurs.
 
 ## Local acceptance loop

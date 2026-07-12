@@ -27,29 +27,31 @@ export interface HookResult {
 }
 
 export async function handleHook(root: string, input: HookInput, sourceAgent: "claude-code" | "codex"): Promise<HookResult> {
-  const eventName = input.hook_event_name ?? "unknown";
-  const cwd = input.cwd ?? process.cwd();
-  const project = (await registerProject(root, cwd)).project_id;
+  const eventName = typeof input.hook_event_name === "string" ? input.hook_event_name : "unknown";
+  const cwd = typeof input.cwd === "string" && input.cwd.trim() ? input.cwd : process.cwd();
   if (eventName === "SessionStart") {
+    const project = (await registerProject(root, cwd)).project_id;
     const recovery = await recoverPending(root).catch(() => ({ recovered: 0, failed: [] }));
     return { recovered: recovery.recovered, processed: await scheduledProcessing(root, project, "startup"), output: contextOutput(eventName) };
   }
   const isUser = eventName === "UserPromptSubmit";
   const isAssistant = eventName === "Stop";
   const isPartial = eventName === "StopFailure";
-  const content = isUser ? input.prompt : input.last_assistant_message;
+  const candidate = isUser ? input.prompt : input.last_assistant_message;
+  const content = typeof candidate === "string" ? candidate : undefined;
   if ((!isUser && !isAssistant && !isPartial) || !content?.trim()) return { skipped: "unsupported_or_empty", output: {} };
   if (isUser && /(?:不要记|不要保存|don't save|do not save)/i.test(content)) return { skipped: "user_opt_out", output: {} };
+  const project = (await registerProject(root, cwd)).project_id;
   const explicit = isUser && /(?:记一下|记住|保存这个|remember this)/i.test(content);
   const sensitivity = classifySensitivity(content);
   const event = await capture(root, {
     projectId: project,
-    sessionId: safeId(input.session_id ?? "unknown-session"),
-    turnId: safeId(input.turn_id ?? input.prompt_id ?? `${eventName}-${Date.now()}`),
+    sessionId: safeId(typeof input.session_id === "string" ? input.session_id : "unknown-session"),
+    turnId: safeId(typeof input.turn_id === "string" ? input.turn_id : typeof input.prompt_id === "string" ? input.prompt_id : `${eventName}-${Date.now()}`),
     role: isUser ? "user" : "assistant",
     content,
     sourceAgent,
-    sourceModel: input.model,
+    sourceModel: typeof input.model === "string" ? input.model : undefined,
     savepointStatus: isPartial ? "partial" : isUser ? "pending" : "complete",
     explicit,
     sensitivity: sensitivity.level

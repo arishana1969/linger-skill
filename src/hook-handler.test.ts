@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp } from "node:fs/promises";
+import { access, mkdtemp } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -61,4 +61,19 @@ test("captures Claude StopFailure output as partial evidence", async () => {
   await processQueue(root);
   const hit = (await search(root, { projectId: project, query: "partial-zephyr" }))[0]!;
   assert.ok(hit.warning_flags.includes("partial_source"));
+});
+
+test("unsupported, empty, malformed, and opt-out hook payloads create no Vault state", async () => {
+  for (const input of [
+    { hook_event_name: "UnknownEvent", cwd: "/tmp/attacker" },
+    { hook_event_name: "Stop", cwd: "/tmp/attacker", last_assistant_message: "" },
+    { hook_event_name: "UserPromptSubmit", cwd: "/tmp/attacker", prompt: 42 as never },
+    { hook_event_name: "UserPromptSubmit", cwd: "/tmp/attacker", prompt: "do not save this" }
+  ]) {
+    const root = await mkdtemp(path.join(os.tmpdir(), "continuity-hook-zero-write-"));
+    const result = await handleHook(root, input, "codex");
+    assert.ok(result.skipped);
+    await assert.rejects(access(path.join(root, "config.json")));
+    await assert.rejects(access(path.join(root, "projects")));
+  }
 });

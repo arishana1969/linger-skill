@@ -5,7 +5,9 @@ import { handleHook, type HookInput } from "./hook-handler.js";
 
 async function main(): Promise<void> {
   const payload = await readStdin();
-  const input = JSON.parse(payload) as HookInput;
+  const parsed = JSON.parse(payload) as unknown;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Invalid hook payload");
+  const input = parsed as HookInput;
   const root = process.env.CONTINUITY_VAULT ?? path.join(os.homedir(), ".continuity", "vault");
   const agent = process.env.CONTINUITY_ADAPTER === "claude-code" ? "claude-code" : "codex";
   const result = await handleHook(root, input, agent);
