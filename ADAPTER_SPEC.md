@@ -20,6 +20,8 @@ Installed lifecycle events are `SessionStart`, `UserPromptSubmit`, and `Stop`. T
 
 The adapter merges command hooks into `~/.claude/settings.json`. User configuration remains intact.
 
+Claude Code `2.1.207` has been observed executing the generated SessionStart and UserPromptSubmit hooks successfully in a disposable HOME. Stop/assistant completion remains a required host test; see `HOST_VALIDATION.md`.
+
 ## Codex
 
 The adapter writes and merges `~/.codex/hooks.json`. Codex requires review and trust for non-managed command hooks. The adapter does not also write inline hooks to `config.toml`.

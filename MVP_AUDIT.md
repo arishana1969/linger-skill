@@ -20,7 +20,7 @@ It is not yet a public release candidate. The remaining release blockers are pac
 | --- | --- | --- |
 | npx installer | External release step | CI installs the exact tarball into an offline temporary consumer through pnpm, then runs the generated bin shim through install/capabilities/uninstall; required documents and forbidden development-data exclusions are asserted. npm publication and public clean-machine `npx -y continuity-skill install` remain external. |
 | Vault initialization and helper CLI | Complete | `initVault`, safe project IDs, CLI commands, atomic I/O, and path-bound destructive operations are tested. |
-| Claude Code adapter | Needs host validation | Skill and lifecycle hook configuration install idempotently without replacing user config. Real completed/partial answer payloads remain unverified in the host. |
+| Claude Code adapter | Needs host validation | Claude Code `2.1.207` live-smoke confirms successful SessionStart and UserPromptSubmit hooks plus persisted raw/queue payloads in a disposable HOME with zero model tokens/cost. Successful Stop/assistant and partial-answer capture remain unverified. |
 | Codex adapter | Needs host validation | Codex `0.144.0-alpha.4` app-server `hooks/list` accepts all three generated hooks with no parse warnings/errors and reports them untrusted. Trust UX, command execution, and live lifecycle payload capture remain unverified. |
 | Adapter capability report | Complete | Reports Claude hook configuration at L2. Codex remains L1 when hooks are configured but execution trust is unverified; it does not infer live execution or L3/L4 from copied files. |
 | Hook capture and pending recovery | Partial | User, assistant, partial, opt-out, redaction, SessionStart recovery, and startup processing are tested through the handler. Real-host event semantics remain. |
@@ -56,7 +56,7 @@ It is not yet a public release candidate. The remaining release blockers are pac
 
 - Idempotent managed Skill copy, backup of unmanaged Skill directories, hook merge, stable versioned runtime, capability reporting, uninstall preservation, and double-confirmed purge are automated tests.
 - The exact packed tarball is installed offline into a temporary package-manager consumer, then its generated bin shim runs install, capability reporting, and uninstall after separation from the source tree. Required package documents/runtime files and forbidden development-data exclusions are asserted.
-- Remaining proof: published package, clean machine, real Claude Code, and real Codex event capture.
+- Remaining proof: published package, public clean-machine npx path, Claude completed-assistant capture, and Codex trusted live execution.
 
 ### Capture, processing, and recovery
 
@@ -80,7 +80,7 @@ It is not yet a public release candidate. The remaining release blockers are pac
 ## GitHub MVP blocker order
 
 1. Reconcile README, DATA_MODEL, TECHNICAL_DESIGN, ROADMAP, and adapter docs against current behavior.
-2. Run disposable-home host smoke tests where installed Claude Code/Codex versions expose supported lifecycle events; record exact capability evidence and degraded paths.
+2. Complete host smoke gaps: Claude successful Stop/assistant capture and Codex trusted live execution; record exact versions, payloads, and degraded paths.
 3. Resolve maintainer release metadata in `RELEASE_CHECKLIST.md`, including license, repository URL, package ownership, and security contact. Keep npm publication as an explicit user-owned release action.
 4. Expand generated evaluation with held-out paraphrases, noisy near-collisions, corrections, partial answers, tampering, and larger vault sizes.
 

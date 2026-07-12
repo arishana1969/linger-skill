@@ -4,7 +4,7 @@ Continuity uses one vault format across adapters, but automation levels differ b
 
 | Adapter | Local slice | Target MVP | Notes |
 | --- | ---: | ---: | --- |
-| Claude Code | L0-L2 | L2-L4 | Hook coverage must be probed on the installed version. |
+| Claude Code | L0-L2 | L2-L4 | Claude Code `2.1.207` live-smoke confirms SessionStart and user-prompt capture in a disposable HOME at zero model tokens/cost; completed assistant capture remains. |
 | Codex | L0-L1 | L1-L3 | Current Codex `0.144.0-alpha.4` accepts the generated three-hook configuration in `hooks/list`, but reports it untrusted. Static capability reporting therefore remains L1 until trust and live execution are verified. |
 
 Levels are reported from detected artifacts, not marketing claims:

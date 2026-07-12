@@ -33,8 +33,28 @@ As a result, `continuity capabilities` reports this static Codex installation as
 
 ## Claude Code
 
-No `claude` executable was present on the validation machine. Repository tests cover configuration merge and handler payloads, but no real Claude Code host evidence has been collected.
+Host inspected: Claude Code `2.1.207` native build (`bc512d563325`) on macOS arm64. The executable is `/Users/arishana/.local/bin/claude`; `~/.local/bin` was not in the Codex shell PATH, which caused the earlier discovery miss.
+
+### Confirmed
+
+- Continuity was installed into a disposable `/tmp` home. No real `~/.claude` files were changed.
+- `claude doctor` parsed the disposable installation without reporting invalid settings or hooks.
+- A non-interactive Claude session used the disposable HOME, an invalid test API key, and `ANTHROPIC_BASE_URL=http://127.0.0.1:9`. It could not reach a model and reported zero input/output tokens and `$0` cost.
+- Before the deliberate local API failure, Claude emitted successful `SessionStart:startup` and `UserPromptSubmit` hook lifecycle events; both Continuity commands exited 0.
+- The disposable Vault contained one user raw event with the real Claude session ID, generated turn ID, current project ID, exact test prompt, `savepoint_status: pending`, `capture_status: captured`, normal sensitivity, and `source_agent: claude-code`.
+- The corresponding persistent queue item was normal priority, pending, and had zero attempts.
+- Interrupting the failed API retry did not create a fake completed assistant event.
+
+### Not yet confirmed
+
+- A successful model response followed by the real `Stop` hook and `last_assistant_message` capture.
+- Host-native interrupted assistant output and whether a future event can provide a partial message payload.
+- Long-running/multi-window behavior and Windows execution.
+
+Current evidence supports Claude Code L2 for SessionStart and user-prompt capture on version `2.1.207`. Completed assistant capture still needs a controlled successful turn.
 
 ## Reproduction boundary
 
 The Codex check used a disposable `CODEX_HOME`, generated protocol schema, `initialize`, and `hooks/list`. It did not invoke a model, submit a conversation, bypass hook trust, or alter the maintainer's real host configuration.
+
+The Claude check used a disposable HOME and local-unreachable API endpoint. It exercised real SessionStart/UserPromptSubmit hooks without successful inference, tokens, model cost, or changes to the maintainer's real host configuration.
