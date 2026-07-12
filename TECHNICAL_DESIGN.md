@@ -12,6 +12,8 @@ Persisted records cross a validation boundary before they can route filesystem w
 
 Operational state is validated too. Invalid config bounds are rejected; a corrupt sequence counter cannot be silently reset; and malformed processing-run history cannot silently disable rate accounting. Doctor reports these states and confirmed repair quarantines them.
 
+Inspect and control operations revalidate the target record and its canonical project path before acting. Correction explicitly rebinds the generated record to the requested project, and delete-last selects only from validated records, so a corrupt high-timestamp file cannot become the destructive target.
+
 ## Processing boundary
 
 The deterministic worker provides a local baseline for summaries, content/predictive tags, retrieval phrases, decision extraction, correction linking, and registry updates. These outputs are deliberately lexical and heuristic. Richer host-agent processing and decision-topic merging are future improvements and must preserve the same evidence and validation boundaries.

@@ -32,7 +32,7 @@ The implementation is a local GitHub-MVP candidate, not yet a public repository 
 | Project scope and BM25-style search | Complete | Stable remote+Git-root/Git-root/absolute-path identities, a local project registry, explicit project listing without automatic scope broadening, project isolation, CJK bigrams, English terms, IDF-style ranking, tags, phrases, max-files, bounded snippets/characters/raw fragments, inclusive time filters, and an explicit wall-clock timeout are tested. |
 | Decision trail | Complete | Append-only typed idea/preference/proposal/rationale/constraint/rejection/decision/current-state/todo/correction events, current view, A→B→A, evidence requirement, explicit priority, automatic visible-event extraction, supersession, and conflict reporting are tested. Topic extraction remains heuristic. |
 | User-explicit memory | Complete | Hook recognition sets highest confidence/queue priority; recall ranks user-explicit evidence first within the same lexical match tier while preserving exact-over-possible relevance. Opt-out is skipped before capture. Natural-language coverage is deliberately finite. |
-| Forget, delete, delete-last, correct | Complete | Forget/correct are append-only control events; raw/processed deletion is project/ID-scoped and confirmed; delete-last requires an explicit layer and resolves only within that project; Markdown/JSON stay synchronized. |
+| Forget, delete, delete-last, correct | Complete | Forget/correct are append-only control events; inspect and destructive controls accept only schema-valid records at their canonical project path; raw/processed deletion is project/ID-scoped and confirmed; delete-last requires an explicit layer, skips invalid records, and resolves only within that project; Markdown/JSON stay synchronized. |
 | Pause/resume/status/inspect/doctor | Complete | CLI operations and actionable queue/integrity reports are covered. |
 | Required repository documents | Complete | README, PRIVACY, SECURITY, DATA_MODEL, ADAPTER_SPEC, AGENT_COMPATIBILITY, ROADMAP, and CONTRIBUTING exist. Accuracy updates remain part of release review. |
 
@@ -77,6 +77,7 @@ The implementation is a local GitHub-MVP candidate, not yet a public repository 
 - Default search is one project and excludes sensitive, secret, forgotten, deleted, and invalid processed records.
 - High-confidence secrets are redacted at the shared capture persistence boundary; opt-out is skipped; destructive operations are ID/path bounded and confirmation gated. Delete targets and persisted role/decision/relation enum values are runtime-validated rather than trusted from TypeScript casts.
 - Malicious-record regressions cover path-traversing and cross-project queue identities, a pending record targeting another Vault file, cross-project processed/decision/control/term records, and timestamp-to-filename injection. Invalid records stay inert, are diagnosed, and can be quarantined.
+- Control-integrity regressions verify that a processed record with a forged project identity cannot be inspected, forgotten, corrected, or deleted as valid evidence, and cannot redirect a correction Markdown write into another project.
 - Remaining proof: larger adversarial mutation families, broader malicious-repository exercises, and host-level trust UX.
 
 ## Release decision order

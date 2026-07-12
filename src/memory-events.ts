@@ -3,8 +3,8 @@ import path from "node:path";
 import { atomicJson, readJson, withFileLock } from "./io.js";
 import { writeProcessedMarkdown } from "./processed-markdown.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
-import { assertMemoryControlEvent } from "./schema-validation.js";
-import { assertMemoryControlPath } from "./record-paths.js";
+import { assertMemoryControlEvent, assertProcessedMemory } from "./schema-validation.js";
+import { assertMemoryControlPath, assertProcessedRecordPath } from "./record-paths.js";
 import { listJsonFiles } from "./vault.js";
 import type { ProcessedMemory } from "./types.js";
 
@@ -77,7 +77,10 @@ export async function correctMemory(root: string, projectId: string, targetMemor
   const project = assertSafeId(projectId, "project id");
   const target = assertSafeId(targetMemoryId, "memory id");
   const p = vaultPaths(root);
-  const old = await readJson<ProcessedMemory>(path.join(p.processed, project, `${target}.json`));
+  const oldFile = path.join(p.processed, project, `${target}.json`);
+  const old = await readJson<unknown>(oldFile);
+  assertProcessedMemory(old);
+  assertProcessedRecordPath(p, oldFile, old);
   const timestamp = new Date().toISOString();
   const id = `mem_${randomUUID().replaceAll("-", "")}`;
   const text = correction.summary.trim();
@@ -85,6 +88,7 @@ export async function correctMemory(root: string, projectId: string, targetMemor
   const memory: ProcessedMemory = {
     ...old,
     id,
+    project_id: project,
     type: "correction",
     title: correction.summary.trim().slice(0, 80),
     summary: correction.summary.trim(),
@@ -103,6 +107,7 @@ export async function correctMemory(root: string, projectId: string, targetMemor
     updated_at: timestamp,
     agent: "continuity-correction"
   };
+  assertProcessedMemory(memory);
   await atomicJson(path.join(p.processed, project, `${id}.json`), memory);
   await writeProcessedMarkdown(root, memory);
   const event = await appendMemoryControl(root, { kind: "correct", project_id: project, target_memory_id: target, replacement_memory_id: id, reason: correction.reason, evidence_refs: correction.evidenceRefs });

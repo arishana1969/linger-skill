@@ -6,6 +6,8 @@ import { assertSafeId, vaultPaths } from "./paths.js";
 import { listJsonFiles } from "./vault.js";
 import type { ProcessedMemory, RawEvent } from "./types.js";
 import { rebuildTagRegistry } from "./tag-registry.js";
+import { assertProcessedMemory, assertRawEvent } from "./schema-validation.js";
+import { assertProcessedRecordPath, assertRawRecordPath } from "./record-paths.js";
 
 export type DeleteTarget = "processed" | "raw";
 
@@ -25,7 +27,9 @@ export async function deleteRecord(root: string, input: { projectId: string; tar
   const p = vaultPaths(root);
   if (input.target === "processed") {
     const file = path.join(p.processed, project, `${id}.json`);
-    const memory = await readJson<ProcessedMemory>(file);
+    const memory = await readJson<unknown>(file);
+    assertProcessedMemory(memory);
+    assertProcessedRecordPath(p, file, memory);
     await unlink(file);
     await unlink(path.join(p.processed, project, `${id}.md`)).catch(error => { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; });
     await appendMemoryControl(root, { kind: "delete", project_id: project, target_memory_id: id, reason: input.reason, evidence_refs: memory.source_events.length ? memory.source_events : [id] });
@@ -34,7 +38,9 @@ export async function deleteRecord(root: string, input: { projectId: string; tar
   }
   const files = await listJsonFiles(path.join(p.raw, project));
   for (const file of files) {
-    const event = await readJson<RawEvent>(file);
+    let event: RawEvent;
+    try { const value = await readJson<unknown>(file); assertRawEvent(value); assertRawRecordPath(p, file, value); event = value; }
+    catch { continue; }
     if (event.event_id !== id) continue;
     await unlink(file);
     await unlink(path.join(p.processed, project, `${id}.md`)).catch(error => { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; });
@@ -49,12 +55,16 @@ export async function deleteLastRecord(root: string, input: { projectId: string;
   const project = assertSafeId(input.projectId, "project id");
   const p = vaultPaths(root);
   if (input.target === "processed") {
-    const records = await Promise.all((await listJsonFiles(path.join(p.processed, project))).map(readJson<ProcessedMemory>));
+    const records = (await Promise.all((await listJsonFiles(path.join(p.processed, project))).map(async file => {
+      try { const value = await readJson<unknown>(file); assertProcessedMemory(value); assertProcessedRecordPath(p, file, value); return value; } catch { return undefined; }
+    }))).filter((value): value is ProcessedMemory => Boolean(value));
     const latest = records.sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id))[0];
     if (!latest) throw new Error(`No processed records found for project ${project}`);
     return await deleteRecord(root, { projectId: project, target: "processed", id: latest.id, confirmed: true, reason: input.reason });
   }
-  const events = await Promise.all((await listJsonFiles(path.join(p.raw, project))).map(readJson<RawEvent>));
+  const events = (await Promise.all((await listJsonFiles(path.join(p.raw, project))).map(async file => {
+    try { const value = await readJson<unknown>(file); assertRawEvent(value); assertRawRecordPath(p, file, value); return value; } catch { return undefined; }
+  }))).filter((value): value is RawEvent => Boolean(value));
   const latest = events.sort((a, b) => b.seq_id - a.seq_id || b.timestamp.localeCompare(a.timestamp) || b.event_id.localeCompare(a.event_id))[0];
   if (!latest) throw new Error(`No raw records found for project ${project}`);
   return await deleteRecord(root, { projectId: project, target: "raw", id: latest.event_id, confirmed: true, reason: input.reason });

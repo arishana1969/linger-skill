@@ -1,6 +1,7 @@
 import path from "node:path";
 import { atomicWrite } from "./io.js";
 import { vaultPaths } from "./paths.js";
+import { assertProcessedMemory } from "./schema-validation.js";
 import type { ProcessedMemory } from "./types.js";
 
 export function serializeProcessedMarkdown(memory: ProcessedMemory): string {
@@ -21,6 +22,7 @@ export function serializeProcessedMarkdown(memory: ProcessedMemory): string {
 }
 
 export async function writeProcessedMarkdown(root: string, memory: ProcessedMemory): Promise<string> {
+  assertProcessedMemory(memory);
   const file = path.join(vaultPaths(root).processed, memory.project_id, `${memory.id}.md`);
   await atomicWrite(file, serializeProcessedMarkdown(memory));
   return file;
