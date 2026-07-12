@@ -20,6 +20,7 @@ export function decisionFromEvent(event: RawEvent, explicitMemory = false): Appe
 }
 
 function topic(content: string): string {
+  if (/(?:缓存|cache)/i.test(content) && /(?:数据库|sqlite|postgres|database|redis)/i.test(content)) return "database-cache";
   if (/(?:数据库|sqlite|postgres|database)/i.test(content)) return "database";
   if (/(?:存储|storage|vault|file-native)/i.test(content)) return "storage";
   if (/(?:adapter|hook|适配器)/i.test(content)) return "adapter";
