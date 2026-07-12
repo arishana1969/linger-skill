@@ -10,6 +10,8 @@ The helper validates IDs, timestamps, canonical record locations, physical ances
 
 The project does not claim absolute safety against malicious repositories, prompt injection, compromised local accounts, or manual vault modification.
 
+CI scans current tracked text for a small set of high-confidence credential forms and reports only file/rule identifiers, never matched content. The local 107-checkpoint history audit found only the intentionally synthetic private-key detector fixture; that fixture is now constructed without a static credential marker. This guard is not a substitute for a dedicated secret-scanning service on the future public repository.
+
 ## Hook installation
 
 Installer changes are merged into the host's existing JSON configuration. Existing unmanaged Continuity Skill directories are backed up. Codex may require the user to review and trust newly installed hooks through its hook UI.

@@ -6,6 +6,7 @@ Run before submitting changes:
 
 ```sh
 pnpm install
+node scripts/scan-tracked-secrets.mjs
 pnpm build
 node --test dist/*.test.js
 ```

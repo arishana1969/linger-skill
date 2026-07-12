@@ -5,3 +5,10 @@ coverage/
 .DS_Store
 .continuity-test/
 eval-data/
+.continuity/
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx

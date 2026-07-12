@@ -82,6 +82,7 @@ The local clean-checkout gate is now complete for commit `d19f46465b1cdd7d9e8418
 - High-confidence secrets are redacted at the shared capture persistence boundary; opt-out is skipped; destructive operations are ID/path bounded and confirmation gated. Delete targets and persisted role/decision/relation enum values are runtime-validated rather than trusted from TypeScript casts.
 - Malicious-record regressions cover path-traversing and cross-project queue identities, a pending record targeting another Vault file, cross-project processed/decision/control/term records, timestamp-to-filename injection, and symlink escape attempts across raw/pending/processed/decision/config paths. Invalid records stay inert, are diagnosed, and can be quarantined.
 - Control-integrity regressions verify that a processed record with a forged project identity cannot be inspected, forgotten, corrected, or deleted as valid evidence, and cannot redirect a correction Markdown write into another project.
+- Current tracked text and all 107 local checkpoint commits were audited for high-confidence credential forms; the only historical match was an intentional detector fixture. The fixture no longer contains a static marker, `.env`/project-local Vault/private-key files are ignored, and CI now runs a non-disclosing current-tree secret scan.
 - Remaining proof: larger adversarial mutation families, broader malicious-repository exercises, and host-level trust UX.
 
 ## Release decision order

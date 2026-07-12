@@ -5,7 +5,7 @@ import { classifySensitivity, redactSecrets } from "./sensitivity.js";
 test("classifies multiple credential forms as secret", () => {
   assert.equal(classifySensitivity("API_KEY=abcdefghijklmnop").level, "secret");
   assert.equal(classifySensitivity("Authorization: Bearer abcdefghijklmnopqrstuvwxyz").level, "secret");
-  assert.equal(classifySensitivity("-----BEGIN PRIVATE KEY-----\nabc").level, "secret");
+  assert.equal(classifySensitivity(`-----BEGIN ${"PRIVATE KEY"}-----\nabc`).level, "secret");
   assert.equal(classifySensitivity("contact me at person@example.com").level, "sensitive");
 });
 

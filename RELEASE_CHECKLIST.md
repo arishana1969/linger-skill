@@ -18,6 +18,7 @@ Run from a clean checkout with Node 20 or later and pnpm:
 
 ```sh
 pnpm install --frozen-lockfile
+node scripts/scan-tracked-secrets.mjs
 pnpm test
 pnpm build
 python scripts/validate-skill.py skills/continuity
@@ -29,7 +30,7 @@ git diff --check
 git status --short
 ```
 
-Expected result: all tests and validators pass, all deterministic evaluation gates report macro composite `1.0`, the packed-package smoke test reports package-manager installation plus capture-to-recall and Vault preservation, and the worktree is clean. The generated scores are regression baselines, not general-quality claims.
+Expected result: the tracked-secret scan reports no high-confidence findings, all tests and validators pass, all deterministic evaluation gates report macro composite `1.0`, the packed-package smoke test reports package-manager installation plus capture-to-recall and Vault preservation, and the worktree is clean. The generated scores are regression baselines, not general-quality claims.
 
 ## Host smoke gate
 
