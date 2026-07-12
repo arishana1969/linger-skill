@@ -44,7 +44,7 @@ Do not report L3/L4 from installed files alone. Save capability output and host 
 
 ## Artifact gate
 
-- [ ] Inspect `pnpm pack --json --dry-run`; confirm no tests, fixtures, source transcripts, Vault data, or credentials are included.
+- [ ] Inspect `pnpm pack --json --dry-run`; `pnpm verify:package` must report zero forbidden files and exclude tests, fixtures/oracles, source transcripts, Vault data, and credentials.
 - [ ] Confirm README, privacy/security documents, data model, adapter/compatibility documents, runtime files, and Skill metadata are in the tarball.
 - [ ] Install from the exact `.tgz` intended for publication in a clean environment with network disabled after artifact creation.
 - [ ] Verify `continuity install`, `capabilities`, capture/recall, `uninstall`, and Vault preservation from that artifact.
