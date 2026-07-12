@@ -3,12 +3,13 @@ import type { RawEvent } from "./types.js";
 
 export function decisionFromEvent(event: RawEvent, explicitMemory = false): AppendDecisionInput {
   const content = event.content.replace(/\s+/g, " ").trim();
+  const correction = /(?:不是这个意思|这条不对|纠正|correct(?:ion)?)/i.test(content);
   const rejection = /(?:拒绝|不做|暂缓|defer|reject)/i.test(content);
   const current = /(?:当前|决定|选择|采用|current|decided|choose)/i.test(content);
   return {
     projectId: event.project_id,
     topic: topic(content),
-    kind: rejection ? "rejection" : "decision",
+    kind: correction ? "correction" : rejection ? "rejection" : "decision",
     status: rejection ? "rejected" : current ? "current" : "proposed",
     statement: content,
     source: event.role === "user" ? "user_explicit" : "agent_inferred",

@@ -10,7 +10,7 @@ export async function runEvalDataset(root: string, dataset: EvalDataset): Promis
   let skipped = 0;
   for (const item of dataset.events) {
     if (!item.save) { skipped += 1; continue; }
-    const captured = await capture(root, { projectId: item.project_id, sessionId: item.session_id, turnId: item.turn_id, role: item.role, content: item.content, sourceAgent: "eval-fixture", savepointStatus: item.role === "user" ? "pending" : "complete", sensitivity: item.expected_sensitivity, timestamp: item.timestamp });
+    const captured = await capture(root, { projectId: item.project_id, sessionId: item.session_id, turnId: item.turn_id, role: item.role, content: item.content, sourceAgent: "eval-fixture", savepointStatus: item.savepoint_status ?? (item.role === "user" ? "pending" : "complete"), sensitivity: item.expected_sensitivity, timestamp: item.timestamp });
     if (captured) { rawToFixture.set(captured.event_id, item.event_id); imported += 1; }
   }
   for (const project of [...new Set(dataset.events.map(event => event.project_id))]) await processQueue(root, project);

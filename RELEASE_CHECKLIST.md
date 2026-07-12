@@ -21,12 +21,13 @@ pnpm build
 python scripts/validate-skill.py skills/continuity
 pnpm eval:year
 pnpm eval:adversarial
+pnpm eval:heldout
 pnpm verify:package
 git diff --check
 git status --short
 ```
 
-Expected result: all tests and validators pass, both deterministic evaluation gates report macro composite `1.0`, the packed-package smoke test succeeds, and the worktree is clean. The generated scores are regression baselines, not general-quality claims.
+Expected result: all tests and validators pass, all deterministic evaluation gates report macro composite `1.0`, the packed-package smoke test succeeds, and the worktree is clean. The generated scores are regression baselines, not general-quality claims.
 
 ## Host smoke gate
 

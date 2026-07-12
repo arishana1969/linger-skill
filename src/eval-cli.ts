@@ -3,6 +3,7 @@ import { mkdtemp, readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { generateAdversarialDataset } from "./eval-adversarial.js";
+import { generateHeldoutDataset } from "./eval-heldout.js";
 import type { EvalDataset, EvalEvent, EvalOracle } from "./eval-generator.js";
 import { writeYearDataset } from "./eval-io.js";
 import { runEvalDataset } from "./eval-runner.js";
@@ -52,7 +53,15 @@ async function main(): Promise<void> {
     console.log(JSON.stringify({ dataset: dataset.name, vault, ...await runEvalDataset(vault, dataset) }, null, 2));
     return;
   }
-  console.log("continuity-eval <generate|run|adversarial> [options]");
+  if (command === "heldout") {
+    const year = Number(option("--year") ?? "2025");
+    const noise = Number(option("--noise") ?? "240");
+    const vault = option("--vault") ?? await mkdtemp(path.join(os.tmpdir(), "continuity-eval-heldout-"));
+    const dataset = generateHeldoutDataset(year, noise);
+    console.log(JSON.stringify({ dataset: dataset.name, vault, ...await runEvalDataset(vault, dataset) }, null, 2));
+    return;
+  }
+  console.log("continuity-eval <generate|run|adversarial|heldout> [options]");
   if (command) process.exitCode = 2;
 }
 

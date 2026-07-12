@@ -53,7 +53,7 @@ export async function processQueue(root: string, projectId?: string, maxItems = 
         }
         await atomicJson(path.join(p.processed, event.project_id, `${memory.id}.json`), memory);
         await writeProcessedMarkdown(root, memory);
-        if (memory.type === "decision") {
+        if (memory.type === "decision" || memory.type === "correction") {
           const decision = decisionFromEvent(event, memory.source === "user_explicit");
           if (/(?:当前|现在|目前|current|currently|now)/i.test(event.content)) {
             const trail = await getDecisionTrail(root, event.project_id, decision.topic);

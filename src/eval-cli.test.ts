@@ -21,3 +21,9 @@ test("CLI adversarial gate reports a perfect macro score", async () => {
   const report = JSON.parse((await run(process.execPath, [path.resolve("dist/eval-cli.js"), "adversarial"])).stdout) as { scores: { macro_composite: number } };
   assert.equal(report.scores.macro_composite, 1);
 });
+
+test("CLI held-out gate runs a configurable larger vault", async () => {
+  const report = JSON.parse((await run(process.execPath, [path.resolve("dist/eval-cli.js"), "heldout", "--noise", "24"])).stdout) as { imported: number; scores: { macro_composite: number } };
+  assert.equal(report.imported, 34);
+  assert.equal(report.scores.macro_composite, 1);
+});

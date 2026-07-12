@@ -23,6 +23,7 @@
     "test": "pnpm run build && node --test dist/*.test.js",
     "eval:year": "node dist/eval-cli.js generate --output eval-data && node dist/eval-cli.js run --fixture eval-data/fixtures/continuity-year-2025.json --oracle eval-data/oracle/continuity-year-2025.oracle.json",
     "eval:adversarial": "node dist/eval-cli.js adversarial",
+    "eval:heldout": "node dist/eval-cli.js heldout",
     "verify:package": "node scripts/package-smoke.mjs"
   },
   "engines": { "node": ">=20" },

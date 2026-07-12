@@ -21,7 +21,12 @@ export async function recall(root: string, options: SearchOptions & { maxCharact
   }
   const decisions = await listDecisionViews(root, options.projectId);
   const initialEvidence = new Set(found.flatMap(hit => hit.raw_ref));
-  const matchedDecision = decisions.filter(view => view.source_events.some(event => initialEvidence.has(event))).sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
+  const evidenceRank = new Map<string, number>();
+  found.forEach((hit, index) => hit.raw_ref.forEach(event => evidenceRank.set(event, Math.min(evidenceRank.get(event) ?? Number.POSITIVE_INFINITY, index))));
+  const decisionRank = (sourceEvents: string[]) => Math.min(...sourceEvents.map(event => evidenceRank.get(event) ?? Number.POSITIVE_INFINITY));
+  const matchedDecision = decisions
+    .filter(view => view.source_events.some(event => initialEvidence.has(event)))
+    .sort((a, b) => decisionRank(a.source_events) - decisionRank(b.source_events) || b.updated_at.localeCompare(a.updated_at))[0];
   const asksForCurrent = /(?:当前|现在|目前|current|currently|now)/i.test(options.query);
   const asksForRationale = /(?:为什么|原因|理由|why|reason)/i.test(options.query);
   if (matchedDecision?.current_evidence_refs?.length && (asksForCurrent || asksForRationale)) {

@@ -7,7 +7,7 @@ import { expandTerms } from "./term-graph.js";
 import type { ProcessedMemory, RawEvent, SearchHit } from "./types.js";
 import { initVault, listJsonFiles } from "./vault.js";
 
-const QUERY_STOP = new Set(["我们", "们讨", "讨论", "论过", "之前", "前为", "为什么", "什么", "么没", "没有", "最后", "后定", "定了", "了什", "吗"]);
+const QUERY_STOP = new Set(["a", "an", "did", "do", "does", "for", "is", "of", "our", "the", "to", "was", "we", "were", "what", "which", "why", "我们", "们讨", "讨论", "论过", "之前", "前为", "为什么", "什么", "么没", "没有", "最后", "后定", "定了", "了什", "吗"]);
 
 export interface SearchOptions {
   projectId: string;
@@ -127,8 +127,9 @@ function scoreMemory(memory: ProcessedMemory, original: string[], candidates: st
     if (memory.tags.includes(token)) score += 2 * (weights.get(token) ?? 1);
     if (!original.includes(token)) expansionHit = true;
   }
-  const latinCandidates = candidates.filter(token => /^[a-z0-9]/.test(token));
-  if (latinCandidates.length && !latinCandidates.some(token => textTokens.includes(token))) score = 0;
+  const latinOriginal = original.filter(token => /^[a-z0-9]/.test(token));
+  const latinCoverage = latinOriginal.length ? latinOriginal.filter(token => textTokens.includes(token)).length / latinOriginal.length : 1;
+  if (latinCoverage < 0.5 && !expansionHit) score = 0;
   if (memory.source === "user_explicit") score *= 1.35;
   const coverage = original.filter(token => textTokens.includes(token)).length / original.length;
   return {

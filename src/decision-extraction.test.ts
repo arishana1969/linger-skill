@@ -12,6 +12,13 @@ test("extracts explicit database decision from visible user evidence", () => {
   assert.deepEqual(result.evidenceRefs, ["evt"]);
 });
 
+test("preserves correction kind for an automatic decision event", () => {
+  const result = decisionFromEvent({ schema_version: 1, event_id: "evt_c", session_id: "s", project_id: "p", seq_id: 2, turn_id: "t", role: "user", timestamp: "2026-01-02T00:00:00.000Z", source_agent: "test", content: "Correction: current adapter decision is webhooks", content_hash: "hash", savepoint_status: "complete", capture_status: "captured", sensitivity: "normal", raw_ref: "raw/p/x.json" });
+  assert.equal(result.kind, "correction");
+  assert.equal(result.status, "current");
+  assert.equal(result.topic, "adapter");
+});
+
 test("keeps database cache decisions separate from primary database decisions", () => {
   const base = { schema_version: 1, event_id: "evt", session_id: "s", project_id: "p", seq_id: 1, turn_id: "t", role: "user", timestamp: "2025-01-01T00:00:00.000Z", source_agent: "test", content_hash: "h", savepoint_status: "complete", capture_status: "captured", sensitivity: "normal", raw_ref: "raw" } as const;
   const primary = decisionFromEvent({ ...base, content: "当前数据库决定使用 SQLite" });

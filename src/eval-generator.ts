@@ -8,6 +8,7 @@ export interface EvalEvent {
   content: string;
   expected_sensitivity: "normal" | "sensitive" | "secret";
   save: boolean;
+  savepoint_status?: "pending" | "complete" | "partial";
 }
 
 export interface EvalOracle {

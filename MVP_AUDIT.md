@@ -67,7 +67,7 @@ It is not yet a public release candidate. The remaining release blockers are mai
 ### Recall and decisions
 
 - Project isolation, CJK/English lexical scoring, tags, aliases/term graph, explicit-memory priority, evidence IDs, character budget, candidates, abstention, current state, rationale recall, and conflict classification are covered.
-- A deterministic 99-event year fixture and a separate adversarial fixture run through a real temporary Vault. Their checked-in regression gates require macro composite `1.0` across evidence, scope, classification, state, acceptable claims, and forbidden claims.
+- A deterministic 99-event year fixture, a focused adversarial fixture, and a separate 250-event held-out fixture run through real temporary Vaults. The held-out gate adds large-vault noise, paraphrases, database/cache near-collisions, an A→B→A correction chain, partial evidence, and project decoys. Their checked-in regression gates require macro composite `1.0` across evidence, scope, classification, state, acceptable claims, and forbidden claims.
 - These small generated fixtures prevent known regressions; they are not evidence of general-world retrieval quality.
 
 ### Security and controls
@@ -81,7 +81,7 @@ It is not yet a public release candidate. The remaining release blockers are mai
 
 1. Resolve maintainer release metadata in `RELEASE_CHECKLIST.md`, including license, repository URL, package ownership, and security contact. Keep npm publication as an explicit user-owned release action.
 2. Validate Codex trusted live execution and record its exact lifecycle payloads. Preserve the observed Claude Code Ctrl-C limitation in release notes unless a later host version changes it.
-3. Expand generated evaluation with held-out paraphrases, noisy near-collisions, corrections, partial answers, tampering, and larger vault sizes.
+3. Add mutation-driven held-out tampering/deletion cases and broaden the generated scenario families beyond the current deterministic lexical suites.
 4. Rerun the complete repository, artifact, host, and documentation gates from the final candidate commit.
 
 ## Explicitly deferred from the first GitHub MVP
