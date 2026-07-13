@@ -20,8 +20,8 @@ try {
   await exec("tar", ["-xzf", tarball, "-C", extract]);
   const packageRoot = path.join(extract, "package");
   const required = [
-    "README.md", "PRIVACY.md", "SECURITY.md", "DATA_MODEL.md", "ADAPTER_SPEC.md", "AGENT_COMPATIBILITY.md", "HOST_VALIDATION.md", "RELEASE_CHECKLIST.md",
-    "dist/cli.js", "dist/eval-cli.js", "dist/hook-cli.js", "scripts/release-readiness.mjs", "skills/continuity/SKILL.md", "skills/continuity/agents/openai.yaml", "skills/continuity/references/protocol.md"
+    "README.md", "dist/cli.js", "dist/eval-cli.js", "dist/hook-cli.js", "scripts/release-readiness.mjs",
+    "skills/continuity/SKILL.md", "skills/continuity/agents/openai.yaml", "skills/continuity/references/protocol.md"
   ];
   for (const file of required) await access(path.join(packageRoot, file));
   const packedManifest = JSON.parse(await readFile(path.join(packageRoot, "package.json"), "utf8"));

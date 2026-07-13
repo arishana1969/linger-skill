@@ -9,13 +9,6 @@
     "!dist/*.test.*",
     "skills",
     "README.md",
-    "PRIVACY.md",
-    "SECURITY.md",
-    "DATA_MODEL.md",
-    "ADAPTER_SPEC.md",
-    "AGENT_COMPATIBILITY.md",
-    "HOST_VALIDATION.md",
-    "RELEASE_CHECKLIST.md",
     "scripts/release-readiness.mjs"
   ],
   "scripts": {
