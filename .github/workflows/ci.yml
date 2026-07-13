@@ -43,12 +43,8 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
       - run: pnpm install --frozen-lockfile
       - run: node scripts/scan-tracked-secrets.mjs
-      - run: pip install PyYAML
       - run: pnpm build
-      - run: python scripts/validate-skill.py skills/continuity
+      - run: node scripts/validate-skill.mjs skills/continuity
       - run: pnpm verify:package

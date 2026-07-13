@@ -21,7 +21,7 @@ pnpm install --frozen-lockfile
 node scripts/scan-tracked-secrets.mjs
 pnpm test
 pnpm build
-python scripts/validate-skill.py skills/continuity
+node scripts/validate-skill.mjs skills/continuity
 pnpm eval:year
 pnpm eval:adversarial
 pnpm eval:heldout
