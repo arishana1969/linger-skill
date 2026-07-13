@@ -54,7 +54,7 @@ function readDefaultPrompt(content) {
 }
 
 function main() {
-  const skill = path.resolve(process.argv[2] ?? "skills/continuity");
+  const skill = path.resolve(process.argv[2] ?? "skills/linger");
   const document = path.join(skill, "SKILL.md");
   const interfacePath = path.join(skill, "agents", "openai.yaml");
   if (!fs.statSync(document, { throwIfNoEntry: false })?.isFile()) throw new Error(`missing ${document}`);

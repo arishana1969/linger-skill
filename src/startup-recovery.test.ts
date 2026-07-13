@@ -11,8 +11,8 @@ import { search } from "./search.js";
 import { projectId } from "./vault.js";
 
 test("SessionStart recovers pending capture before processing queue", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-startup-vault-"));
-  const cwd = await mkdtemp(path.join(os.tmpdir(), "continuity-startup-project-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-startup-vault-"));
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "linger-startup-project-"));
   const project = await projectId(cwd);
   const p = vaultPaths(root);
   const timestamp = new Date().toISOString();

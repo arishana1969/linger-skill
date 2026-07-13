@@ -22,7 +22,7 @@ import { initVault, listProjects, registerProject, setPaused, vaultStats } from 
 
 const args = process.argv.slice(2);
 const command = args.shift();
-const vault = option("--vault") ?? process.env.CONTINUITY_VAULT ?? path.join(os.homedir(), ".continuity", "vault");
+const vault = option("--vault") ?? process.env.LINGER_VAULT ?? path.join(os.homedir(), ".linger", "vault");
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function option(name: string): string | undefined {
@@ -88,11 +88,11 @@ async function main(): Promise<void> {
     case "doctor": output(await doctor(vault)); break;
     case "doctor-repair": { if (!flag("--yes")) throw new Error("doctor-repair requires --yes"); output(await quarantineInvalidFiles(vault)); break; }
     default:
-      console.log("continuity <install|uninstall|purge|capabilities|init|project-id|projects|capture|recover|process|tags-rebuild|term-add|recall|search|decision-add|decision-get|decision-list|forget|correct|delete|delete-last|inspect|pause|resume|status|doctor|doctor-repair> [options]");
+      console.log("linger <install|uninstall|purge|capabilities|init|project-id|projects|capture|recover|process|tags-rebuild|term-add|recall|search|decision-add|decision-get|decision-list|forget|correct|delete|delete-last|inspect|pause|resume|status|doctor|doctor-repair> [options]");
       if (command) process.exitCode = 2;
   }
 }
 
 function output(value: unknown): void { console.log(JSON.stringify(value, null, 2)); }
 function throwError(message: string): never { throw new Error(message); }
-main().catch(error => { console.error(`continuity: ${(error as Error).message}`); process.exitCode = 1; });
+main().catch(error => { console.error(`linger: ${(error as Error).message}`); process.exitCode = 1; });

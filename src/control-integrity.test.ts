@@ -11,7 +11,7 @@ import { processQueue } from "./processing.js";
 import { search } from "./search.js";
 
 test("control operations reject a processed record whose identity disagrees with its path", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-control-integrity-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-control-integrity-"));
   await capture(root, { projectId: "p_alpha", sessionId: "s", turnId: "t", role: "user", content: "control-integrity sentinel", sourceAgent: "test" });
   await processQueue(root, "p_alpha");
   const hit = (await search(root, { projectId: "p_alpha", query: "control-integrity" }))[0]!;
@@ -30,7 +30,7 @@ test("control operations reject a processed record whose identity disagrees with
 });
 
 test("delete-last skips invalid processed records and deletes only the latest valid record", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-control-integrity-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-control-integrity-"));
   await capture(root, { projectId: "p", sessionId: "s1", turnId: "t1", role: "user", content: "older valid", sourceAgent: "test", timestamp: "2026-01-01T00:00:00.000Z" });
   await capture(root, { projectId: "p", sessionId: "s2", turnId: "t2", role: "user", content: "newer valid", sourceAgent: "test", timestamp: "2026-02-01T00:00:00.000Z" });
   await processQueue(root, "p");

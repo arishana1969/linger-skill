@@ -8,7 +8,7 @@ import { processQueue } from "./processing.js";
 import { vaultPaths } from "./paths.js";
 
 test("processing writes human-readable Markdown with complete provenance frontmatter", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-markdown-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-markdown-"));
   await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "Markdown processed decision", sourceAgent: "test" });
   await processQueue(root);
   const { readdir } = await import("node:fs/promises");

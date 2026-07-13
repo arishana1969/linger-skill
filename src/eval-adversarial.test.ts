@@ -8,7 +8,7 @@ import { runEvalDataset } from "./eval-runner.js";
 
 test("adversarial fixture preserves scope, opt-out, and secret exclusion", async () => {
   const dataset = generateAdversarialDataset();
-  const result = await runEvalDataset(await mkdtemp(path.join(os.tmpdir(), "continuity-adversarial-")), dataset);
+  const result = await runEvalDataset(await mkdtemp(path.join(os.tmpdir(), "linger-adversarial-")), dataset);
   for (const prediction of result.predictions) {
     assert.equal(prediction.evidence_ids.includes("adv_other"), false);
     assert.equal(prediction.evidence_ids.includes("adv_secret"), false);

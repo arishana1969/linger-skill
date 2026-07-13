@@ -6,7 +6,7 @@ import { installHooks, uninstallHooks } from "./hook-installer.js";
 import { installRuntime, uninstallRuntime } from "./runtime-installer.js";
 import { assertSafeId } from "./paths.js";
 
-export const PRIVACY_NOTICE = "Continuity stores visible conversations in local files. Recalled evidence may be sent to the current cloud model. Local-first does not mean data never leaves this device. No telemetry is installed, and uninstall preserves the vault.";
+export const PRIVACY_NOTICE = "Linger stores visible conversations in local files. Recalled evidence may be sent to the current cloud model. Local-first does not mean data never leaves this device. No telemetry is installed, and uninstall preserves the vault.";
 
 export interface InstallManifest {
   schema_version: 1;
@@ -29,9 +29,9 @@ export interface InstallOptions {
 export async function install(options: InstallOptions): Promise<{ manifest: InstallManifest; capabilities: Awaited<ReturnType<typeof capabilityReport>>; privacy_notice: string }> {
   const adapters = options.adapters ?? ["claude-code", "codex"];
   assertAdapters(adapters);
-  const sourceSkill = path.join(options.packageRoot, "skills", "continuity");
+  const sourceSkill = path.join(options.packageRoot, "skills", "linger");
   await stat(path.join(sourceSkill, "SKILL.md"));
-  const stateRoot = path.join(options.home, ".continuity");
+  const stateRoot = path.join(options.home, ".linger");
   const manifestFile = path.join(stateRoot, "install-manifest.json");
   await mkdir(stateRoot, { recursive: true, mode: 0o700 });
   const backups: string[] = [];
@@ -48,7 +48,7 @@ export async function install(options: InstallOptions): Promise<{ manifest: Inst
     }
     await mkdir(destination, { recursive: true, mode: 0o700 });
     await cp(sourceSkill, destination, { recursive: true, force: false });
-    await writeFile(path.join(destination, ".continuity-managed"), "managed by continuity-skill\n", { mode: 0o600 });
+    await writeFile(path.join(destination, ".linger-managed"), "managed by linger-skill\n", { mode: 0o600 });
     files.push(destination);
   }
   const runtime = await installRuntime(options.home, options.packageRoot);
@@ -59,7 +59,7 @@ export async function install(options: InstallOptions): Promise<{ manifest: Inst
 }
 
 export async function uninstall(home: string): Promise<{ removed: string[]; vault_preserved: true }> {
-  const manifestFile = path.join(home, ".continuity", "install-manifest.json");
+  const manifestFile = path.join(home, ".linger", "install-manifest.json");
   let manifest: InstallManifest;
   try { manifest = JSON.parse(await readFile(manifestFile, "utf8")) as InstallManifest; }
   catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return { removed: [], vault_preserved: true }; throw error; }
@@ -76,7 +76,7 @@ export async function uninstall(home: string): Promise<{ removed: string[]; vaul
 }
 
 function skillDestination(home: string, adapter: AdapterName): string {
-  return path.join(home, adapter === "claude-code" ? ".claude" : ".codex", "skills", "continuity");
+  return path.join(home, adapter === "claude-code" ? ".claude" : ".codex", "skills", "linger");
 }
 function assertAdapters(adapters: unknown): asserts adapters is AdapterName[] {
   if (!Array.isArray(adapters) || !adapters.length || !adapters.every(adapter => adapter === "claude-code" || adapter === "codex") || new Set(adapters).size !== adapters.length) throw new Error("Invalid install adapters");
@@ -92,9 +92,9 @@ function assertInstallManifest(home: string, value: unknown): asserts value is I
   for (const field of ["files", "backups", "hook_files"] as const) if (!Array.isArray(item[field]) || !(item[field] as unknown[]).every(entry => typeof entry === "string")) throw new Error(`Invalid install manifest ${field}`);
   const allowedTargets = new Set(item.adapters.map(adapter => path.resolve(skillDestination(home, adapter))));
   if (!(item.files as string[]).every(file => allowedTargets.has(path.resolve(file)))) throw new Error("Invalid install manifest target");
-  const allowedRuntime = path.resolve(home, ".continuity", "runtime", packageVersion);
+  const allowedRuntime = path.resolve(home, ".linger", "runtime", packageVersion);
   if (path.resolve(item.runtime_root) !== allowedRuntime) throw new Error("Invalid install manifest runtime");
 }
 function isInside(parent: string, child: string): boolean { const relative = path.relative(path.resolve(parent), path.resolve(child)); return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative); }
-async function isManaged(dir: string): Promise<boolean> { return await exists(path.join(dir, ".continuity-managed")); }
+async function isManaged(dir: string): Promise<boolean> { return await exists(path.join(dir, ".linger-managed")); }
 async function exists(file: string): Promise<boolean> { try { await stat(file); return true; } catch { return false; } }

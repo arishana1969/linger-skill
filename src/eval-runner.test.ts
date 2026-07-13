@@ -7,7 +7,7 @@ import { generateYearDataset } from "./eval-generator.js";
 import { runEvalDataset } from "./eval-runner.js";
 
 test("runs year fixture through real vault without oracle leakage", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-eval-run-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-eval-run-"));
   const dataset = generateYearDataset(2025);
   const result = await runEvalDataset(root, dataset);
   assert.equal(result.imported, dataset.events.length - 1);

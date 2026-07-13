@@ -12,8 +12,6 @@ A file-native conversation archive and decision trail for coding agents.
 
 Linger is an experimental v0.1 GitHub MVP candidate. It is not published to npm and does not promise perfect archival coverage or universal agent automation.
 
-This README defines the public Linger identity. The checked-in implementation still contains the earlier internal Continuity name in its package, CLI, Skill, Vault paths, tests, and adapter markers. Do not publish the repository until that rename is complete and the full verification gate passes again.
-
 ## Origin
 
 This project started from a post by [Evis Drenova](https://x.com/evisdrenova):
@@ -80,7 +78,7 @@ Linger combines a Skill, lifecycle hooks, a helper CLI, an event-driven processo
 
 Linger does not install a daemon or guarantee that an idle, long-running session will process the queue at an exact time.
 
-The intended default Vault after the Linger rename is ~/.linger/vault:
+The default Vault is ~/.linger/vault:
 
     ~/.linger/vault/
     ├── config.json
@@ -220,7 +218,7 @@ Requires Node.js 20 or later and pnpm.
 
     pnpm install --frozen-lockfile
     pnpm test
-    node scripts/validate-skill.mjs skills/continuity
+    node scripts/validate-skill.mjs skills/linger
     pnpm eval:year
     pnpm eval:adversarial
     pnpm eval:heldout
@@ -228,7 +226,7 @@ Requires Node.js 20 or later and pnpm.
 
 The current clean candidate passes:
 
-- 156 automated tests.
+- 157 automated tests.
 - Year, adversarial, and 250+ event held-out evaluation gates at macro composite 1.0.
 - Skill validation.
 - Exact tarball package-manager installation.
@@ -254,4 +252,4 @@ Purge is intentionally separate and requires both confirmation mechanisms.
 
 ## License
 
-MIT is the intended license. The LICENSE file and matching package metadata must be added before the repository is made public.
+Linger is licensed under the MIT License. See LICENSE.

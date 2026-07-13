@@ -8,7 +8,7 @@ import test from "node:test";
 const validator = path.join(process.cwd(), "scripts", "validate-skill.mjs");
 
 function fixture(frontmatter: string, prompt = "Use $sample-skill for this task.") {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "continuity-skill-validator-"));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "linger-skill-validator-"));
   const skill = path.join(root, "sample-skill");
   fs.mkdirSync(path.join(skill, "agents"), { recursive: true });
   fs.writeFileSync(path.join(skill, "SKILL.md"), `---\n${frontmatter}\n---\n\n# Sample\n`);
@@ -16,8 +16,8 @@ function fixture(frontmatter: string, prompt = "Use $sample-skill for this task.
   return skill;
 }
 
-test("validates the checked-in Continuity skill without third-party Python packages", () => {
-  const output = execFileSync(process.execPath, [validator, path.join(process.cwd(), "skills", "continuity")], { encoding: "utf8" });
+test("validates the checked-in Linger skill without third-party Python packages", () => {
+  const output = execFileSync(process.execPath, [validator, path.join(process.cwd(), "skills", "linger")], { encoding: "utf8" });
   assert.match(output, /Skill is valid!/);
 });
 

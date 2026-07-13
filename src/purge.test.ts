@@ -7,9 +7,9 @@ import { install } from "./installer.js";
 import { purge } from "./purge.js";
 
 test("purge requires double confirmation and stays inside home", async () => {
-  const home = await mkdtemp(path.join(os.tmpdir(), "continuity-purge-"));
+  const home = await mkdtemp(path.join(os.tmpdir(), "linger-purge-"));
   await install({ home, packageRoot: process.cwd(), adapters: ["codex"] });
-  const vault = path.join(home, ".continuity", "vault", "memory.json");
+  const vault = path.join(home, ".linger", "vault", "memory.json");
   await mkdir(path.dirname(vault), { recursive: true });
   await writeFile(vault, "memory");
   const outside = path.join(home, "keep.txt");
@@ -18,6 +18,6 @@ test("purge requires double confirmation and stays inside home", async () => {
   await access(vault);
   const result = await purge(home, { yes: true, phrase: "PURGE" });
   assert.equal(result.purged, true);
-  await assert.rejects(access(path.join(home, ".continuity")));
+  await assert.rejects(access(path.join(home, ".linger")));
   await access(outside);
 });

@@ -12,7 +12,7 @@ import { quarantineInvalidFiles } from "./repair.js";
 import { search } from "./search.js";
 
 test("invalid memory controls and term relations do not block valid recall", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-registry-integrity-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-registry-integrity-"));
   await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "registry-aurora durable evidence", sourceAgent: "test" });
   await processQueue(root);
   const p = vaultPaths(root);

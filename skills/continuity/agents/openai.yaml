@@ -1,4 +1,0 @@
-interface:
-  display_name: "Continuity"
-  short_description: "Recall local conversation history and decision trails"
-  default_prompt: "Use $continuity to recall prior project context with traceable evidence."

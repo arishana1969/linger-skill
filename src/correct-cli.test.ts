@@ -11,7 +11,7 @@ const cli = path.resolve("dist/cli.js");
 async function run(args: string[]): Promise<unknown> { return JSON.parse((await exec(process.execPath, [cli, ...args])).stdout); }
 
 test("CLI correct supersedes rather than edits old memory", async () => {
-  const vault = await mkdtemp(path.join(os.tmpdir(), "continuity-correct-cli-"));
+  const vault = await mkdtemp(path.join(os.tmpdir(), "linger-correct-cli-"));
   const event = await run(["capture", "--vault", vault, "--project", "p_cli", "--session", "s1", "--turn", "t1", "--role", "user", "--content", "决定使用旧缓存方案"]) as { event_id: string };
   await run(["process", "--vault", vault]);
   const old = (await run(["search", "--vault", vault, "--project", "p_cli", "--query", "旧缓存"]) as Array<{ source: string }>)[0]!;

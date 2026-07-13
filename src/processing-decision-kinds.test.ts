@@ -8,7 +8,7 @@ import { getDecisionTrail } from "./decisions.js";
 import { processQueue } from "./processing.js";
 
 test("processing records every visible decision-trail kind as an append-only event", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-processing-kinds-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-processing-kinds-"));
   const cases = [
     ["idea", "Idea: offline import"],
     ["preference", "Preference: human-readable files"],

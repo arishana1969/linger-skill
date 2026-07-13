@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 
 const exec = promisify(execFile);
 const root = process.cwd();
-const temporary = await mkdtemp(path.join(os.tmpdir(), "continuity-package-smoke-"));
+const temporary = await mkdtemp(path.join(os.tmpdir(), "linger-package-smoke-"));
 
 try {
   const pack = await runPnpm(["pack", "--json", "--pack-destination", temporary]);
@@ -20,27 +20,30 @@ try {
   await exec("tar", ["-xzf", tarball, "-C", extract]);
   const packageRoot = path.join(extract, "package");
   const required = [
-    "README.md", "dist/cli.js", "dist/eval-cli.js", "dist/hook-cli.js", "scripts/release-readiness.mjs",
-    "skills/continuity/SKILL.md", "skills/continuity/agents/openai.yaml", "skills/continuity/references/protocol.md"
+    "README.md", "LICENSE", "dist/cli.js", "dist/eval-cli.js", "dist/hook-cli.js", "scripts/release-readiness.mjs",
+    "skills/linger/SKILL.md", "skills/linger/agents/openai.yaml", "skills/linger/references/protocol.md"
   ];
   for (const file of required) await access(path.join(packageRoot, file));
   const packedManifest = JSON.parse(await readFile(path.join(packageRoot, "package.json"), "utf8"));
-  if (packedManifest.name !== "continuity-skill" || packedManifest.bin?.continuity !== "dist/cli.js") throw new Error("packed manifest has an invalid name or CLI bin");
+  if (packedManifest.name !== "linger-skill" || packedManifest.bin?.linger !== "dist/cli.js") throw new Error("packed manifest has an invalid name or CLI bin");
   const readiness = JSON.parse((await exec(process.execPath, [path.join(packageRoot, "scripts", "release-readiness.mjs"), "--root", packageRoot, "--allow-blocked"])).stdout);
-  if (readiness.github_ready !== false || !readiness.blockers?.includes("license_file")) throw new Error("packed release-readiness verifier did not report repository metadata blockers");
+  const expectedBlockers = ["bugs_url", "homepage_url", "repository_url", "security_contact"];
+  if (readiness.github_ready !== false || JSON.stringify([...readiness.blockers].sort()) !== JSON.stringify(expectedBlockers)) {
+    throw new Error("packed release-readiness verifier did not isolate the remaining repository metadata blockers");
+  }
 
   const consumer = path.join(temporary, "consumer");
   await mkdir(consumer, { recursive: true });
-  await writeFile(path.join(consumer, "package.json"), JSON.stringify({ name: "continuity-package-consumer", private: true }));
+  await writeFile(path.join(consumer, "package.json"), JSON.stringify({ name: "linger-package-consumer", private: true }));
   await runPnpm(["add", "--offline", "--ignore-scripts", tarball], consumer);
   const home = path.join(temporary, "home");
-  const cli = path.join(consumer, "node_modules", ".bin", process.platform === "win32" ? "continuity.CMD" : "continuity");
+  const cli = path.join(consumer, "node_modules", ".bin", process.platform === "win32" ? "linger.CMD" : "linger");
   await access(cli);
   const installed = JSON.parse((await exec(cli, ["install", "--home", home, "--yes"], { cwd: consumer })).stdout);
   if (!installed.privacy_notice || installed.capabilities.length !== 2) throw new Error("packed installer omitted privacy notice or capability report");
   const capabilities = JSON.parse((await exec(cli, ["capabilities", "--home", home], { cwd: consumer })).stdout);
   if (capabilities[0]?.level !== 2 || capabilities[1]?.level !== 1) throw new Error("packed capability report did not preserve Claude L2 and trust-gated Codex L1");
-  const vault = path.join(home, ".continuity", "vault");
+  const vault = path.join(home, ".linger", "vault");
   await exec(cli, ["capture", "--vault", vault, "--project", "p_consumer", "--session", "s", "--turn", "t", "--role", "user", "--content", "package-consumer-zephyr durable decision", "--explicit"], { cwd: consumer });
   await exec(cli, ["process", "--vault", vault, "--project", "p_consumer"], { cwd: consumer });
   const recalled = JSON.parse((await exec(cli, ["recall", "--vault", vault, "--project", "p_consumer", "--query", "package-consumer-zephyr"], { cwd: consumer })).stdout);

@@ -12,7 +12,7 @@ import { quarantineInvalidFiles } from "./repair.js";
 import { rebuildTagRegistry } from "./tag-registry.js";
 
 test("invalid derived tag registry does not block evidence recall and can be repaired", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-tag-integrity-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-tag-integrity-"));
   await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "registry-zephyr durable evidence", sourceAgent: "test" });
   await processQueue(root);
   const file = path.join(vaultPaths(root).registry, "tags", "p.json");

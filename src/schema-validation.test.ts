@@ -12,7 +12,7 @@ import { rebuildTagRegistry } from "./tag-registry.js";
 import { initVault, vaultStats } from "./vault.js";
 
 test("valid JSON with invalid schemas is skipped, diagnosed, counted, and quarantined", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-schema-validation-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-schema-validation-"));
   await initVault(root);
   const p = vaultPaths(root);
   const files = [

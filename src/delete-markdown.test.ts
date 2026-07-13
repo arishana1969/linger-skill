@@ -10,7 +10,7 @@ import { search } from "./search.js";
 import { vaultPaths } from "./paths.js";
 
 test("processed delete removes JSON and Markdown representations", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-delete-md-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-delete-md-"));
   await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "delete markdown", sourceAgent: "test" });
   await processQueue(root);
   const id = (await search(root, { projectId: "p", query: "delete markdown" }))[0]!.source;

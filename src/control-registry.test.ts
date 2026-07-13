@@ -17,7 +17,7 @@ async function memory(root: string, content: string, query: string): Promise<str
 }
 
 test("forget rebuilds candidates without revoked tags", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-control-registry-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-control-registry-"));
   const id = await memory(root, "registry-forget-zephyr durable", "registry-forget-zephyr");
   assert.ok((await readTagRegistry(root, "p"))?.entries.some(entry => entry.normalized_tag === "registry-forget-zephyr"));
   await forget(root, "p", id);
@@ -25,12 +25,12 @@ test("forget rebuilds candidates without revoked tags", async () => {
 });
 
 test("processed delete and correction rebuild active tag candidates", async () => {
-  const deleteRoot = await mkdtemp(path.join(os.tmpdir(), "continuity-control-registry-"));
+  const deleteRoot = await mkdtemp(path.join(os.tmpdir(), "linger-control-registry-"));
   const deleted = await memory(deleteRoot, "registry-delete-zephyr durable", "registry-delete-zephyr");
   await deleteRecord(deleteRoot, { projectId: "p", target: "processed", id: deleted, confirmed: true });
   assert.equal((await readTagRegistry(deleteRoot, "p"))?.entries.some(entry => entry.normalized_tag === "registry-delete-zephyr"), false);
 
-  const correctRoot = await mkdtemp(path.join(os.tmpdir(), "continuity-control-registry-"));
+  const correctRoot = await mkdtemp(path.join(os.tmpdir(), "linger-control-registry-"));
   const old = await memory(correctRoot, "registry-old-zephyr durable", "registry-old-zephyr");
   await correct(correctRoot, "p", old, "registry-new-zephyr corrected", ["evt_visible"]);
   const tags = (await readTagRegistry(correctRoot, "p"))?.entries.map(entry => entry.normalized_tag) ?? [];

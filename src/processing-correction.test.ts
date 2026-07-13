@@ -8,7 +8,7 @@ import { getDecisionTrail } from "./decisions.js";
 import { processQueue } from "./processing.js";
 
 test("automatic correction enters the append-only decision trail and becomes current", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-processing-correction-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-processing-correction-"));
   await capture(root, { projectId: "p", sessionId: "s1", turnId: "t1", role: "user", content: "Current adapter decision: webhooks", sourceAgent: "test", timestamp: "2025-01-01T00:00:00.000Z" });
   await capture(root, { projectId: "p", sessionId: "s2", turnId: "t2", role: "user", content: "Current adapter decision: polling", sourceAgent: "test", timestamp: "2025-02-01T00:00:00.000Z" });
   await capture(root, { projectId: "p", sessionId: "s3", turnId: "t3", role: "user", content: "Correction: current adapter decision is webhooks", sourceAgent: "test", timestamp: "2025-03-01T00:00:00.000Z" });

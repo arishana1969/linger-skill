@@ -10,7 +10,7 @@ import { vaultPaths } from "./paths.js";
 import { vaultStats } from "./vault.js";
 
 test("status reports actionable queue counts", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-status-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-status-"));
   await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "status", sourceAgent: "test" });
   let status = await vaultStats(root);
   assert.equal(status.queue_pending, 1);
@@ -22,7 +22,7 @@ test("status reports actionable queue counts", async () => {
 });
 
 test("doctor reports invalid pending without crashing", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-status-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-status-"));
   const file = path.join(vaultPaths(root).tmp, "pending", "p", "broken.json");
   const { mkdir } = await import("node:fs/promises");
   await mkdir(path.dirname(file), { recursive: true });

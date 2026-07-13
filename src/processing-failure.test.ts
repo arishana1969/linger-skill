@@ -10,7 +10,7 @@ import { processQueue } from "./processing.js";
 import { search } from "./search.js";
 
 test("corrupt queue item does not block valid work", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-process-failure-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-process-failure-"));
   const bad = path.join(vaultPaths(root).queue, "p", "bad.json");
   await mkdir(path.dirname(bad), { recursive: true });
   await writeFile(bad, "not-json");
@@ -21,7 +21,7 @@ test("corrupt queue item does not block valid work", async () => {
 });
 
 test("schema-invalid raw file does not block a valid queued event", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-process-raw-failure-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-process-raw-failure-"));
   const bad = path.join(vaultPaths(root).raw, "p", "bad.json");
   await mkdir(path.dirname(bad), { recursive: true });
   await writeFile(bad, JSON.stringify({ schema_version: 1, event_id: "bad" }));

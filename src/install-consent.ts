@@ -3,7 +3,7 @@ import type { AdapterName } from "./adapters.js";
 import { PRIVACY_NOTICE } from "./installer.js";
 
 export async function confirmPrivacyConsent(input: Readable, output: Writable): Promise<boolean> {
-  output.write(`${PRIVACY_NOTICE}\nType YES to install Continuity, or anything else to cancel: `);
+  output.write(`${PRIVACY_NOTICE}\nType YES to install Linger, or anything else to cancel: `);
   let text = "";
   for await (const chunk of input) {
     text += chunk.toString();

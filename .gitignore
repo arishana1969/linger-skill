@@ -3,9 +3,9 @@ dist/
 coverage/
 *.log
 .DS_Store
-.continuity-test/
+.linger-test/
 eval-data/
-.continuity/
+.linger/
 .env
 .env.*
 *.pem

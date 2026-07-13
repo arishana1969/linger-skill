@@ -9,8 +9,8 @@ import { search } from "./search.js";
 import { projectId } from "./vault.js";
 
 async function fixture(): Promise<{ root: string; cwd: string; project: string }> {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-hook-vault-"));
-  const cwd = await mkdtemp(path.join(os.tmpdir(), "continuity-hook-project-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-hook-vault-"));
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "linger-hook-project-"));
   return { root, cwd, project: await projectId(cwd) };
 }
 
@@ -70,7 +70,7 @@ test("unsupported, empty, malformed, and opt-out hook payloads create no Vault s
     { hook_event_name: "UserPromptSubmit", cwd: "/tmp/attacker", prompt: 42 as never },
     { hook_event_name: "UserPromptSubmit", cwd: "/tmp/attacker", prompt: "do not save this" }
   ]) {
-    const root = await mkdtemp(path.join(os.tmpdir(), "continuity-hook-zero-write-"));
+    const root = await mkdtemp(path.join(os.tmpdir(), "linger-hook-zero-write-"));
     const result = await handleHook(root, input, "codex");
     assert.ok(result.skipped);
     await assert.rejects(access(path.join(root, "config.json")));

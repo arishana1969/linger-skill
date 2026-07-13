@@ -11,7 +11,7 @@ const node = process.execPath;
 const cli = path.resolve("dist/cli.js");
 
 test("CLI runs capture to recall and decision trail in separate processes", async () => {
-  const vault = await mkdtemp(path.join(os.tmpdir(), "continuity-cli-"));
+  const vault = await mkdtemp(path.join(os.tmpdir(), "linger-cli-"));
   await run(["init", "--vault", vault]);
   await run(["capture", "--vault", vault, "--project", "p_cli", "--session", "s1", "--turn", "t1", "--role", "user", "--content", "决定先使用本地文件", "--explicit"]);
   await run(["process", "--vault", vault]);

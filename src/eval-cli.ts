@@ -52,12 +52,12 @@ async function main(): Promise<void> {
   }
   if (command === "run") {
     const dataset = await readDataset(required("--fixture"), required("--oracle"));
-    const vault = option("--vault") ?? await mkdtemp(path.join(os.tmpdir(), "continuity-eval-"));
+    const vault = option("--vault") ?? await mkdtemp(path.join(os.tmpdir(), "linger-eval-"));
     console.log(JSON.stringify({ dataset: dataset.name, vault, ...await runEvalDataset(vault, dataset) }, null, 2));
     return;
   }
   if (command === "adversarial") {
-    const vault = option("--vault") ?? await mkdtemp(path.join(os.tmpdir(), "continuity-eval-adversarial-"));
+    const vault = option("--vault") ?? await mkdtemp(path.join(os.tmpdir(), "linger-eval-adversarial-"));
     const dataset = generateAdversarialDataset();
     console.log(JSON.stringify({ dataset: dataset.name, vault, ...await runEvalDataset(vault, dataset) }, null, 2));
     return;
@@ -65,16 +65,16 @@ async function main(): Promise<void> {
   if (command === "heldout") {
     const year = Number(option("--year") ?? "2025");
     const noise = Number(option("--noise") ?? "240");
-    const vault = option("--vault") ?? await mkdtemp(path.join(os.tmpdir(), "continuity-eval-heldout-"));
+    const vault = option("--vault") ?? await mkdtemp(path.join(os.tmpdir(), "linger-eval-heldout-"));
     const dataset = generateHeldoutDataset(year, noise);
     console.log(JSON.stringify({ dataset: dataset.name, vault, ...await runEvalDataset(vault, dataset) }, null, 2));
     return;
   }
-  console.log("continuity-eval <generate|run|adversarial|heldout> [options]");
+  console.log("linger-eval <generate|run|adversarial|heldout> [options]");
   if (command) process.exitCode = 2;
 }
 
 main().catch(error => {
-  console.error(`continuity-eval: ${(error as Error).message}`);
+  console.error(`linger-eval: ${(error as Error).message}`);
   process.exitCode = 1;
 });

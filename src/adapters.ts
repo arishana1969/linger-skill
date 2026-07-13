@@ -14,7 +14,7 @@ export async function capabilityReport(home: string): Promise<AdapterCapability[
 export async function detectClaudeCode(home: string): Promise<AdapterCapability> {
   const root = path.join(home, ".claude");
   const settings = path.join(root, "settings.json");
-  const skill = path.join(root, "skills", "continuity", "SKILL.md");
+  const skill = path.join(root, "skills", "linger", "SKILL.md");
   const detected = await exists(root);
   const installed = await exists(skill);
   let hooks = false;
@@ -27,7 +27,7 @@ export async function detectCodex(home: string): Promise<AdapterCapability> {
   const root = path.join(home, ".codex");
   const config = path.join(root, "config.toml");
   const hooksFile = path.join(root, "hooks.json");
-  const skill = path.join(root, "skills", "continuity", "SKILL.md");
+  const skill = path.join(root, "skills", "linger", "SKILL.md");
   const detected = await exists(root);
   const installed = await exists(skill);
   let hooks = false;

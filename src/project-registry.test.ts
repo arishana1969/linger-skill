@@ -14,8 +14,8 @@ const exec = promisify(execFile);
 const cli = path.resolve("dist/cli.js");
 
 test("git project without a remote keeps one identity across subdirectories", async () => {
-  const vault = await mkdtemp(path.join(os.tmpdir(), "continuity-project-vault-"));
-  const repo = await mkdtemp(path.join(os.tmpdir(), "continuity-project-repo-"));
+  const vault = await mkdtemp(path.join(os.tmpdir(), "linger-project-vault-"));
+  const repo = await mkdtemp(path.join(os.tmpdir(), "linger-project-repo-"));
   const nested = path.join(repo, "packages", "app");
   await mkdir(nested, { recursive: true });
   await exec("git", ["init", "-q", repo]);
@@ -28,8 +28,8 @@ test("git project without a remote keeps one identity across subdirectories", as
 });
 
 test("project registry skips, diagnoses, and quarantines invalid records", async () => {
-  const vault = await mkdtemp(path.join(os.tmpdir(), "continuity-project-integrity-"));
-  const project = await mkdtemp(path.join(os.tmpdir(), "continuity-project-path-"));
+  const vault = await mkdtemp(path.join(os.tmpdir(), "linger-project-integrity-"));
+  const project = await mkdtemp(path.join(os.tmpdir(), "linger-project-path-"));
   const valid = await registerProject(vault, project);
   assert.equal(valid.identity_source, "absolute_path");
   const invalid = path.join(vaultPaths(vault).projects, "invalid.json");
@@ -41,8 +41,8 @@ test("project registry skips, diagnoses, and quarantines invalid records", async
 });
 
 test("CLI project-id registers and projects lists without broadening recall", async () => {
-  const vault = await mkdtemp(path.join(os.tmpdir(), "continuity-project-cli-vault-"));
-  const project = await mkdtemp(path.join(os.tmpdir(), "continuity-project-cli-path-"));
+  const vault = await mkdtemp(path.join(os.tmpdir(), "linger-project-cli-vault-"));
+  const project = await mkdtemp(path.join(os.tmpdir(), "linger-project-cli-path-"));
   const id = (await exec(process.execPath, [cli, "project-id", "--vault", vault, "--cwd", project])).stdout.trim();
   const records = JSON.parse((await exec(process.execPath, [cli, "projects", "--vault", vault])).stdout) as Array<{ project_id: string; display_name: string }>;
   assert.equal(records.length, 1);
@@ -51,8 +51,8 @@ test("CLI project-id registers and projects lists without broadening recall", as
 });
 
 test("registering a project self-heals its invalid derived record", async () => {
-  const vault = await mkdtemp(path.join(os.tmpdir(), "continuity-project-heal-vault-"));
-  const project = await mkdtemp(path.join(os.tmpdir(), "continuity-project-heal-path-"));
+  const vault = await mkdtemp(path.join(os.tmpdir(), "linger-project-heal-vault-"));
+  const project = await mkdtemp(path.join(os.tmpdir(), "linger-project-heal-path-"));
   const id = await projectId(project);
   const file = path.join(vaultPaths(vault).projects, `${id}.json`);
   await mkdir(path.dirname(file), { recursive: true });

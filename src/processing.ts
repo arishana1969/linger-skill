@@ -117,7 +117,7 @@ function memoryFromEvent(event: RawEvent, explicit: boolean): ProcessedMemory | 
     superseded_by: [],
     created_at: event.timestamp,
     updated_at: event.timestamp,
-    agent: "continuity-deterministic-processor"
+    agent: "linger-deterministic-processor"
   };
 }
 

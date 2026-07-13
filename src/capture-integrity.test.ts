@@ -6,7 +6,7 @@ import test from "node:test";
 import { capture } from "./capture.js";
 
 test("deduplicated capture refuses a tampered raw record instead of returning or replacing it", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-capture-integrity-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-capture-integrity-"));
   const input = { projectId: "p", sessionId: "s", turnId: "t", role: "user" as const, content: "immutable raw sentinel", sourceAgent: "test" };
   const first = await capture(root, input);
   const file = path.join(root, first!.raw_ref);
@@ -20,7 +20,7 @@ test("deduplicated capture refuses a tampered raw record instead of returning or
 });
 
 test("deduplicated capture refuses malformed existing JSON without replacing it", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-capture-integrity-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-capture-integrity-"));
   const input = { projectId: "p", sessionId: "s", turnId: "t", role: "user" as const, content: "malformed raw sentinel", sourceAgent: "test" };
   const first = await capture(root, input);
   const file = path.join(root, first!.raw_ref);

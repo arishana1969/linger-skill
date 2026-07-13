@@ -11,7 +11,7 @@ import { quarantineInvalidFiles } from "./repair.js";
 import { initVault } from "./vault.js";
 
 test("invalid Vault config is rejected, diagnosed, and explicitly repairable", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-operational-integrity-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-operational-integrity-"));
   await initVault(root);
   await writeFile(vaultPaths(root).config, JSON.stringify({ schema_version: 1, paused: "false" }));
   await assert.rejects(initVault(root), /Invalid vault config paused/);
@@ -23,7 +23,7 @@ test("invalid Vault config is rejected, diagnosed, and explicitly repairable", a
 });
 
 test("invalid sequence state cannot be silently reset and is repairable", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-operational-integrity-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-operational-integrity-"));
   await initVault(root);
   const sequence = path.join(vaultPaths(root).registry, "p.sequence.json");
   await writeFile(sequence, JSON.stringify({ schema_version: 1, value: "999" }));
@@ -35,7 +35,7 @@ test("invalid sequence state cannot be silently reset and is repairable", async 
 });
 
 test("invalid processing history cannot silently bypass rate accounting", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-operational-integrity-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-operational-integrity-"));
   await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "pending scheduler work", sourceAgent: "test" });
   const history = path.join(vaultPaths(root).registry, "processing-runs", "p.json");
   await mkdir(path.dirname(history), { recursive: true });

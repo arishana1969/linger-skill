@@ -8,7 +8,7 @@ import { processQueue } from "./processing.js";
 import { search } from "./search.js";
 
 test("user-explicit evidence wins within the same lexical match tier", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-search-priority-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-search-priority-"));
   await capture(root, { projectId: "p", sessionId: "s1", turnId: "t1", role: "user", content: "priority-zephyr priority-zephyr priority-zephyr priority-zephyr inferred", sourceAgent: "test" });
   const explicit = await capture(root, { projectId: "p", sessionId: "s2", turnId: "t2", role: "user", content: "priority-zephyr explicit", sourceAgent: "test", explicit: true });
   await processQueue(root);
@@ -18,7 +18,7 @@ test("user-explicit evidence wins within the same lexical match tier", async () 
 });
 
 test("exact inferred evidence still outranks a less relevant explicit candidate", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-search-priority-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-search-priority-"));
   const exact = await capture(root, { projectId: "p", sessionId: "s1", turnId: "t1", role: "user", content: "alpha beta inferred", sourceAgent: "test" });
   await capture(root, { projectId: "p", sessionId: "s2", turnId: "t2", role: "user", content: "alpha explicit candidate", sourceAgent: "test", explicit: true });
   await processQueue(root);

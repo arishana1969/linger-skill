@@ -10,7 +10,7 @@ import { search } from "./search.js";
 import { vaultPaths } from "./paths.js";
 
 test("forget removes recall without mutating committed memory", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-control-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-control-"));
   await capture(root, { projectId: "p_test", sessionId: "s1", turnId: "t1", role: "user", content: "选择旧方案 Alpha", sourceAgent: "test" });
   await processQueue(root);
   const hit = (await search(root, { projectId: "p_test", query: "Alpha" }))[0]!;
@@ -23,7 +23,7 @@ test("forget removes recall without mutating committed memory", async () => {
 });
 
 test("correction supersedes old recall and exposes replacement", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-control-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-control-"));
   await capture(root, { projectId: "p_test", sessionId: "s1", turnId: "t1", role: "user", content: "数据库用 SQLite", sourceAgent: "test" });
   await processQueue(root);
   const old = (await search(root, { projectId: "p_test", query: "SQLite" }))[0]!;

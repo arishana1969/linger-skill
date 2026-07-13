@@ -7,7 +7,7 @@ import { vaultPaths } from "./paths.js";
 import { initVault } from "./vault.js";
 
 test("backfills new config defaults while preserving existing and unknown fields", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-vault-config-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-vault-config-"));
   await initVault(root);
   const file = vaultPaths(root).config;
   const old = JSON.parse(await readFile(file, "utf8"));
@@ -29,7 +29,7 @@ test("backfills new config defaults while preserving existing and unknown fields
 });
 
 test("rejects unsupported config schema instead of silently rewriting it", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-vault-config-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-vault-config-"));
   await initVault(root);
   await writeFile(vaultPaths(root).config, JSON.stringify({ schema_version: 99 }));
   await assert.rejects(initVault(root), /Unsupported vault config schema/);

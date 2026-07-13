@@ -5,7 +5,7 @@ import path from "node:path";
 const root = path.resolve(option("--root") ?? process.cwd());
 const blockers = [];
 const manifest = await json(path.join(root, "package.json"), "package_json");
-const security = await text(path.join(root, "SECURITY.md"));
+const security = await text(path.join(root, "SECURITY.md")) ?? await text(path.join(root, "README.md"));
 const license = await text(path.join(root, "LICENSE"));
 
 if (!license?.trim()) blockers.push("license_file");

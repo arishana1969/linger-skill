@@ -8,8 +8,8 @@ async function main(): Promise<void> {
   const parsed = JSON.parse(payload) as unknown;
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Invalid hook payload");
   const input = parsed as HookInput;
-  const root = process.env.CONTINUITY_VAULT ?? path.join(os.homedir(), ".continuity", "vault");
-  const agent = process.env.CONTINUITY_ADAPTER === "claude-code" ? "claude-code" : "codex";
+  const root = process.env.LINGER_VAULT ?? path.join(os.homedir(), ".linger", "vault");
+  const agent = process.env.LINGER_ADAPTER === "claude-code" ? "claude-code" : "codex";
   const result = await handleHook(root, input, agent);
   process.stdout.write(`${JSON.stringify(result.output)}\n`);
 }
@@ -21,6 +21,6 @@ async function readStdin(): Promise<string> {
 }
 
 main().catch(error => {
-  process.stderr.write(`continuity hook capture failed: ${(error as Error).message}\n`);
+  process.stderr.write(`linger hook capture failed: ${(error as Error).message}\n`);
   process.stdout.write("{}\n");
 });

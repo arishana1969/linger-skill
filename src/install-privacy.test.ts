@@ -6,7 +6,7 @@ import test from "node:test";
 import { install } from "./installer.js";
 
 test("install always returns explicit local/cloud privacy notice", async () => {
-  const home = await mkdtemp(path.join(os.tmpdir(), "continuity-privacy-"));
+  const home = await mkdtemp(path.join(os.tmpdir(), "linger-privacy-"));
   const result = await install({ home, packageRoot: process.cwd(), adapters: ["codex"] });
   assert.match(result.privacy_notice, /local files/i);
   assert.match(result.privacy_notice, /cloud model/i);

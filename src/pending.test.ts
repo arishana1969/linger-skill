@@ -7,7 +7,7 @@ import { stagePending, recoverPending, type PendingCapture } from "./pending.js"
 import { vaultPaths } from "./paths.js";
 
 test("recovers staged raw event and persistent queue item", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-pending-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-pending-"));
   const p = vaultPaths(root);
   const raw = path.join(p.raw, "p_test", "s1", "evt_pending.json");
   const queue = path.join(p.queue, "p_test", "task_pending.json");
@@ -24,7 +24,7 @@ test("recovers staged raw event and persistent queue item", async () => {
 });
 
 test("refuses malicious pending paths before staging", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-pending-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-pending-"));
   const p = vaultPaths(root);
   const pending = {
     schema_version: 1, pending_id: "bad", raw_file: path.join(root, "..", "escape.json"), queue_file: path.join(p.queue, "p", "q.json"), created_at: new Date().toISOString(),
@@ -35,7 +35,7 @@ test("refuses malicious pending paths before staging", async () => {
 });
 
 test("recovery refuses a compromised pending record that targets another Vault file", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-pending-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-pending-"));
   const p = vaultPaths(root);
   const config = path.join(root, "config.json");
   await writeFile(config, "keep-config");

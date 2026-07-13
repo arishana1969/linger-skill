@@ -7,7 +7,7 @@ import { appendDecision } from "./decisions.js";
 import { recall } from "./recall.js";
 
 test("returns candidates instead of inventing memory", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-recall-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-recall-"));
   await appendDecision(root, { projectId: "p", topic: "storage", kind: "decision", status: "current", statement: "Use files", source: "user_explicit", confidence: 1, evidenceRefs: ["evt"] });
   const result = await recall(root, { projectId: "p", query: "unknown subject" });
   assert.equal(result.classification, "no_reliable_memory_found");
@@ -15,7 +15,7 @@ test("returns candidates instead of inventing memory", async () => {
 });
 
 test("enforces evidence character budget", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-recall-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-recall-"));
   const { capture } = await import("./capture.js");
   const { processQueue } = await import("./processing.js");
   await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: `budget ${"x".repeat(500)}`, sourceAgent: "test" });
@@ -26,7 +26,7 @@ test("enforces evidence character budget", async () => {
 });
 
 test("candidate fallback includes observed month ranges without inventing hits", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-recall-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-recall-"));
   const { capture } = await import("./capture.js");
   const { processQueue } = await import("./processing.js");
   await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "timeline-zephyr durable project note", sourceAgent: "test", timestamp: "2025-07-14T00:00:00.000Z" });

@@ -9,7 +9,7 @@ import { search } from "./search.js";
 import { addTermRelation } from "./term-graph.js";
 
 test("recall expands project alias with lower confidence and warning", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-search-terms-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-search-terms-"));
   await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "database migration decision", sourceAgent: "test" });
   await processQueue(root);
   assert.equal((await search(root, { projectId: "p", query: "db" })).length, 0);

@@ -10,7 +10,7 @@ const exec = promisify(execFile);
 const script = path.resolve("scripts/release-readiness.mjs");
 
 test("release readiness reports every missing maintainer-owned GitHub field", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-release-readiness-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-release-readiness-"));
   await writeFile(path.join(root, "package.json"), JSON.stringify({ name: "example", version: "0.0.1" }));
   await writeFile(path.join(root, "SECURITY.md"), "Contact will be defined later.");
   const result = await exec(process.execPath, [script, "--root", root, "--allow-blocked"]);
@@ -20,7 +20,7 @@ test("release readiness reports every missing maintainer-owned GitHub field", as
 });
 
 test("release readiness passes a complete GitHub metadata fixture", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-release-readiness-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-release-readiness-"));
   await mkdir(root, { recursive: true });
   await writeFile(path.join(root, "package.json"), JSON.stringify({
     name: "example", version: "0.1.0", license: "MIT", repository: { type: "git", url: "https://github.com/example/repo.git" },
@@ -28,6 +28,20 @@ test("release readiness passes a complete GitHub metadata fixture", async () => 
   }));
   await writeFile(path.join(root, "LICENSE"), "MIT License");
   await writeFile(path.join(root, "SECURITY.md"), "Report privately to security@example.com.");
+  const result = await exec(process.execPath, [script, "--root", root]);
+  const report = JSON.parse(result.stdout) as { github_ready: boolean; blockers: string[] };
+  assert.equal(report.github_ready, true);
+  assert.deepEqual(report.blockers, []);
+});
+
+test("release readiness accepts a README private-reporting link when SECURITY is intentionally consolidated", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-release-readiness-"));
+  await writeFile(path.join(root, "package.json"), JSON.stringify({
+    name: "example", version: "0.1.0", license: "MIT", repository: { type: "git", url: "https://github.com/example/repo.git" },
+    homepage: "https://github.com/example/repo#readme", bugs: { url: "https://github.com/example/repo/issues" }
+  }));
+  await writeFile(path.join(root, "LICENSE"), "MIT License");
+  await writeFile(path.join(root, "README.md"), "Report privately at https://github.com/example/repo/security/advisories/new.");
   const result = await exec(process.execPath, [script, "--root", root]);
   const report = JSON.parse(result.stdout) as { github_ready: boolean; blockers: string[] };
   assert.equal(report.github_ready, true);

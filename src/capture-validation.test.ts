@@ -6,7 +6,7 @@ import test from "node:test";
 import { capture } from "./capture.js";
 
 test("capture rejects invalid enum values before initializing the Vault", async () => {
-  const parent = await mkdtemp(path.join(os.tmpdir(), "continuity-capture-validation-"));
+  const parent = await mkdtemp(path.join(os.tmpdir(), "linger-capture-validation-"));
   const root = path.join(parent, "vault");
   const base = { projectId: "p", sessionId: "s", turnId: "t", role: "user" as const, content: "valid content", sourceAgent: "test" };
   await assert.rejects(capture(root, { ...base, role: "tool" as never }), /Role must/);

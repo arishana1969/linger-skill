@@ -46,5 +46,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: node scripts/scan-tracked-secrets.mjs
       - run: pnpm build
-      - run: node scripts/validate-skill.mjs skills/continuity
+      - run: node scripts/validate-skill.mjs skills/linger
       - run: pnpm verify:package

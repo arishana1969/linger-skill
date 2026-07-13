@@ -16,7 +16,7 @@ import { addTermRelation, expandTerms } from "./term-graph.js";
 import { initVault } from "./vault.js";
 
 test("filesystem-routing entry points reject unsafe project IDs", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-path-security-"));
   await assert.rejects(search(root, { projectId: "../outside", query: "secret" }), /Invalid project id/);
   await assert.rejects(processQueue(root, "../outside"), /Invalid project id/);
   await assert.rejects(processingDecision(root, "../outside", "manual"), /Invalid project id/);
@@ -24,7 +24,7 @@ test("filesystem-routing entry points reject unsafe project IDs", async () => {
 });
 
 test("path-traversing queue identity is invalid, inert, and repairable", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-path-security-"));
   const p = vaultPaths(root);
   const file = path.join(p.queue, "p", "poison.json");
   await mkdir(path.dirname(file), { recursive: true });
@@ -47,7 +47,7 @@ test("path-traversing queue identity is invalid, inert, and repairable", async (
 });
 
 test("safe but cross-project queue identity cannot broaden a scoped processing run", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-path-security-"));
   const p = vaultPaths(root);
   const file = path.join(p.queue, "p_alpha", "task_cross.json");
   await mkdir(path.dirname(file), { recursive: true });
@@ -60,7 +60,7 @@ test("safe but cross-project queue identity cannot broaden a scoped processing r
 });
 
 test("cross-project processed record is excluded from recall and diagnosed", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-path-security-"));
   await capture(root, { projectId: "p_alpha", sessionId: "s", turnId: "t", role: "user", content: "scope-sentinel durable note", sourceAgent: "test" });
   await processQueue(root, "p_alpha");
   const initial = await search(root, { projectId: "p_alpha", query: "scope-sentinel" });
@@ -73,7 +73,7 @@ test("cross-project processed record is excluded from recall and diagnosed", asy
 });
 
 test("timestamps that could alter a decision filename are rejected before persistence", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-path-security-"));
   await assert.rejects(appendDecision(root, {
     projectId: "p", topic: "runtime", kind: "decision", status: "current", statement: "Use Node", source: "user_explicit", confidence: 1,
     evidenceRefs: ["evt_visible"], timestamp: "2026-01-01T00:00:00.000Z/../../escape"
@@ -81,7 +81,7 @@ test("timestamps that could alter a decision filename are rejected before persis
 });
 
 test("misplaced derived records cannot cross project scope and are repairable", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-path-security-"));
   const p = vaultPaths(root);
   const decision = await appendDecision(root, {
     projectId: "p_beta", topic: "runtime", kind: "decision", status: "current", statement: "Use Beta runtime", source: "user_explicit", confidence: 1,
@@ -111,8 +111,8 @@ test("misplaced derived records cannot cross project scope and are repairable", 
 });
 
 test("capture refuses a project directory symlink that would escape the Vault", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
-  const outside = await mkdtemp(path.join(os.tmpdir(), "continuity-path-outside-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-path-security-"));
+  const outside = await mkdtemp(path.join(os.tmpdir(), "linger-path-outside-"));
   await initVault(root);
   await symlink(outside, path.join(vaultPaths(root).raw, "p"));
   await assert.rejects(capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "must stay inside vault", sourceAgent: "test" }), /escapes Vault through symlink/);
@@ -120,8 +120,8 @@ test("capture refuses a project directory symlink that would escape the Vault", 
 });
 
 test("pending staging refuses a symlinked pending project directory", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
-  const outside = await mkdtemp(path.join(os.tmpdir(), "continuity-path-outside-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-path-security-"));
+  const outside = await mkdtemp(path.join(os.tmpdir(), "linger-path-outside-"));
   await initVault(root);
   const pendingBase = path.join(vaultPaths(root).tmp, "pending");
   await mkdir(pendingBase, { recursive: true });
@@ -131,8 +131,8 @@ test("pending staging refuses a symlinked pending project directory", async () =
 });
 
 test("processing refuses a symlinked processed project directory", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
-  const outside = await mkdtemp(path.join(os.tmpdir(), "continuity-path-outside-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-path-security-"));
+  const outside = await mkdtemp(path.join(os.tmpdir(), "linger-path-outside-"));
   await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "processed must stay inside vault", sourceAgent: "test" });
   await symlink(outside, path.join(vaultPaths(root).processed, "p"));
   assert.deepEqual(await processQueue(root, "p"), { processed: 0, failed: 1 });
@@ -140,8 +140,8 @@ test("processing refuses a symlinked processed project directory", async () => {
 });
 
 test("decision writes refuse a symlinked project directory", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
-  const outside = await mkdtemp(path.join(os.tmpdir(), "continuity-path-outside-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-path-security-"));
+  const outside = await mkdtemp(path.join(os.tmpdir(), "linger-path-outside-"));
   await initVault(root);
   await symlink(outside, path.join(vaultPaths(root).decisions, "p"));
   await assert.rejects(appendDecision(root, { projectId: "p", topic: "runtime", kind: "decision", status: "current", statement: "stay inside", source: "user_explicit", confidence: 1, evidenceRefs: ["evt_visible"] }), /escapes Vault through symlink/);
@@ -149,8 +149,8 @@ test("decision writes refuse a symlinked project directory", async () => {
 });
 
 test("Vault initialization refuses a symlinked config file", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-path-security-"));
-  const outside = path.join(await mkdtemp(path.join(os.tmpdir(), "continuity-path-outside-")), "outside.json");
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-path-security-"));
+  const outside = path.join(await mkdtemp(path.join(os.tmpdir(), "linger-path-outside-")), "outside.json");
   await initVault(root);
   const config = vaultPaths(root).config;
   await unlink(config);

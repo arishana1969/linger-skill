@@ -8,7 +8,7 @@ import { processQueue } from "./processing.js";
 import { recall } from "./recall.js";
 
 test("current recall follows the best-ranked decision instead of the newest unrelated decision", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-recall-relevance-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-recall-relevance-"));
   await capture(root, { projectId: "p", sessionId: "s1", turnId: "t1", role: "user", content: "Current primary database decision: PostgreSQL because constraints matter.", sourceAgent: "test", timestamp: "2025-01-01T00:00:00.000Z" });
   await capture(root, { projectId: "p", sessionId: "s2", turnId: "t2", role: "user", content: "Current artifact storage decision: flat files because inspection matters.", sourceAgent: "test", timestamp: "2025-12-01T00:00:00.000Z" });
   await processQueue(root);
@@ -19,7 +19,7 @@ test("current recall follows the best-ranked decision instead of the newest unre
 });
 
 test("distinctive absent English term does not match one generic query word", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-recall-relevance-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-recall-relevance-"));
   await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "Current artifact storage decision: flat files.", sourceAgent: "test" });
   await processQueue(root);
   const result = await recall(root, { projectId: "p", query: "Did we choose DynamoDB for primary storage?" });

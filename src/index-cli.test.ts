@@ -11,7 +11,7 @@ const cli = path.resolve("dist/cli.js");
 async function run(args: string[]): Promise<unknown> { return JSON.parse((await exec(process.execPath, [cli, ...args])).stdout); }
 
 test("CLI manages tag registry and term graph recall", async () => {
-  const vault = await mkdtemp(path.join(os.tmpdir(), "continuity-index-cli-"));
+  const vault = await mkdtemp(path.join(os.tmpdir(), "linger-index-cli-"));
   await run(["capture", "--vault", vault, "--project", "p", "--session", "s", "--turn", "t", "--role", "user", "--content", "database migration"]);
   await run(["process", "--vault", vault]);
   const registry = await run(["tags-rebuild", "--vault", vault, "--project", "p"]) as { entries: unknown[] };

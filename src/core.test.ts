@@ -10,7 +10,7 @@ import { processQueue } from "./processing.js";
 import { search } from "./search.js";
 import { initVault, setPaused, vaultStats } from "./vault.js";
 
-async function fixture(): Promise<string> { return await mkdtemp(path.join(os.tmpdir(), "continuity-")); }
+async function fixture(): Promise<string> { return await mkdtemp(path.join(os.tmpdir(), "linger-")); }
 
 test("captures, deduplicates, processes, and recalls a Chinese decision", async () => {
   const root = await fixture();

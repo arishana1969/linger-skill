@@ -108,7 +108,7 @@ export async function correctMemory(root: string, projectId: string, targetMemor
     superseded_by: [],
     created_at: timestamp,
     updated_at: timestamp,
-    agent: "continuity-correction"
+    agent: "linger-correction"
   };
   assertProcessedMemory(memory);
   const memoryFile = path.join(p.processed, project, `${id}.json`);

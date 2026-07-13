@@ -8,7 +8,7 @@ import { processQueue } from "./processing.js";
 import { readTagRegistry } from "./tag-registry.js";
 
 test("processing refreshes tag registry once for touched project", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-processing-tags-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-processing-tags-"));
   await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "storage registry", sourceAgent: "test" });
   await processQueue(root);
   const registry = await readTagRegistry(root, "p");

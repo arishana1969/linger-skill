@@ -36,7 +36,7 @@ export function generateHeldoutDataset(year = 2025, noiseEvents = 240): EvalData
   ];
   return {
     schema_version: 1,
-    name: `continuity-heldout-${year}`,
+    name: `linger-heldout-${year}`,
     start: `${year}-01-01T00:00:00.000Z`,
     end: `${year}-12-31T23:59:59.999Z`,
     events,

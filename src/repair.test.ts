@@ -8,7 +8,7 @@ import { vaultPaths } from "./paths.js";
 import { quarantineInvalidFiles } from "./repair.js";
 
 test("explicit repair quarantines invalid files and restores doctor availability", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-repair-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-repair-"));
   const file = path.join(vaultPaths(root).processed, "p", "broken.json");
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, "broken");

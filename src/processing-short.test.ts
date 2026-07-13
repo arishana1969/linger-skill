@@ -8,7 +8,7 @@ import { processQueue } from "./processing.js";
 import { search } from "./search.js";
 
 test("keeps short assistant chatter in raw without creating processed memory", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-processing-short-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-processing-short-"));
   await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "assistant", content: "收到", sourceAgent: "test" });
   assert.deepEqual(await processQueue(root), { processed: 1, failed: 0 });
   assert.deepEqual(await search(root, { projectId: "p", query: "收到" }), []);
@@ -17,7 +17,7 @@ test("keeps short assistant chatter in raw without creating processed memory", a
 });
 
 test("keeps short assistant decisions as durable processed evidence", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-processing-short-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-processing-short-"));
   await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "assistant", content: "决定用 SQLite", sourceAgent: "test" });
   await processQueue(root);
   const hit = (await search(root, { projectId: "p", query: "SQLite" }))[0]!;

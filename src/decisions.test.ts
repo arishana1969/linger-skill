@@ -7,7 +7,7 @@ import { appendDecision, getDecisionTrail, listDecisionViews } from "./decisions
 import { initVault } from "./vault.js";
 
 async function vault(): Promise<string> {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-decisions-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-decisions-"));
   await initVault(root);
   return root;
 }
@@ -40,7 +40,7 @@ test("requires evidence and detects conflicting explicit states", async () => {
 });
 
 test("rejects invalid decision enum values before persistence", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-decisions-invalid-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-decisions-invalid-"));
   const base = { projectId: "p_test", topic: "runtime", kind: "decision" as const, status: "current" as const, statement: "Use Node", source: "user_explicit" as const, confidence: 1, evidenceRefs: ["evt_1"] };
   await assert.rejects(appendDecision(root, { ...base, kind: "guess" as never }), /Invalid decision kind/);
   await assert.rejects(appendDecision(root, { ...base, status: "active" as never }), /Invalid decision status/);

@@ -48,16 +48,16 @@ export function generateYearDataset(year = 2025): EvalDataset {
     for (let session = 0; session < 4; session += 1) {
       const id = `evt_${String(month + 1).padStart(2, "0")}_${session + 1}`;
       const timestamp = new Date(Date.UTC(year, month, 2 + session * 7, 9)).toISOString();
-      events.push(event(id, "p_continuity", timestamp, "user", session === 0 ? milestone(month) : `Month ${month + 1} unrelated implementation discussion ${session}.`));
-      events.push(event(`${id}_a`, "p_continuity", new Date(Date.parse(timestamp) + 60_000).toISOString(), "assistant", `Visible assistant response for ${id}.`));
+      events.push(event(id, "p_linger", timestamp, "user", session === 0 ? milestone(month) : `Month ${month + 1} unrelated implementation discussion ${session}.`));
+      events.push(event(`${id}_a`, "p_linger", new Date(Date.parse(timestamp) + 60_000).toISOString(), "assistant", `Visible assistant response for ${id}.`));
     }
   }
-  events.push({ ...event("evt_secret", "p_continuity", new Date(Date.UTC(year, 5, 15)).toISOString(), "user", "API_KEY=abcdefghijklmnopqrstuvwxyz"), expected_sensitivity: "secret" });
-  events.push({ ...event("evt_optout", "p_continuity", new Date(Date.UTC(year, 6, 15)).toISOString(), "user", "这个不要保存：临时选择 MongoDB"), save: false });
+  events.push({ ...event("evt_secret", "p_linger", new Date(Date.UTC(year, 5, 15)).toISOString(), "user", "API_KEY=abcdefghijklmnopqrstuvwxyz"), expected_sensitivity: "secret" });
+  events.push({ ...event("evt_optout", "p_linger", new Date(Date.UTC(year, 6, 15)).toISOString(), "user", "这个不要保存：临时选择 MongoDB"), save: false });
   events.push(event("evt_other_pg", "p_other", new Date(Date.UTC(year, 8, 1)).toISOString(), "user", "另一个项目已经上线 PostgreSQL"));
   return {
     schema_version: 1,
-    name: `continuity-year-${year}`,
+    name: `linger-year-${year}`,
     start: `${year}-01-01T00:00:00.000Z`,
     end: `${year}-12-31T23:59:59.999Z`,
     events,
@@ -74,7 +74,7 @@ function event(id: string, project: string, timestamp: string, role: "user" | "a
 }
 
 function oracle(id: string, year: number, query: string, required: string[], forbidden: string[], acceptable: string[], unacceptable: string[]): EvalOracle {
-  return { query_id: id, at: `${year}-12-31T00:00:00.000Z`, project_id: "p_continuity", query, required_evidence: required, forbidden_evidence: forbidden, expected_current_state: "当前数据库决定：SQLite，PostgreSQL migration deferred", acceptable_claims: acceptable, unacceptable_claims: unacceptable, expected_classification: "similar_record_found" };
+  return { query_id: id, at: `${year}-12-31T00:00:00.000Z`, project_id: "p_linger", query, required_evidence: required, forbidden_evidence: forbidden, expected_current_state: "当前数据库决定：SQLite，PostgreSQL migration deferred", acceptable_claims: acceptable, unacceptable_claims: unacceptable, expected_classification: "similar_record_found" };
 }
 
 function milestone(month: number): string {

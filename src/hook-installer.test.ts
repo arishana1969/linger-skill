@@ -6,8 +6,8 @@ import test from "node:test";
 import { installHooks, uninstallHooks } from "./hook-installer.js";
 
 test("merges hooks without overwriting user configuration and is idempotent", async () => {
-  const home = await mkdtemp(path.join(os.tmpdir(), "continuity-hooks-"));
-  const runtime = path.join(home, ".continuity", "runtime", "0.0.1");
+  const home = await mkdtemp(path.join(os.tmpdir(), "linger-hooks-"));
+  const runtime = path.join(home, ".linger", "runtime", "0.1.0");
   await mkdir(path.join(home, ".claude"), { recursive: true });
   await writeFile(path.join(home, ".claude", "settings.json"), JSON.stringify({ theme: "dark", hooks: { Stop: [{ hooks: [{ type: "command", command: "user-script" }] }] } }));
   await installHooks(home, runtime, ["claude-code", "codex"]);
@@ -21,9 +21,9 @@ test("merges hooks without overwriting user configuration and is idempotent", as
   assert.deepEqual(Object.keys(codex.hooks).sort(), ["SessionStart", "Stop", "UserPromptSubmit"]);
 });
 
-test("uninstall removes only Continuity hooks", async () => {
-  const home = await mkdtemp(path.join(os.tmpdir(), "continuity-hooks-"));
-  const runtime = path.join(home, ".continuity", "runtime", "0.0.1");
+test("uninstall removes only Linger hooks", async () => {
+  const home = await mkdtemp(path.join(os.tmpdir(), "linger-hooks-"));
+  const runtime = path.join(home, ".linger", "runtime", "0.1.0");
   await installHooks(home, runtime, ["claude-code"]);
   const file = path.join(home, ".claude", "settings.json");
   const settings = JSON.parse(await readFile(file, "utf8"));
@@ -36,12 +36,12 @@ test("uninstall removes only Continuity hooks", async () => {
 });
 
 test("malformed host hook configuration fails before write and preserves exact bytes", async () => {
-  const home = await mkdtemp(path.join(os.tmpdir(), "continuity-hooks-"));
+  const home = await mkdtemp(path.join(os.tmpdir(), "linger-hooks-"));
   const file = path.join(home, ".claude", "settings.json");
   await mkdir(path.dirname(file), { recursive: true });
   for (const malformed of ["[]", JSON.stringify({ theme: "dark", hooks: [] })]) {
     await writeFile(file, malformed);
-    await assert.rejects(installHooks(home, path.join(home, ".continuity", "runtime", "0.0.1"), ["claude-code"]), /Invalid host/);
+    await assert.rejects(installHooks(home, path.join(home, ".linger", "runtime", "0.1.0"), ["claude-code"]), /Invalid host/);
     assert.equal(await readFile(file, "utf8"), malformed);
   }
 });

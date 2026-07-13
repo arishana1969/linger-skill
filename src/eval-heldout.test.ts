@@ -19,7 +19,7 @@ test("held-out generator is deterministic, scalable, and spans a year", () => {
 
 test("held-out fixture survives noise, near collisions, correction chains, and project isolation", async () => {
   const dataset = generateHeldoutDataset(2025, 240);
-  const result = await runEvalDataset(await mkdtemp(path.join(os.tmpdir(), "continuity-heldout-")), dataset);
+  const result = await runEvalDataset(await mkdtemp(path.join(os.tmpdir(), "linger-heldout-")), dataset);
   assert.equal(result.imported, dataset.events.length);
   assert.equal(result.scores.missing_predictions.length, 0);
   assert.equal(result.scores.macro_composite, 1);

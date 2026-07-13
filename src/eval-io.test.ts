@@ -6,7 +6,7 @@ import test from "node:test";
 import { writeYearDataset } from "./eval-io.js";
 
 test("writes fixture and oracle into separate trees", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-eval-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-eval-"));
   const result = await writeYearDataset(root, 2025);
   const fixture = await readFile(result.fixture, "utf8");
   const oracle = await readFile(result.oracle, "utf8");

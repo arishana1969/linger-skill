@@ -13,7 +13,7 @@ export async function installHooks(home: string, packageRoot: string, adapters: 
     const file = path.join(home, ".claude", "settings.json");
     const settings = await jsonObjectOr(file);
     const hooks = asHooks(settings.hooks);
-    addContinuityHooks(hooks, `CONTINUITY_ADAPTER=claude-code ${commandBase}`, ["SessionStart", "UserPromptSubmit", "Stop", "StopFailure"]);
+    addLingerHooks(hooks, `LINGER_ADAPTER=claude-code ${commandBase}`, ["SessionStart", "UserPromptSubmit", "Stop", "StopFailure"]);
     await mkdir(path.dirname(file), { recursive: true });
     await atomicJson(file, { ...settings, hooks });
     written.push(file);
@@ -22,7 +22,7 @@ export async function installHooks(home: string, packageRoot: string, adapters: 
     const file = path.join(home, ".codex", "hooks.json");
     const document = await jsonObjectOr(file);
     const hooks = asHooks(document.hooks);
-    addContinuityHooks(hooks, `CONTINUITY_ADAPTER=codex ${commandBase}`, ["SessionStart", "UserPromptSubmit", "Stop"]);
+    addLingerHooks(hooks, `LINGER_ADAPTER=codex ${commandBase}`, ["SessionStart", "UserPromptSubmit", "Stop"]);
     await mkdir(path.dirname(file), { recursive: true });
     await atomicJson(file, { ...document, hooks });
     written.push(file);
@@ -44,7 +44,7 @@ export async function uninstallHooks(home: string, adapters: AdapterName[]): Pro
       const groups = hooks[event] ?? [];
       for (const group of groups) {
         const before = group.hooks.length;
-        group.hooks = group.hooks.filter(hook => !isContinuityHookCommand(hook.command, home, adapter));
+        group.hooks = group.hooks.filter(hook => !isLingerHookCommand(hook.command, home, adapter));
         removed ||= before !== group.hooks.length;
       }
       hooks[event] = groups.filter(group => group.hooks.length);
@@ -55,11 +55,11 @@ export async function uninstallHooks(home: string, adapters: AdapterName[]): Pro
   return changed;
 }
 
-function addContinuityHooks(hooks: HookMap, command: string, events: string[]): void {
+function addLingerHooks(hooks: HookMap, command: string, events: string[]): void {
   for (const event of events) {
     const groups = hooks[event] ?? [];
     const already = groups.some(group => group.hooks.some(hook => hook.command === command));
-    if (!already) groups.push({ ...(event === "SessionStart" ? { matcher: "startup|resume|compact" } : {}), hooks: [{ type: "command", command, commandWindows: windowsCommand(command), timeout: 10, statusMessage: "Continuity capture" }] });
+    if (!already) groups.push({ ...(event === "SessionStart" ? { matcher: "startup|resume|compact" } : {}), hooks: [{ type: "command", command, commandWindows: windowsCommand(command), timeout: 10, statusMessage: "Linger capture" }] });
     hooks[event] = groups;
   }
 }
@@ -83,9 +83,9 @@ async function jsonObjectOr(file: string): Promise<Record<string, unknown>> {
     return value as Record<string, unknown>;
   } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return {}; throw error; }
 }
-function isContinuityHookCommand(command: string, home: string, adapter: AdapterName): boolean {
+function isLingerHookCommand(command: string, home: string, adapter: AdapterName): boolean {
   const normalized = command.replaceAll("\\", "/");
-  const runtime = path.resolve(home, ".continuity", "runtime").replaceAll("\\", "/");
-  return command.includes(`CONTINUITY_ADAPTER=${adapter}`) && normalized.includes(`${runtime}/`) && normalized.includes("/dist/hook-cli.js");
+  const runtime = path.resolve(home, ".linger", "runtime").replaceAll("\\", "/");
+  return command.includes(`LINGER_ADAPTER=${adapter}`) && normalized.includes(`${runtime}/`) && normalized.includes("/dist/hook-cli.js");
 }
 function quote(value: string): string { return `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`; }

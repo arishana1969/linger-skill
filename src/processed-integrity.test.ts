@@ -10,7 +10,7 @@ import { vaultPaths } from "./paths.js";
 import { listJsonFiles } from "./vault.js";
 
 test("doctor links processed memory to immutable raw hash", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-integrity-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-integrity-"));
   await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "integrity source", sourceAgent: "test" });
   await processQueue(root);
   assert.equal((await doctor(root)).warnings.some(value => value.startsWith("processed_source_mismatch")), false);

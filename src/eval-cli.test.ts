@@ -9,7 +9,7 @@ import { promisify } from "node:util";
 const run = promisify(execFile);
 
 test("CLI generates separated data and runs the real-vault evaluation", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-eval-cli-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-eval-cli-"));
   const generated = JSON.parse((await run(process.execPath, [path.resolve("dist/eval-cli.js"), "generate", "--output", root, "--year", "2025"])).stdout) as { fixture: string; oracle: string };
   assert.notEqual(path.dirname(generated.fixture), path.dirname(generated.oracle));
   const report = JSON.parse((await run(process.execPath, [path.resolve("dist/eval-cli.js"), "run", "--fixture", generated.fixture, "--oracle", generated.oracle])).stdout) as { scores: { macro_composite: number; missing_predictions: string[] } };
@@ -29,7 +29,7 @@ test("CLI held-out gate runs a configurable larger vault", async () => {
 });
 
 test("CLI rejects unknown fixture mutation types", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-eval-cli-invalid-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-eval-cli-invalid-"));
   const fixture = path.join(root, "fixture.json");
   const oracle = path.join(root, "oracle.json");
   await writeFile(fixture, JSON.stringify({ schema_version: 1, name: "invalid", start: "2025-01-01T00:00:00.000Z", end: "2025-12-31T00:00:00.000Z", events: [], mutations: [{ type: "overwrite_any_path", event_id: "x" }] }));

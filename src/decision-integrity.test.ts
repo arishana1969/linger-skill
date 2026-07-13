@@ -10,7 +10,7 @@ import { recall } from "./recall.js";
 import { quarantineInvalidFiles } from "./repair.js";
 
 test("invalid decision topic is skipped by recall, diagnosed, and quarantined", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "continuity-decision-integrity-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-decision-integrity-"));
   await appendDecision(root, { projectId: "p", topic: "runtime", kind: "decision", status: "current", statement: "Use Node", source: "user_explicit", confidence: 1, evidenceRefs: ["evt_visible"] });
   const invalid = path.join(vaultPaths(root).decisions, "p", "d_invalid", "current.json");
   await mkdir(path.dirname(invalid), { recursive: true });
