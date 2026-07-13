@@ -22,6 +22,7 @@
     "!dist/*.test.*",
     "skills",
     "README.md",
+    "README.zh-CN.md",
     "CHANGELOG.md",
     "PRIVACY.md",
     "SECURITY.md",

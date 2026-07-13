@@ -3,9 +3,12 @@
 [![npm version](https://img.shields.io/npm/v/linger-skill.svg)](https://www.npmjs.com/package/linger-skill)
 [![CI](https://github.com/arishana1969/linger-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/arishana1969/linger-skill/actions/workflows/ci.yml)
 
+**English** | [简体中文](README.zh-CN.md)
+
 A file-native conversation archive and decision trail for coding agents.
 
 > 念念不忘，必有回响。
+>
 > What lingers in mind will find its echo.
 
 ---
@@ -261,7 +264,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution rules and the full candi
 
 The current clean candidate passes:
 
-- 187 automated tests.
+- 188 automated tests.
 - Year, adversarial, and 250+ event held-out evaluation gates at macro composite 1.0.
 - Real Codex host-enrichment acceptance from hook capture through exact recall; real Claude Code host-enrichment acceptance with a DeepSeek-backed host model.
 - Skill validation.
