@@ -2,7 +2,7 @@
 
 Notable user-visible changes to Linger are recorded here.
 
-## 0.2.2 — Unreleased
+## 0.2.2 — 2026-07-14
 
 ### Changed
 
@@ -10,6 +10,7 @@ Notable user-visible changes to Linger are recorded here.
 - Preserved host-owned memory settings and files instead of replacing the host's persistence path.
 - Clarified that duplicated host and Linger context represents one underlying event, not independent corroboration.
 - Added an npm-compatible `linger-skill` executable so the documented `npx linger-skill install` command resolves directly.
+- Published the first npm-distributed MVP with `npx linger-skill install` as the recommended installation path.
 - Included the changelog, privacy policy, and security policy in the npm artifact.
 
 ### Fixed

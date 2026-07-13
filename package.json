@@ -11,6 +11,10 @@
   "bugs": {
     "url": "https://github.com/arishana1969/linger-skill/issues"
   },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "type": "module",
   "bin": { "linger-skill": "dist/cli.js", "linger": "dist/cli.js", "linger-eval": "dist/eval-cli.js" },
   "files": [
@@ -32,7 +36,8 @@
     "eval:adversarial": "node dist/eval-cli.js adversarial",
     "eval:heldout": "node dist/eval-cli.js heldout",
     "verify:package": "node scripts/package-smoke.mjs",
-    "verify:release-metadata": "node scripts/release-readiness.mjs"
+    "verify:release-metadata": "node scripts/release-readiness.mjs",
+    "prepublishOnly": "pnpm test && pnpm verify:package && pnpm verify:release-metadata"
   },
   "engines": { "node": ">=20" },
   "packageManager": "pnpm@10.34.5",
