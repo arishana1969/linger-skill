@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "description": "File-native conversation archive and decision trail for coding agents.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arishana1969/linger-skill.git"
+  },
+  "homepage": "https://github.com/arishana1969/linger-skill#readme",
+  "bugs": {
+    "url": "https://github.com/arishana1969/linger-skill/issues"
+  },
   "type": "module",
   "bin": { "linger": "dist/cli.js", "linger-eval": "dist/eval-cli.js" },
   "files": [

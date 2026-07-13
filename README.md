@@ -181,6 +181,8 @@ This detector is not a complete DLP system. Unknown secret formats may be missed
 
 These controls reduce risk but do not guarantee absolute safety against malicious repositories, prompt injection, filesystem races, manual Vault modification, or a compromised local account.
 
+Report vulnerabilities privately through [GitHub Security Advisories](https://github.com/arishana1969/linger-skill/security/advisories/new). Do not include live secrets or Vault files in ordinary issues.
+
 ## Configuration
 
 Linger initializes conservative defaults:

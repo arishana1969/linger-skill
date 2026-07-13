@@ -26,10 +26,9 @@ try {
   for (const file of required) await access(path.join(packageRoot, file));
   const packedManifest = JSON.parse(await readFile(path.join(packageRoot, "package.json"), "utf8"));
   if (packedManifest.name !== "linger-skill" || packedManifest.bin?.linger !== "dist/cli.js") throw new Error("packed manifest has an invalid name or CLI bin");
-  const readiness = JSON.parse((await exec(process.execPath, [path.join(packageRoot, "scripts", "release-readiness.mjs"), "--root", packageRoot, "--allow-blocked"])).stdout);
-  const expectedBlockers = ["bugs_url", "homepage_url", "repository_url", "security_contact"];
-  if (readiness.github_ready !== false || JSON.stringify([...readiness.blockers].sort()) !== JSON.stringify(expectedBlockers)) {
-    throw new Error("packed release-readiness verifier did not isolate the remaining repository metadata blockers");
+  const readiness = JSON.parse((await exec(process.execPath, [path.join(packageRoot, "scripts", "release-readiness.mjs"), "--root", packageRoot])).stdout);
+  if (readiness.github_ready !== true || readiness.blockers.length !== 0) {
+    throw new Error(`packed release is not GitHub-ready: ${readiness.blockers.join(", ")}`);
   }
 
   const consumer = path.join(temporary, "consumer");
