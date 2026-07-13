@@ -164,6 +164,8 @@ Forget and delete are different. Forget changes recall eligibility. Delete remov
 
 ## Privacy
 
+See [PRIVACY.md](PRIVACY.md) for the complete data boundary and removal behavior.
+
 Linger stores visible conversation content in local files. Its runtime does not phone home, collect telemetry, create embeddings, or sync data to a Linger service.
 
 Local-first does not mean data never leaves your machine. When an agent recalls evidence or organizes a bounded enrichment batch, that evidence enters the current Claude Code or Codex context and may be sent to the model provider configured in that host. Linger does not send it to an additional model service.
@@ -179,6 +181,8 @@ The project includes a safety baseline for sensitive content:
 This detector is not a complete DLP system. Unknown secret formats may be missed, and explicitly marked but unrecognized secret material may still remain in raw files. Protect the Vault like any other local transcript archive. Do not use this experimental build for data that requires audited compliance controls.
 
 ## Safety and integrity
+
+See [SECURITY.md](SECURITY.md) for the trust boundary and private vulnerability-reporting process.
 
 - Recall is current-project only by default.
 - Cross-project search is never enabled implicitly.
@@ -233,6 +237,8 @@ Not every internal processing threshold is exposed as a stable user configuratio
 ## Development and verification
 
 Requires Node.js 20 or later and pnpm.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution rules and the full candidate gate.
 
     pnpm install --frozen-lockfile
     pnpm test
