@@ -13,12 +13,12 @@ test("merges hooks without overwriting user configuration and is idempotent", as
   const home = await mkdtemp(path.join(os.tmpdir(), "linger-hooks-"));
   const runtime = await fixtureRuntime(home, "0.1.0");
   await mkdir(path.join(home, ".claude"), { recursive: true });
-  await writeFile(path.join(home, ".claude", "settings.json"), JSON.stringify({ theme: "dark", hooks: { Stop: [{ hooks: [{ type: "command", command: "user-script" }] }] } }));
+  await writeFile(path.join(home, ".claude", "settings.json"), JSON.stringify({ theme: "dark", autoMemoryEnabled: true, hooks: { Stop: [{ hooks: [{ type: "command", command: "user-script" }] }] } }));
   await installHooks(home, runtime, ["claude-code", "codex"]);
   await installHooks(home, runtime, ["claude-code", "codex"]);
   const claude = JSON.parse(await readFile(path.join(home, ".claude", "settings.json"), "utf8"));
   assert.equal(claude.theme, "dark");
-  assert.equal(claude.autoMemoryEnabled, false);
+  assert.equal(claude.autoMemoryEnabled, true);
   assert.equal(claude.hooks.Stop[0].hooks[0].command, "user-script");
   assert.equal(claude.hooks.Stop.flatMap((group: { hooks: unknown[] }) => group.hooks).length, 2);
   assert.deepEqual(Object.keys(claude.hooks).sort(), ["SessionStart", "Stop", "StopFailure", "UserPromptSubmit"]);

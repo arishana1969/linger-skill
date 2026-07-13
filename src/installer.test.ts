@@ -34,39 +34,64 @@ test("backs up unmanaged skill and uninstall preserves vault", async () => {
   assert.equal(await readFile(vaultSentinel, "utf8"), "keep");
 });
 
-test("Claude install disables auto-memory and uninstall restores the prior setting", async () => {
-  const fakeHome = await home();
-  const settingsFile = path.join(fakeHome, ".claude", "settings.json");
-  await mkdir(path.dirname(settingsFile), { recursive: true });
-  await writeFile(settingsFile, JSON.stringify({ theme: "dark", autoMemoryEnabled: true }));
-  await install({ home: fakeHome, packageRoot, adapters: ["claude-code"] });
-  await install({ home: fakeHome, packageRoot, adapters: ["claude-code"] });
-  const installed = JSON.parse(await readFile(settingsFile, "utf8"));
-  assert.equal(installed.autoMemoryEnabled, false);
-  await uninstall(fakeHome);
-  const restored = JSON.parse(await readFile(settingsFile, "utf8"));
-  assert.equal(restored.autoMemoryEnabled, true);
-  assert.equal(restored.theme, "dark");
+test("Claude install and uninstall preserve host auto-memory settings", async () => {
+  for (const original of [true, false, undefined]) {
+    const fakeHome = await home();
+    const settingsFile = path.join(fakeHome, ".claude", "settings.json");
+    await mkdir(path.dirname(settingsFile), { recursive: true });
+    await writeFile(settingsFile, JSON.stringify({ theme: "dark", ...(original === undefined ? {} : { autoMemoryEnabled: original }) }));
+    await install({ home: fakeHome, packageRoot, adapters: ["claude-code"] });
+    await install({ home: fakeHome, packageRoot, adapters: ["claude-code"] });
+    const installed = JSON.parse(await readFile(settingsFile, "utf8"));
+    if (original === undefined) assert.equal(Object.hasOwn(installed, "autoMemoryEnabled"), false);
+    else assert.equal(installed.autoMemoryEnabled, original);
+    await uninstall(fakeHome);
+    const uninstalled = JSON.parse(await readFile(settingsFile, "utf8"));
+    if (original === undefined) assert.equal(Object.hasOwn(uninstalled, "autoMemoryEnabled"), false);
+    else assert.equal(uninstalled.autoMemoryEnabled, original);
+    assert.equal(uninstalled.theme, "dark");
+  }
 });
 
-test("Claude uninstall removes a Linger-created auto-memory setting but preserves later user changes", async () => {
-  const fakeHome = await home();
-  const settingsFile = path.join(fakeHome, ".claude", "settings.json");
-  await install({ home: fakeHome, packageRoot, adapters: ["claude-code"] });
-  const installed = JSON.parse(await readFile(settingsFile, "utf8"));
-  assert.equal(installed.autoMemoryEnabled, false);
-  installed.autoMemoryEnabled = true;
-  await writeFile(settingsFile, JSON.stringify(installed));
-  await uninstall(fakeHome);
-  const preserved = JSON.parse(await readFile(settingsFile, "utf8"));
-  assert.equal(preserved.autoMemoryEnabled, true);
+test("upgrade restores auto-memory state left by the replacement-era installer", async () => {
+  for (const legacyState of [
+    { had_value: true, previous_value: true },
+    { had_value: false }
+  ]) {
+    const fakeHome = await home();
+    await install({ home: fakeHome, packageRoot, adapters: ["claude-code"] });
+    const manifestFile = path.join(fakeHome, ".linger", "install-manifest.json");
+    const manifest = JSON.parse(await readFile(manifestFile, "utf8"));
+    manifest.claude_auto_memory = legacyState;
+    await writeFile(manifestFile, JSON.stringify(manifest));
+    const settingsFile = path.join(fakeHome, ".claude", "settings.json");
+    const settings = JSON.parse(await readFile(settingsFile, "utf8"));
+    settings.autoMemoryEnabled = false;
+    await writeFile(settingsFile, JSON.stringify(settings));
 
-  const secondHome = await home();
-  const secondSettings = path.join(secondHome, ".claude", "settings.json");
-  await install({ home: secondHome, packageRoot, adapters: ["claude-code"] });
-  await uninstall(secondHome);
-  const removed = JSON.parse(await readFile(secondSettings, "utf8"));
-  assert.equal(Object.hasOwn(removed, "autoMemoryEnabled"), false);
+    const upgraded = await install({ home: fakeHome, packageRoot, adapters: ["claude-code"] });
+    const after = JSON.parse(await readFile(settingsFile, "utf8"));
+    if (legacyState.had_value) assert.equal(after.autoMemoryEnabled, true);
+    else assert.equal(Object.hasOwn(after, "autoMemoryEnabled"), false);
+    assert.equal(Object.hasOwn(upgraded.manifest, "claude_auto_memory"), false);
+  }
+});
+
+test("changing adapter selection removes only stale Linger-managed integration", async () => {
+  const fakeHome = await home();
+  await install({ home: fakeHome, packageRoot, adapters: ["claude-code", "codex"] });
+  const claudeSettings = path.join(fakeHome, ".claude", "settings.json");
+  const document = JSON.parse(await readFile(claudeSettings, "utf8"));
+  document.hooks.Stop.push({ hooks: [{ type: "command", command: "keep-user-hook" }] });
+  await writeFile(claudeSettings, JSON.stringify(document));
+
+  const result = await install({ home: fakeHome, packageRoot, adapters: ["codex"] });
+  await assert.rejects(access(path.join(fakeHome, ".claude", "skills", "linger")));
+  await access(path.join(fakeHome, ".codex", "skills", "linger", "SKILL.md"));
+  const after = JSON.parse(await readFile(claudeSettings, "utf8"));
+  assert.deepEqual(after.hooks.Stop.flatMap((group: { hooks: Array<{ command: string }> }) => group.hooks.map(hook => hook.command)), ["keep-user-hook"]);
+  assert.deepEqual(result.manifest.adapters, ["codex"]);
+  assert.deepEqual(result.manifest.files, [path.join(fakeHome, ".codex", "skills", "linger")]);
 });
 
 test("uninstall refuses a tampered manifest target before deleting anything", async () => {

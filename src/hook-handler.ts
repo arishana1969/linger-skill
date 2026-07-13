@@ -90,7 +90,7 @@ async function scheduledProcessing(root: string, project: string, trigger: "auto
 async function contextOutput(eventName: string, root: string, project: string, sourceAgent: "claude-code" | "codex", runtimeLocator: RuntimeLocator | undefined, currentEventCaptured: boolean): Promise<Record<string, unknown>> {
   const status = await enrichmentStatus(root, project).catch(() => ({ pending: 0, enriched: 0, project_id: project }));
   const captured = currentEventCaptured
-    ? " The trusted lifecycle hook already captured the current user event, applied any explicit-memory marker, and scheduled deterministic processing. Treat the save request as complete. Do not perform another persistence write for this event: no capture, process, decision-add, correction, host-native auto-memory, or host memory file. A pending host-enrichment overlay is the only permitted follow-up write."
+    ? " The trusted lifecycle hook already captured the current user event, applied any explicit-memory marker, and scheduled deterministic processing. Treat the Linger save request as complete. Do not duplicate this event through another Linger capture, process, decision-add, or correction. Host-owned memory systems remain independent and may operate normally. A pending host-enrichment overlay is the only permitted Linger follow-up write."
     : "";
   const locator = trustedRuntimeLocator(runtimeLocator) ? ` Trusted Linger CLI locator: ${JSON.stringify(runtimeLocator)}.` : "";
   const enrichment = status.pending > 0

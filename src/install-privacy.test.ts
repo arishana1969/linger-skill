@@ -10,5 +10,6 @@ test("install always returns explicit local/cloud privacy notice", async () => {
   const result = await install({ home, packageRoot: process.cwd(), adapters: ["codex"] });
   assert.match(result.privacy_notice, /local files/i);
   assert.match(result.privacy_notice, /model provider configured/i);
+  assert.match(result.privacy_notice, /does not disable or replace host-owned memory/i);
   assert.match(result.privacy_notice, /uninstall preserves the vault/i);
 });

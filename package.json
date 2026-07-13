@@ -1,7 +1,7 @@
 {
   "name": "linger-skill",
-  "version": "0.2.1",
-  "description": "File-native conversation archive and decision trail for coding agents.",
+  "version": "0.2.2",
+  "description": "File-native sidecar conversation archive and decision trail for coding agents.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -12,12 +12,15 @@
     "url": "https://github.com/arishana1969/linger-skill/issues"
   },
   "type": "module",
-  "bin": { "linger": "dist/cli.js", "linger-eval": "dist/eval-cli.js" },
+  "bin": { "linger-skill": "dist/cli.js", "linger": "dist/cli.js", "linger-eval": "dist/eval-cli.js" },
   "files": [
     "dist",
     "!dist/*.test.*",
     "skills",
     "README.md",
+    "CHANGELOG.md",
+    "PRIVACY.md",
+    "SECURITY.md",
     "LICENSE",
     "scripts/release-readiness.mjs"
   ],

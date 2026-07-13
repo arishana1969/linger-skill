@@ -21,10 +21,11 @@ test("captures user and assistant turn from shared hook fields", async () => {
   assert.ok(user.captured);
   assert.equal(user.processed, 1);
   assert.match(JSON.stringify(user.output), /already captured the current user event/);
-  assert.match(JSON.stringify(user.output), /Treat the save request as complete/);
-  assert.match(JSON.stringify(user.output), /no capture, process, decision-add, correction/);
-  assert.match(JSON.stringify(user.output), /host-native auto-memory/);
-  assert.match(JSON.stringify(user.output), /only permitted follow-up write/);
+  assert.match(JSON.stringify(user.output), /Treat the Linger save request as complete/);
+  assert.match(JSON.stringify(user.output), /another Linger capture, process, decision-add, or correction/);
+  assert.match(JSON.stringify(user.output), /Host-owned memory systems remain independent/);
+  assert.doesNotMatch(JSON.stringify(user.output), /host-native auto-memory/);
+  assert.match(JSON.stringify(user.output), /only permitted Linger follow-up write/);
   assert.match(JSON.stringify(user.output), /pending host enrichment/);
   assert.match(JSON.stringify(user.output), /Trusted Linger CLI locator/);
   assert.match(JSON.stringify(user.output), new RegExp(root.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
