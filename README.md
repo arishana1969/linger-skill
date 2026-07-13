@@ -145,6 +145,8 @@ Host enrichment follows the same support boundary. In Codex it uses the model ac
 
 The Skill helps the agent translate user intent into Linger operations. Exact behavior depends on the host's Skill and lifecycle support.
 
+Capture and recall are intentionally different. With verified lifecycle hooks, visible conversation turns are captured automatically during ordinary chat. Recall is demand-driven: Linger does not search or inject the whole Vault on every turn. When the user refers to earlier work with phrases such as “previously,” “last time,” “continue,” “why did we choose,” or “do you remember,” the agent should search the current project's Linger evidence. For an important lookup, the user can say “Use Linger to recall …” without running a CLI command.
+
 | You say | Intended behavior |
 | --- | --- |
 | “Remember this” | Capture as high-priority user-explicit evidence. |
