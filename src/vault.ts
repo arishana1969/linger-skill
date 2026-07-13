@@ -1,7 +1,7 @@
 import { readdir, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { assertWritableInside, atomicJson, ensureDir, readJson } from "./io.js";
+import { assertReadableInside, assertWritableInside, atomicJson, ensureDir, readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
 import { assertProjectRecord, assertQueueItem, assertVaultConfig } from "./schema-validation.js";
 import { assertProjectRecordPath, assertQueueRecordPath } from "./record-paths.js";
@@ -47,7 +47,7 @@ function defaultConfig(createdAt = new Date().toISOString()): VaultConfig {
 export async function initVault(root: string): Promise<VaultConfig> {
   const p = vaultPaths(root);
   await Promise.all([
-    p.projects, p.raw, p.processed, p.queue, p.tmp, p.registry, p.decisions, p.quarantine
+    p.projects, p.raw, p.processed, p.enrichments, p.queue, p.tmp, p.registry, p.decisions, p.quarantine
   ].map(ensureDir));
   await assertWritableInside(p.root, p.config);
   try {
@@ -96,7 +96,7 @@ export async function registerProject(root: string, cwd: string): Promise<Projec
 
 export async function listProjects(root: string): Promise<ProjectRecord[]> {
   const p = vaultPaths(root);
-  return (await Promise.all((await listJsonFiles(p.projects)).map(async file => {
+  return (await Promise.all((await listJsonFiles(p.projects, p.root)).map(async file => {
     try { const value = await readJson<unknown>(file); assertProjectRecord(value); assertProjectRecordPath(p, file, value); return value; } catch { return undefined; }
   }))).filter((record): record is ProjectRecord => Boolean(record)).sort((a, b) => b.last_seen.localeCompare(a.last_seen) || a.project_id.localeCompare(b.project_id));
 }
@@ -123,13 +123,15 @@ async function gitValue(cwd: string, args: string[]): Promise<string | undefined
   });
 }
 
-export async function listJsonFiles(dir: string): Promise<string[]> {
+export async function listJsonFiles(dir: string, boundaryRoot: string): Promise<string[]> {
   try {
+    await assertWritableInside(boundaryRoot, dir);
+    await assertReadableInside(boundaryRoot, dir);
     const entries = await readdir(dir, { withFileTypes: true });
     const files: string[] = [];
     for (const entry of entries) {
       const target = path.join(dir, entry.name);
-      if (entry.isDirectory()) files.push(...await listJsonFiles(target));
+      if (entry.isDirectory()) files.push(...await listJsonFiles(target, boundaryRoot));
       else if (entry.isFile() && entry.name.endsWith(".json")) files.push(target);
     }
     return files.sort();
@@ -142,14 +144,14 @@ export async function listJsonFiles(dir: string): Promise<string[]> {
 export async function vaultStats(root: string): Promise<Record<string, number | boolean>> {
   const p = vaultPaths(root);
   const config = await initVault(root);
-  const [raw, processed, queue, pendingCaptures] = await Promise.all([
-    listJsonFiles(p.raw), listJsonFiles(p.processed), listJsonFiles(p.queue), listJsonFiles(path.join(p.tmp, "pending"))
+  const [raw, processed, enrichments, queue, pendingCaptures] = await Promise.all([
+    listJsonFiles(p.raw, p.root), listJsonFiles(p.processed, p.root), listJsonFiles(p.enrichments, p.root), listJsonFiles(p.queue, p.root), listJsonFiles(path.join(p.tmp, "pending"), p.root)
   ]);
   const queueCounts = { pending: 0, processing: 0, failed: 0, done: 0, invalid: 0 };
   for (const file of queue) {
     try { const item = await readJson<unknown>(file); assertQueueItem(item); assertQueueRecordPath(p, file, item); queueCounts[item.status] += 1; } catch { queueCounts.invalid += 1; }
   }
   let bytes = 0;
-  for (const file of [...raw, ...processed]) bytes += (await stat(file)).size;
-  return { paused: config.paused, raw_events: raw.length, processed_memories: processed.length, queue_items: queue.length, queue_pending: queueCounts.pending, queue_processing: queueCounts.processing, queue_failed: queueCounts.failed, queue_done: queueCounts.done, queue_invalid: queueCounts.invalid, pending_captures: pendingCaptures.length, bytes };
+  for (const file of [...raw, ...processed, ...enrichments]) bytes += (await stat(file)).size;
+  return { paused: config.paused, raw_events: raw.length, processed_memories: processed.length, enriched_memories: enrichments.length, queue_items: queue.length, queue_pending: queueCounts.pending, queue_processing: queueCounts.processing, queue_failed: queueCounts.failed, queue_done: queueCounts.done, queue_invalid: queueCounts.invalid, pending_captures: pendingCaptures.length, bytes };
 }

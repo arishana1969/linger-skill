@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, readdir, symlink, unlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rmdir, symlink, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -158,4 +158,23 @@ test("Vault initialization refuses a symlinked config file", async () => {
   await symlink(outside, config);
   await assert.rejects(initVault(root), /Write target is a symlink/);
   assert.equal(await readFile(outside, "utf8"), "outside-bytes");
+});
+
+test("Vault scans reject and repair a top-level data directory symlink without reading its target", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-path-security-"));
+  const outside = await mkdtemp(path.join(os.tmpdir(), "linger-path-outside-"));
+  await initVault(root);
+  const raw = vaultPaths(root).raw;
+  await rmdir(raw);
+  const sentinel = path.join(outside, "outside.json");
+  await writeFile(sentinel, JSON.stringify({ private: "outside-secret" }));
+  await symlink(outside, raw);
+  await assert.rejects(search(root, { projectId: "p", query: "outside-secret", includeRaw: true }), /Read path escapes Vault|symlink/);
+  const before = await doctor(root);
+  assert.equal(before.ok, false);
+  assert.ok(before.errors.some(error => error.startsWith("invalid_raw:")));
+  const repaired = await quarantineInvalidFiles(root);
+  assert.ok(repaired.quarantined.some(file => file.includes("raw")));
+  assert.equal(await readFile(sentinel, "utf8"), JSON.stringify({ private: "outside-secret" }));
+  assert.equal((await doctor(root)).ok, true);
 });

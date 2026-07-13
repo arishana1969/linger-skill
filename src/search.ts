@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { readJson } from "./io.js";
 import { effectiveMemoryStates } from "./memory-events.js";
+import { applyEnrichment, readEnrichmentOverlays } from "./enrichment.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { expandTerms } from "./term-graph.js";
 import { assertProcessedMemory, assertRawEvent } from "./schema-validation.js";
@@ -43,11 +44,13 @@ export async function search(root: string, options: SearchOptions): Promise<Sear
   const weights = new Map<string, number>(originalTokens.map(token => [token, 1]));
   for (const [term, confidence] of expansions) for (const token of tokenize(term)) weights.set(token, Math.max(weights.get(token) ?? 0, confidence * 0.75));
   const searchTokens = [...weights.keys()];
-  const files = (await within(listJsonFiles(path.join(p.processed, project)), deadline)).slice(0, maxFiles);
-  const memories = (await within(Promise.all(files.map(async file => {
+  const files = (await within(listJsonFiles(path.join(p.processed, project), p.root), deadline)).slice(0, maxFiles);
+  const baselineMemories = (await within(Promise.all(files.map(async file => {
     try { const value = await readJson<unknown>(file); assertProcessedMemory(value); assertProcessedRecordPath(p, file, value); return value; } catch { return undefined; }
   })), deadline)).filter((memory): memory is ProcessedMemory => Boolean(memory));
-  const rawFiles = (await within(listJsonFiles(path.join(p.raw, project)), deadline)).slice(0, maxFiles);
+  const overlays = await within(readEnrichmentOverlays(root, project), deadline);
+  const memories = baselineMemories.map(memory => applyEnrichment(memory, overlays.get(memory.id)));
+  const rawFiles = (await within(listJsonFiles(path.join(p.raw, project), p.root), deadline)).slice(0, maxFiles);
   const rawEvents = (await within(Promise.all(rawFiles.map(async file => {
     try { const value = await readJson<unknown>(file); assertRawEvent(value); assertRawRecordPath(p, file, value); return value; } catch { return undefined; }
   })), deadline)).filter((event): event is RawEvent => Boolean(event));

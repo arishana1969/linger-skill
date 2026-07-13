@@ -5,11 +5,14 @@ import path from "node:path";
 const root = path.resolve(option("--root") ?? process.cwd());
 const blockers = [];
 const manifest = await json(path.join(root, "package.json"), "package_json");
-const security = await text(path.join(root, "SECURITY.md")) ?? await text(path.join(root, "README.md"));
+const readme = await text(path.join(root, "README.md"));
+const security = await text(path.join(root, "SECURITY.md")) ?? readme;
 const license = await text(path.join(root, "LICENSE"));
 
 if (!license?.trim()) blockers.push("license_file");
 if (!manifest || typeof manifest.license !== "string" || !manifest.license.trim() || manifest.license === "UNLICENSED") blockers.push("package_license");
+if (!validVersion(manifest?.version)) blockers.push("package_version");
+else if (!readmeVersion(readme, manifest.version)) blockers.push("readme_version");
 if (!urlField(manifest?.repository)) blockers.push("repository_url");
 if (!urlField(manifest?.homepage)) blockers.push("homepage_url");
 if (!urlField(manifest?.bugs)) blockers.push("bugs_url");
@@ -39,6 +42,16 @@ function urlField(value) {
   const candidate = typeof value === "string" ? value : value && typeof value === "object" && typeof value.url === "string" ? value.url : undefined;
   return Boolean(candidate && /^(?:https:\/\/|git\+https:\/\/)/.test(candidate));
 }
+function validVersion(value) {
+  return typeof value === "string" && /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/.test(value);
+}
+function readmeVersion(value, version) {
+  if (!value) return false;
+  const status = value.match(/^## Status\s*\n+([\s\S]*?)(?=^## |\s*$)/m)?.[1];
+  if (!status) return false;
+  return new RegExp(`\\bv${escapeRegExp(version)}\\b`).test(status);
+}
+function escapeRegExp(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 function securityContact(value) {
   if (!value) return false;
   return /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(value) || /https:\/\/github\.com\/[^\s)]+\/security\/advisories\/new/i.test(value);

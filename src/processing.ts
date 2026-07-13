@@ -19,7 +19,7 @@ export async function processQueue(root: string, projectId?: string, maxItems = 
   if (projectId) assertSafeId(projectId, "project id");
   const p = vaultPaths(root);
   return await withFileLock(path.join(p.tmp, "processor.lock"), async () => {
-    const queueFiles = (await listJsonFiles(p.queue)).filter((file) => !projectId || file.includes(`${path.sep}${projectId}${path.sep}`));
+    const queueFiles = (await listJsonFiles(p.queue, p.root)).filter((file) => !projectId || file.includes(`${path.sep}${projectId}${path.sep}`));
     const items: Array<{ file: string; item: QueueItem }> = [];
     for (const file of queueFiles) {
       try { const item = await readJson<unknown>(file); assertQueueItem(item); assertQueueRecordPath(p, file, item); items.push({ file, item }); } catch { continue; }
@@ -36,7 +36,7 @@ export async function processQueue(root: string, projectId?: string, maxItems = 
         let rawEvents = rawEventsByProject.get(running.project_id);
         if (!rawEvents) {
           rawEvents = new Map<string, RawEvent>();
-          for (const file of await listJsonFiles(path.join(p.raw, running.project_id))) {
+          for (const file of await listJsonFiles(path.join(p.raw, running.project_id), p.root)) {
             try {
               const candidate = await readJson<unknown>(file);
               assertRawEvent(candidate);

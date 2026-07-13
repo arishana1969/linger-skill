@@ -34,6 +34,41 @@ test("backs up unmanaged skill and uninstall preserves vault", async () => {
   assert.equal(await readFile(vaultSentinel, "utf8"), "keep");
 });
 
+test("Claude install disables auto-memory and uninstall restores the prior setting", async () => {
+  const fakeHome = await home();
+  const settingsFile = path.join(fakeHome, ".claude", "settings.json");
+  await mkdir(path.dirname(settingsFile), { recursive: true });
+  await writeFile(settingsFile, JSON.stringify({ theme: "dark", autoMemoryEnabled: true }));
+  await install({ home: fakeHome, packageRoot, adapters: ["claude-code"] });
+  await install({ home: fakeHome, packageRoot, adapters: ["claude-code"] });
+  const installed = JSON.parse(await readFile(settingsFile, "utf8"));
+  assert.equal(installed.autoMemoryEnabled, false);
+  await uninstall(fakeHome);
+  const restored = JSON.parse(await readFile(settingsFile, "utf8"));
+  assert.equal(restored.autoMemoryEnabled, true);
+  assert.equal(restored.theme, "dark");
+});
+
+test("Claude uninstall removes a Linger-created auto-memory setting but preserves later user changes", async () => {
+  const fakeHome = await home();
+  const settingsFile = path.join(fakeHome, ".claude", "settings.json");
+  await install({ home: fakeHome, packageRoot, adapters: ["claude-code"] });
+  const installed = JSON.parse(await readFile(settingsFile, "utf8"));
+  assert.equal(installed.autoMemoryEnabled, false);
+  installed.autoMemoryEnabled = true;
+  await writeFile(settingsFile, JSON.stringify(installed));
+  await uninstall(fakeHome);
+  const preserved = JSON.parse(await readFile(settingsFile, "utf8"));
+  assert.equal(preserved.autoMemoryEnabled, true);
+
+  const secondHome = await home();
+  const secondSettings = path.join(secondHome, ".claude", "settings.json");
+  await install({ home: secondHome, packageRoot, adapters: ["claude-code"] });
+  await uninstall(secondHome);
+  const removed = JSON.parse(await readFile(secondSettings, "utf8"));
+  assert.equal(Object.hasOwn(removed, "autoMemoryEnabled"), false);
+});
+
 test("uninstall refuses a tampered manifest target before deleting anything", async () => {
   const fakeHome = await home();
   await install({ home: fakeHome, packageRoot, adapters: ["codex"] });

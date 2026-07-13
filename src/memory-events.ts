@@ -57,7 +57,7 @@ export async function appendMemoryControl(root: string, input: Omit<MemoryContro
 export async function effectiveMemoryStates(root: string, projectId: string): Promise<Map<string, EffectiveMemoryState>> {
   const project = assertSafeId(projectId, "project id");
   const p = vaultPaths(root);
-  const files = await listJsonFiles(path.join(p.registry, "memory-events", project));
+  const files = await listJsonFiles(path.join(p.registry, "memory-events", project), p.root);
   const events = (await Promise.all(files.map(async file => {
     try { const value = await readJson<unknown>(file); assertMemoryControlEvent(value); assertMemoryControlPath(p, file, value); return value; } catch { return undefined; }
   }))).filter((event): event is MemoryControlEvent => Boolean(event)).sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.event_id.localeCompare(b.event_id));

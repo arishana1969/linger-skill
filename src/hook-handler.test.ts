@@ -16,14 +16,36 @@ async function fixture(): Promise<{ root: string; cwd: string; project: string }
 
 test("captures user and assistant turn from shared hook fields", async () => {
   const { root, cwd, project } = await fixture();
-  const user = await handleHook(root, { hook_event_name: "UserPromptSubmit", session_id: "s1", turn_id: "t1", cwd, prompt: "记一下：暂时不做 MCP" }, "codex");
+  const user = await handleHook(root, { hook_event_name: "UserPromptSubmit", session_id: "s1", turn_id: "t1", cwd, prompt: "记一下：暂时不做 MCP" }, "codex", undefined, { node: "/trusted/node", cli: "/trusted/runtime/dist/cli.js", vault: root });
   const assistant = await handleHook(root, { hook_event_name: "Stop", session_id: "s1", turn_id: "t1", cwd, last_assistant_message: "已记录，先验证文件方案。" }, "codex");
   assert.ok(user.captured);
   assert.equal(user.processed, 1);
+  assert.match(JSON.stringify(user.output), /already captured the current user event/);
+  assert.match(JSON.stringify(user.output), /Treat the save request as complete/);
+  assert.match(JSON.stringify(user.output), /no capture, process, decision-add, correction/);
+  assert.match(JSON.stringify(user.output), /host-native auto-memory/);
+  assert.match(JSON.stringify(user.output), /only permitted follow-up write/);
+  assert.match(JSON.stringify(user.output), /pending host enrichment/);
+  assert.match(JSON.stringify(user.output), /Trusted Linger CLI locator/);
+  assert.match(JSON.stringify(user.output), new RegExp(root.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.ok(assistant.captured);
   await processQueue(root);
   const hits = await search(root, { projectId: project, query: "不做 MCP" });
   assert.equal(hits[0]?.confidence, 1);
+});
+
+test("records a complete Codex live lifecycle only after both sides capture", async () => {
+  const { root, cwd } = await fixture();
+  const { readCodexAdapterEvidence, verifiedCodexLiveSession } = await import("./adapter-evidence.js");
+  const runtimeIdentity = "e".repeat(64);
+  await handleHook(root, { hook_event_name: "SessionStart", session_id: "live-1", cwd, source: "startup" }, "codex", runtimeIdentity);
+  await handleHook(root, { hook_event_name: "UserPromptSubmit", session_id: "live-1", turn_id: "turn-1", cwd, prompt: "remember live evidence" }, "codex", runtimeIdentity);
+  assert.equal(await verifiedCodexLiveSession(root, await readCodexAdapterEvidence(root), [runtimeIdentity]), undefined);
+  await handleHook(root, { hook_event_name: "Stop", session_id: "live-1", turn_id: "turn-1", cwd, last_assistant_message: "live evidence captured" }, "codex", runtimeIdentity);
+  const completed = await verifiedCodexLiveSession(root, await readCodexAdapterEvidence(root), [runtimeIdentity]);
+  assert.equal(completed?.session_id, "live-1");
+  assert.ok(completed?.events.UserPromptSubmit?.captured_event_id);
+  assert.ok(completed?.events.Stop?.captured_event_id);
 });
 
 test("runs event-driven processing at the 50KB threshold", async () => {
@@ -52,6 +74,7 @@ test("honors opt-out, marks secrets, and tolerates startup", async () => {
   const startup = await handleHook(root, { hook_event_name: "SessionStart", session_id: "s1", cwd }, "claude-code");
   assert.equal(startup.processed, 0);
   assert.match(JSON.stringify(startup.output), /evidence/);
+  assert.doesNotMatch(JSON.stringify(startup.output), /already captured the current user event/);
 });
 
 test("captures Claude StopFailure output as partial evidence", async () => {

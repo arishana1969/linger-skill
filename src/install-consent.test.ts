@@ -9,7 +9,7 @@ test("interactive privacy consent requires exact YES and prints the boundary", a
   acceptedOutput.on("data", chunk => { text += chunk.toString(); });
   assert.equal(await confirmPrivacyConsent(Readable.from(["YES\n"]), acceptedOutput), true);
   assert.match(text, /local files/i);
-  assert.match(text, /cloud model/i);
+  assert.match(text, /model provider configured/i);
   assert.equal(await confirmPrivacyConsent(Readable.from(["yes\n"]), new PassThrough()), false);
   assert.equal(await confirmPrivacyConsent(Readable.from(["NO\n"]), new PassThrough()), false);
 });

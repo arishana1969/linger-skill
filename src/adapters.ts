@@ -1,5 +1,9 @@
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
+import { readCodexAdapterEvidence, verifiedCodexLiveSession, type SessionEvidence } from "./adapter-evidence.js";
+import { parseManagedHookCommand } from "./hook-command.js";
+import { runtimeFingerprint } from "./runtime-identity.js";
+import { assertReadableInside } from "./io.js";
 
 export type CapabilityLevel = 0 | 1 | 2 | 3 | 4;
 export type AdapterName = "claude-code" | "codex";
@@ -31,14 +35,65 @@ export async function detectCodex(home: string): Promise<AdapterCapability> {
   const detected = await exists(root);
   const installed = await exists(skill);
   let hooks = false;
+  let lingerHooks = false;
+  let runtimeIdentities: string[] = [];
   let hookEvidence: string | undefined;
   try { hooks = /(^|\n)\s*\[hooks(?:\.|\])/m.test(await readFile(config, "utf8")); if (hooks) hookEvidence = config; } catch { /* absent */ }
-  if (!hooks && await exists(hooksFile)) { hooks = true; hookEvidence = hooksFile; }
-  const level: CapabilityLevel = installed ? 1 : 0;
-  return result("codex", detected, installed, level, false, [detected ? root : "Codex directory not found", hookEvidence ? `${hookEvidence} (configured; execution trust unverified)` : "No hook configuration detected"], ["Codex hook configuration does not prove execution trust; capability remains L1 until the host verifies trust and live execution.", "When lifecycle coverage is incomplete, use rule-driven explicit CLI capture."]);
+  if (await exists(hooksFile)) {
+    hooks = true;
+    hookEvidence = hooksFile;
+    try {
+      const document = JSON.parse(await readFile(hooksFile, "utf8")) as { hooks?: Record<string, Array<{ hooks?: Array<{ command?: string }> }>> };
+      runtimeIdentities = await commonCodexRuntimeIdentities(document, home);
+      lingerHooks = runtimeIdentities.length > 0;
+    } catch { /* malformed or unsupported host config */ }
+  }
+  let liveSession: SessionEvidence | undefined;
+  let invalidEvidence = false;
+  try {
+    const vault = path.join(home, ".linger", "vault");
+    liveSession = await verifiedCodexLiveSession(vault, await readCodexAdapterEvidence(vault), runtimeIdentities);
+  }
+  catch { invalidEvidence = true; }
+  const live = Boolean(installed && lingerHooks && liveSession);
+  const level: CapabilityLevel = live ? 2 : installed ? 1 : 0;
+  const evidence = [
+    detected ? root : "Codex directory not found",
+    hookEvidence ? `${hookEvidence} (configured${live ? "; live lifecycle verified" : "; execution trust unverified"})` : "No hook configuration detected",
+    ...(liveSession ? [`Observed SessionStart, UserPromptSubmit capture, and Stop capture in Codex session ${liveSession.session_id}`] : [])
+  ];
+  const limitations = [
+    ...(live ? ["Live lifecycle evidence proves prior execution; changing hooks may require a new Codex session and renewed verification."] : ["Codex hook configuration does not prove execution trust; capability remains L1 until one live session completes the required lifecycle."]),
+    ...(invalidEvidence ? ["Codex live evidence is invalid and was ignored."] : []),
+    "When lifecycle coverage is incomplete, use rule-driven explicit CLI capture."
+  ];
+  return result("codex", detected, installed, level, live, evidence, limitations);
 }
 
 function result(adapter: AdapterName, detected: boolean, installed: boolean, level: CapabilityLevel, hooks: boolean, evidence: string[], limitations: string[]): AdapterCapability {
   return { adapter, detected, installed, level, capabilities: { rules: installed, file_access: installed, lifecycle_hooks: hooks, async_processing: false, recovery: hooks }, evidence, limitations };
 }
 async function exists(file: string): Promise<boolean> { try { await access(file); return true; } catch { return false; } }
+
+async function commonCodexRuntimeIdentities(
+  document: { hooks?: Record<string, Array<{ hooks?: Array<{ command?: string }> }>> },
+  home: string
+): Promise<string[]> {
+  const required = ["SessionStart", "UserPromptSubmit", "Stop"];
+  const identities: Array<Set<string>> = [];
+  for (const event of required) {
+    const verified = new Set<string>();
+    for (const hook of (document.hooks?.[event] ?? []).flatMap(group => group.hooks ?? [])) {
+      const parsed = typeof hook.command === "string" ? parseManagedHookCommand(hook.command, home, "codex") : undefined;
+      if (!parsed?.runtime_identity) continue;
+      const packageRoot = path.dirname(path.dirname(parsed.hook));
+      try {
+        await assertReadableInside(home, parsed.hook);
+        if (await runtimeFingerprint(packageRoot, parsed.node) === parsed.runtime_identity) verified.add(parsed.runtime_identity);
+      } catch { /* invalid or changed runtimes remain untrusted */ }
+    }
+    identities.push(verified);
+  }
+  const first = identities[0];
+  return first ? [...first].filter(identity => identities.every(values => values.has(identity))) : [];
+}

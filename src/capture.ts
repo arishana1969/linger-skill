@@ -8,6 +8,7 @@ import { assertRawEvent, assertSequenceState } from "./schema-validation.js";
 import { assertRawRecordPath } from "./record-paths.js";
 import type { QueueItem, RawEvent, Role, SavepointStatus } from "./types.js";
 import { initVault } from "./vault.js";
+import { findRecentEquivalentHookEvent } from "./hook-ownership.js";
 
 export interface CaptureInput {
   projectId: string;
@@ -21,6 +22,7 @@ export interface CaptureInput {
   explicit?: boolean;
   sensitivity?: "normal" | "sensitive" | "secret";
   timestamp?: string;
+  reuseRecentHookCapture?: boolean;
 }
 
 const ROLES = new Set<Role>(["user", "assistant", "system"]);
@@ -40,6 +42,10 @@ export async function capture(root: string, input: CaptureInput): Promise<RawEve
   const detected = classifySensitivity(input.content);
   const sensitivity = strongerSensitivity(input.sensitivity ?? "normal", detected.level);
   const storedContent = detected.level === "secret" ? redactSecrets(input.content) : input.content;
+  if (input.reuseRecentHookCapture) {
+    const owned = await findRecentEquivalentHookEvent(root, { projectId: project, role: input.role, content: storedContent });
+    if (owned) return owned;
+  }
   const p = vaultPaths(root);
   const contentHash = createHash("sha256").update(storedContent).digest("hex");
   const dedupe = createHash("sha256").update(`${project}\0${session}\0${turn}\0${input.role}\0${contentHash}`).digest("hex").slice(0, 24);
@@ -53,6 +59,7 @@ export async function capture(root: string, input: CaptureInput): Promise<RawEve
     const raced = await readExistingRaw(p, rawFile, expected);
     if (raced) return raced;
     const sequenceFile = path.join(p.registry, `${project}.sequence.json`);
+    await assertWritableInside(p.root, sequenceFile);
     let current = 0;
     try { const state = await readJson<unknown>(sequenceFile); assertSequenceState(state); current = state.value; } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
     const timestamp = input.timestamp ?? new Date().toISOString();

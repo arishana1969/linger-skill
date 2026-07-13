@@ -101,7 +101,7 @@ export async function appendDecision(root: string, input: AppendDecisionInput): 
 export async function rebuildDecisionView(root: string, projectId: string, canonicalId: string): Promise<DecisionView> {
   const p = vaultPaths(root);
   const topicDir = path.join(p.decisions, assertSafeId(projectId, "project id"), assertSafeId(canonicalId, "decision id"));
-  const files = await listJsonFiles(path.join(topicDir, "events"));
+  const files = await listJsonFiles(path.join(topicDir, "events"), p.root);
   const events = (await Promise.all(files.map(async file => {
     try { const value = await readJson<unknown>(file); assertDecisionEvent(value); assertDecisionEventPath(p, file, value); return value; } catch { return undefined; }
   }))).filter((event): event is DecisionEvent => Boolean(event)).sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.event_id.localeCompare(b.event_id));
@@ -146,7 +146,7 @@ export async function getDecisionTrail(root: string, projectId: string, topic: s
     const view = await readJson<unknown>(viewFile);
     assertDecisionView(view);
     assertDecisionViewPath(p, viewFile, view);
-    const events = (await Promise.all((await listJsonFiles(path.join(topicDir, "events"))).map(async file => {
+    const events = (await Promise.all((await listJsonFiles(path.join(topicDir, "events"), p.root)).map(async file => {
       try { const value = await readJson<unknown>(file); assertDecisionEvent(value); assertDecisionEventPath(p, file, value); return value; } catch { return undefined; }
     }))).filter((event): event is DecisionEvent => Boolean(event)).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
     return { view, events };
@@ -159,7 +159,7 @@ export async function getDecisionTrail(root: string, projectId: string, topic: s
 export async function listDecisionViews(root: string, projectId: string): Promise<DecisionView[]> {
   const p = vaultPaths(root);
   const base = path.join(p.decisions, assertSafeId(projectId, "project id"));
-  const files = (await listJsonFiles(base)).filter(file => path.basename(file) === "current.json");
+  const files = (await listJsonFiles(base, p.root)).filter(file => path.basename(file) === "current.json");
   return (await Promise.all(files.map(async file => {
     try { const value = await readJson<unknown>(file); assertDecisionView(value); assertDecisionViewPath(p, file, value); return value; } catch { return undefined; }
   }))).filter((view): view is DecisionView => Boolean(view));

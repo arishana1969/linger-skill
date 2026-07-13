@@ -35,7 +35,7 @@ export async function completePending(file: string): Promise<void> {
 
 export async function recoverPending(root: string): Promise<{ recovered: number; failed: Array<{ file: string; error: string }> }> {
   const p = vaultPaths(root);
-  const files = await listJsonFiles(path.join(p.tmp, "pending"));
+  const files = await listJsonFiles(path.join(p.tmp, "pending"), p.root);
   let recovered = 0;
   const failed: Array<{ file: string; error: string }> = [];
   for (const file of files) {

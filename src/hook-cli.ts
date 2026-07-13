@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { handleHook, type HookInput } from "./hook-handler.js";
 
 async function main(): Promise<void> {
@@ -10,7 +11,8 @@ async function main(): Promise<void> {
   const input = parsed as HookInput;
   const root = process.env.LINGER_VAULT ?? path.join(os.homedir(), ".linger", "vault");
   const agent = process.env.LINGER_ADAPTER === "claude-code" ? "claude-code" : "codex";
-  const result = await handleHook(root, input, agent);
+  const runtimeIdentity = /^[a-f0-9]{64}$/.test(process.env.LINGER_RUNTIME_ID ?? "") ? process.env.LINGER_RUNTIME_ID : undefined;
+  const result = await handleHook(root, input, agent, runtimeIdentity, { node: process.execPath, cli: path.join(path.dirname(fileURLToPath(import.meta.url)), "cli.js"), vault: root });
   process.stdout.write(`${JSON.stringify(result.output)}\n`);
 }
 

@@ -9,6 +9,6 @@ test("install always returns explicit local/cloud privacy notice", async () => {
   const home = await mkdtemp(path.join(os.tmpdir(), "linger-privacy-"));
   const result = await install({ home, packageRoot: process.cwd(), adapters: ["codex"] });
   assert.match(result.privacy_notice, /local files/i);
-  assert.match(result.privacy_notice, /cloud model/i);
+  assert.match(result.privacy_notice, /model provider configured/i);
   assert.match(result.privacy_notice, /uninstall preserves the vault/i);
 });
