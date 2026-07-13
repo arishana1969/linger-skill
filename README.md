@@ -1,12 +1,13 @@
 # Linger
 
+[![npm version](https://img.shields.io/npm/v/linger-skill.svg)](https://www.npmjs.com/package/linger-skill)
 [![CI](https://github.com/arishana1969/linger-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/arishana1969/linger-skill/actions/workflows/ci.yml)
 
 A file-native conversation archive and decision trail for coding agents.
 
 ## Status
 
-Linger v0.2.2 is an experimental MVP release candidate for Claude Code and Codex. It is currently available from source; the npm package has not been published yet. Linger does not promise perfect archival coverage or production-grade support.
+Linger v0.2.2 is an experimental MVP for Claude Code and Codex, distributed as the public [`linger-skill`](https://www.npmjs.com/package/linger-skill) package. Linger does not promise perfect archival coverage or production-grade support.
 
 ## Origin
 
@@ -39,28 +40,33 @@ Linger is for developers who use Claude Code or Codex on long-running projects.
 
 If you have restarted a conversation and wished the agent remembered what you discussed last week—or why a design decision changed—Linger is for you.
 
-## Install from source
+## Install
 
-Until the npm package is published, install v0.2.2 from source:
-
-    pnpm install --frozen-lockfile
-    pnpm build
-    node dist/cli.js install
-
-Interactive installation displays the local/cloud privacy boundary and requires an exact YES before writing. Non-interactive callers must pass --yes:
-
-    node dist/cli.js install --yes
-
-Install only one adapter when needed:
-
-    node dist/cli.js install --adapters claude-code
-    node dist/cli.js install --adapters codex
-
-After the npm package is published, the intended command will be:
+Requires Node.js 20 or later. The recommended installation is one command:
 
     npx linger-skill install
 
-That command is not available yet.
+Interactive installation displays the local/cloud privacy boundary and requires an exact YES before writing. Non-interactive callers must pass --yes:
+
+    npx linger-skill install --yes
+
+Install only one adapter when needed:
+
+    npx linger-skill install --adapters claude-code
+    npx linger-skill install --adapters codex
+
+For a persistent global CLI instead:
+
+    npm install --global linger-skill
+    linger install
+
+To install from source for development:
+
+    git clone https://github.com/arishana1969/linger-skill.git
+    cd linger-skill
+    pnpm install --frozen-lockfile
+    pnpm build
+    node dist/cli.js install
 
 ## How it works
 
@@ -263,9 +269,13 @@ These generated suites protect known behavior. They do not prove general memory 
 
 ## Uninstall and purge
 
-For the current source-installed candidate:
+With the recommended npx installation:
 
-    node dist/cli.js uninstall --yes
+    npx linger-skill uninstall --yes
+
+With a global or source installation:
+
+    linger uninstall --yes
 
 Uninstall removes managed Skill and hook integration but preserves the Vault.
 
