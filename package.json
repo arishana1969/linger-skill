@@ -32,6 +32,7 @@
     "verify:release-metadata": "node scripts/release-readiness.mjs"
   },
   "engines": { "node": ">=20" },
+  "packageManager": "pnpm@10.34.5",
   "devDependencies": {
     "@types/node": "^24.0.0",
     "typescript": "^5.8.0"
