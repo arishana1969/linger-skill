@@ -4,6 +4,10 @@ Notable user-visible changes to Linger are recorded here.
 
 ## 0.2.2 — 2026-07-14
 
+### Added
+
+- Added a Simplified Chinese README with bidirectional language navigation.
+
 ### Changed
 
 - Reframed Linger as a sidecar continuity layer for Claude Code, Codex, and future adapters.
@@ -12,6 +16,7 @@ Notable user-visible changes to Linger are recorded here.
 - Added an npm-compatible `linger-skill` executable so the documented `npx linger-skill install` command resolves directly.
 - Published the first npm-distributed MVP with `npx linger-skill install` as the recommended installation path.
 - Included the changelog, privacy policy, and security policy in the npm artifact.
+- Identified Ari Shana as the MIT copyright holder.
 
 ### Fixed
 
