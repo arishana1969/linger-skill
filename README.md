@@ -5,6 +5,11 @@
 
 A file-native conversation archive and decision trail for coding agents.
 
+> 念念不忘，必有回响。
+> What lingers in mind will find its echo.
+
+---
+
 ## Status
 
 Linger v0.2.2 is an experimental MVP for Claude Code and Codex, distributed as the public [`linger-skill`](https://www.npmjs.com/package/linger-skill) package. Linger does not promise perfect archival coverage or production-grade support.
