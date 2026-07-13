@@ -1,0 +1,41 @@
+name: Feature request
+description: Propose an improvement to capture, processing, recall, or an adapter.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What continuity problem are you trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Capture
+        - Processing and tagging
+        - Recall
+        - Claude Code adapter
+        - Codex adapter
+        - New agent adapter
+        - Packaging and installation
+        - Documentation
+    validations:
+      required: true
+  - type: checkboxes
+    id: boundary
+    attributes:
+      label: Sidecar boundary
+      options:
+        - label: This proposal can preserve host-owned memory and unrelated host settings.
+          required: true

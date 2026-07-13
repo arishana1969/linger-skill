@@ -6,7 +6,7 @@ import { installHooks, uninstallHooks } from "./hook-installer.js";
 import { installRuntime, uninstallRuntime } from "./runtime-installer.js";
 import { assertSafeId } from "./paths.js";
 
-export const PRIVACY_NOTICE = "Linger stores visible conversations in local files. Recalled evidence and bounded normal-sensitivity enrichment batches may be sent to the model provider configured in the current Codex or Claude Code host. Linger does not configure a separate model provider or API key. Local-first does not mean data never leaves this device. No telemetry is installed, and uninstall preserves the vault.";
+export const PRIVACY_NOTICE = "Linger stores visible conversations in local files. Recalled evidence and bounded normal-sensitivity enrichment batches may be sent to the model provider configured in the current Codex or Claude Code host. Linger does not configure a separate model provider or API key, and it does not disable or replace host-owned memory. Local-first does not mean data never leaves this device. No telemetry is installed, and uninstall preserves the vault.";
 
 export interface InstallManifest {
   schema_version: 1;
@@ -18,6 +18,7 @@ export interface InstallManifest {
   files: string[];
   backups: string[];
   hook_files: string[];
+  /** Legacy v0.2.1 migration state. New installs never create this field. */
   claude_auto_memory?: ClaudeAutoMemoryState;
 }
 
@@ -41,9 +42,14 @@ export async function install(options: InstallOptions): Promise<{ manifest: Inst
   const manifestFile = path.join(stateRoot, "install-manifest.json");
   await mkdir(stateRoot, { recursive: true, mode: 0o700 });
   const previousManifest = await existingManifest(options.home, manifestFile);
-  const claudeAutoMemory = adapters.includes("claude-code")
-    ? previousManifest?.claude_auto_memory ?? await readClaudeAutoMemoryState(options.home)
-    : previousManifest?.claude_auto_memory;
+  const staleAdapters = previousManifest?.adapters.filter(adapter => !adapters.includes(adapter)) ?? [];
+  if (staleAdapters.length || previousManifest?.claude_auto_memory) {
+    await uninstallHooks(options.home, staleAdapters, previousManifest?.claude_auto_memory);
+  }
+  const currentDestinations = new Set(adapters.map(adapter => path.resolve(skillDestination(options.home, adapter))));
+  for (const target of previousManifest?.files ?? []) {
+    if (!currentDestinations.has(path.resolve(target)) && await isManaged(target)) await rm(target, { recursive: true, force: true });
+  }
   const backups: string[] = [];
   const files: string[] = [];
   for (const adapter of adapters) {
@@ -63,7 +69,7 @@ export async function install(options: InstallOptions): Promise<{ manifest: Inst
   }
   const runtime = await installRuntime(options.home, options.packageRoot);
   const hookFiles = await installHooks(options.home, runtime.root, adapters);
-  const manifest: InstallManifest = { schema_version: 1, package_version: runtime.version, installed_at: new Date().toISOString(), package_root: options.packageRoot, runtime_root: runtime.root, adapters, files, backups, hook_files: hookFiles, ...(claudeAutoMemory ? { claude_auto_memory: claudeAutoMemory } : {}) };
+  const manifest: InstallManifest = { schema_version: 1, package_version: runtime.version, installed_at: new Date().toISOString(), package_root: options.packageRoot, runtime_root: runtime.root, adapters, files, backups, hook_files: hookFiles };
   await atomicJson(manifestFile, manifest);
   return { manifest, capabilities: await capabilityReport(options.home), privacy_notice: PRIVACY_NOTICE };
 }
@@ -117,21 +123,6 @@ async function existingManifest(home: string, file: string): Promise<InstallMani
     return value;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
-    throw error;
-  }
-}
-
-async function readClaudeAutoMemoryState(home: string): Promise<ClaudeAutoMemoryState> {
-  const file = path.join(home, ".claude", "settings.json");
-  try {
-    const value = JSON.parse(await readFile(file, "utf8")) as unknown;
-    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid Claude settings document");
-    const settings = value as Record<string, unknown>;
-    if (!Object.hasOwn(settings, "autoMemoryEnabled")) return { had_value: false };
-    if (typeof settings.autoMemoryEnabled !== "boolean") throw new Error("Invalid Claude autoMemoryEnabled setting");
-    return { had_value: true, previous_value: settings.autoMemoryEnabled };
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return { had_value: false };
     throw error;
   }
 }

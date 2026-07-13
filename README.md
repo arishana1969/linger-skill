@@ -1,16 +1,12 @@
 # Linger
 
+[![CI](https://github.com/arishana1969/linger-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/arishana1969/linger-skill/actions/workflows/ci.yml)
+
 A file-native conversation archive and decision trail for coding agents.
-
-> 念念不忘，必有回响。
->
-> What lingers in mind will find its echo.
-
----
 
 ## Status
 
-Linger v0.2.1 is an experimental GitHub MVP candidate for Claude Code and Codex. It is not released or published to npm and does not promise perfect archival coverage.
+Linger v0.2.2 is an experimental MVP release candidate for Claude Code and Codex. It is currently available from source; the npm package has not been published yet. Linger does not promise perfect archival coverage or production-grade support.
 
 ## Origin
 
@@ -24,12 +20,12 @@ We cannot actually provide a never-ending thread. Context windows are real, sess
 
 Linger saves visible conversations with coding agents—the discussions, explicit notes, decisions, and visible rationale—as local files you own.
 
-It is not a general AI memory system. It is a continuity layer. When an agent loses older context, Linger can retain the record. When you ask why a decision was made three weeks ago, Linger can surface the evidence and its evolution.
+It is not a general AI memory system. It is a sidecar continuity layer. Linger observes supported lifecycle events without disabling, replacing, or writing into an agent's own memory system. When an agent loses older context, Linger can retain the record. When you ask why a decision was made three weeks ago, Linger can surface the evidence and its evolution.
 
 ### What you get
 
 - Conversation capture through verified lifecycle hooks, with explicit CLI fallback when a host cannot automate capture.
-- Optional host-native organization: the current Claude or Codex model can improve summaries, types, tags, and retrieval phrases without a separate provider or API key.
+- Optional host-model organization: the current Claude or Codex model can improve summaries, types, tags, and retrieval phrases without a separate provider or API key.
 - A decision trail that preserves how conclusions evolved, not only the final answer.
 - A note-taking interface for remember, opt out, forget, correct, inspect, and delete workflows.
 - Local-first storage using versioned JSON and human-readable Markdown.
@@ -45,7 +41,7 @@ If you have restarted a conversation and wished the agent remembered what you di
 
 ## Install from source
 
-The current v0.2.1 candidate is installed from source:
+Until the npm package is published, install v0.2.2 from source:
 
     pnpm install --frozen-lockfile
     pnpm build
@@ -60,11 +56,11 @@ Install only one adapter when needed:
     node dist/cli.js install --adapters claude-code
     node dist/cli.js install --adapters codex
 
-The intended command after a future npm publication is:
+After the npm package is published, the intended command will be:
 
     npx linger-skill install
 
-That npm command is not available in the GitHub-only v0.2 stage.
+That command is not available yet.
 
 ## How it works
 
@@ -79,7 +75,9 @@ Linger combines a Skill, lifecycle hooks, a helper CLI, an event-driven processo
 7. Validated enrichment is stored as a derived overlay. It improves tagging and recall without rewriting raw evidence or the deterministic baseline.
 8. Recall searches the current project and returns a bounded evidence package, falling back to the deterministic baseline whenever enrichment is missing, stale, or invalid.
 
-Linger does not install a daemon or guarantee that an idle, long-running session will process the queue at an exact time.
+The active agent combines that package with its current conversation and any host-owned memory already in context. Substantially identical facts are the same underlying evidence, not independent corroboration; conflicts should be surfaced instead of silently resolved.
+
+Linger does not install a daemon, alter host-owned memory settings, or guarantee that an idle, long-running session will process the queue at an exact time.
 
 The default Vault is ~/.linger/vault:
 
@@ -125,9 +123,9 @@ Automation differs by host and version. Capability levels are reported from obse
 
 | Agent | Verified level | Current evidence and limitations |
 | --- | ---: | --- |
-| Claude Code | L2 | Claude Code 2.1.207 completed a real v0.2.1 host-enrichment path while its active host model was DeepSeek: lifecycle capture, deterministic processing, overlay commit, and enriched tagging. StopFailure is also covered in disposable-home acceptance. Ctrl-C did not preserve already-streamed assistant text on the observed path. |
-| Codex | L2 | Codex 0.144.0-alpha.4 completed a real v0.2.1 host-enrichment path: lifecycle capture, current-model organization, overlay commit, tag-registry rebuild, and exact semantic recall. A fresh install remains L1 until one trusted live session completes SessionStart, UserPromptSubmit, and Stop with the installed runtime. |
-| Other agents | Not implemented | Additional adapters are outside the v0.2.1 MVP scope. |
+| Claude Code | L2 | Claude Code 2.1.207 completed a real v0.2.1 host-enrichment path while its active host model was DeepSeek: lifecycle capture, deterministic processing, overlay commit, and enriched tagging. The v0.2.2 sidecar upgrade preserves host-owned memory and has passed installation and migration verification. StopFailure is covered in disposable-home acceptance. Ctrl-C did not preserve already-streamed assistant text on the observed path. |
+| Codex | L2 | Codex 0.144.0-alpha.4 completed a real v0.2.1 host-enrichment path: lifecycle capture, current-model organization, overlay commit, tag-registry rebuild, and exact semantic recall. The v0.2.2 sidecar contract is shared by the Codex adapter. A fresh install remains L1 until one trusted live session completes SessionStart, UserPromptSubmit, and Stop with the installed runtime. |
+| Other agents | Not implemented | Additional adapters are outside the v0.2.2 MVP scope. Future adapters must preserve the same sidecar boundary and leave host-owned memory untouched. |
 
 Levels:
 
@@ -160,7 +158,7 @@ Capture and recall are intentionally different. With verified lifecycle hooks, v
 
 Ordinary capture and enrichment require no separate Linger command from the user. Lifecycle hooks capture visible turns. When the host reports pending eligible records, the Skill may organize at most one bounded batch after the primary request.
 
-For Claude Code, installation disables [Claude Code's built-in auto-memory](https://code.claude.com/docs/en/memory#enable-or-disable-auto-memory) in user settings so Linger remains the single persistence path. The installer records the prior value and uninstall restores it when the setting is still Linger-managed. This does not disable `CLAUDE.md`; it only prevents duplicate writes under Claude Code's auto-memory directory.
+Linger is a sidecar rather than a replacement for host memory. Installation preserves Claude Code, Codex, and future adapters' native memory settings and files. A host may independently retain a fact that Linger also captured; on recall, the active model should merge duplicates as one underlying event and disclose conflicting versions. Linger never treats duplicated context as an extra vote.
 
 Forget and delete are different. Forget changes recall eligibility. Delete removes a confirmed record. Purge removes the complete Linger state only after double confirmation.
 
@@ -220,7 +218,7 @@ Pause and resume are available through the CLI. Retrieval bounds can be supplied
 
 Real-use recall sampling is off by default. An explicitly sampled query and its result metadata remain local in the Vault; high-confidence secrets are redacted. Feedback is append-only and can distinguish useful, partial, wrong, and missed recall.
 
-Not every internal processing threshold is exposed as a stable user configuration in v0.2.1. Configuration files are schema-validated; unsupported versions or invalid bounds fail explicitly instead of being silently rewritten.
+Not every internal processing threshold is exposed as a stable user configuration in v0.2.2. Configuration files are schema-validated; unsupported versions or invalid bounds fail explicitly instead of being silently rewritten.
 
 ## Limitations
 
@@ -280,3 +278,5 @@ Purge is intentionally separate and requires both confirmation mechanisms.
 ## License
 
 Linger is licensed under the MIT License. See LICENSE.
+
+See [CHANGELOG.md](CHANGELOG.md) for user-visible changes, [PRIVACY.md](PRIVACY.md) for the data boundary, and [SECURITY.md](SECURITY.md) for the security model and private reporting channel.

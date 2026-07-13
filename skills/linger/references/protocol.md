@@ -41,7 +41,7 @@ When lifecycle processing is unavailable, first capture the visible user/assista
 
 Enrichment is optional and uses only the model already running the installed Linger Skill in Codex or Claude Code. It must not configure or call a separate provider. Run at most one bounded batch after the user's primary task.
 
-When trusted hook context says the current user event is already captured, the hook has also applied any explicit-memory marker and scheduled deterministic processing. Treat the save request as complete. Do not perform another persistence write for that event through capture, process, decision-add, correction, host-native auto-memory, or host memory files. A pending host-enrichment overlay is the only permitted follow-up write.
+When trusted hook context says the current user event is already captured, the hook has also applied any explicit-memory marker and scheduled deterministic processing. Treat the Linger save request as complete. Do not perform another Linger persistence write for that event through capture, process, decision-add, or correction. Host-owned memory systems remain independent: Linger must not disable, rewrite, or delete them, and they may save the same visible event. A pending host-enrichment overlay is the only permitted Linger follow-up write.
 
 Submit strict JSON:
 

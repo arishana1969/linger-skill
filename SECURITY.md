@@ -12,9 +12,9 @@ High-confidence credential patterns are redacted before raw persistence and excl
 
 ## Host integration
 
-The installer merges managed lifecycle hooks into existing Claude Code or Codex configuration and preserves unrelated user settings. Uninstall removes only Linger-managed integration and preserves the Vault.
+The installer merges managed lifecycle hooks into existing Claude Code or Codex configuration and preserves unrelated user settings. Linger does not disable, replace, rewrite, or delete host-owned memory. Uninstall removes only Linger-managed integration and preserves the Vault.
 
-Codex may require explicit hook trust. Claude Code installation disables its built-in auto-memory while Linger is installed to avoid duplicate persistence; the previous setting is recorded and restored on uninstall when it is still Linger-managed.
+Codex may require explicit hook trust. Host-owned memory may contain some of the same facts as Linger. Retrieved Linger records remain separately labelled historical evidence; duplicate context is not independent corroboration, and conflicting versions must not be silently collapsed.
 
 Optional enrichment uses only the model already active in Claude Code or Codex. Linger does not configure a separate model provider or credential. Enrichment submissions are bounded, project-scoped, limited to normal-sensitivity evidence, and revalidated against immutable source hashes before commit.
 

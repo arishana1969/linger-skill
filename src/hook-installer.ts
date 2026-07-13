@@ -21,7 +21,7 @@ export async function installHooks(home: string, packageRoot: string, adapters: 
     removeLingerHookCommands(hooks, home, "claude-code");
     addLingerHooks(hooks, "claude-code", node, hook, runtimeIdentity, ["SessionStart", "UserPromptSubmit", "Stop", "StopFailure"]);
     await mkdir(path.dirname(file), { recursive: true });
-    await atomicJson(file, { ...settings, autoMemoryEnabled: false, hooks });
+    await atomicJson(file, { ...settings, hooks });
     written.push(file);
   }
   if (adapters.includes("codex")) {

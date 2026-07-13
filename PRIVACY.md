@@ -24,7 +24,7 @@ Detection is not complete. Unknown secret formats may be missed, and unrecognize
 
 ## Host memory and removal
 
-Claude Code installation disables its built-in auto-memory while Linger is installed so the same conversation is not persisted twice. The installer records the prior setting and restores it on uninstall when the value is still Linger-managed. This does not disable `CLAUDE.md`.
+Linger operates as a sidecar and does not disable, replace, rewrite, or delete memory owned by Claude Code, Codex, or future host adapters. A host may independently store some of the same visible content in its own location and under its own privacy boundary. Linger recall sends only a bounded relevant evidence package into the active host context; duplicated host and Linger context should be treated as one underlying event, not independent corroboration.
 
 Uninstall removes Linger-managed host integration but preserves the Vault. A full `purge` is separate and requires both `--yes` and the exact `PURGE` confirmation phrase.
 

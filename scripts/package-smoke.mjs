@@ -20,12 +20,12 @@ try {
   await exec("tar", ["-xzf", tarball, "-C", extract]);
   const packageRoot = path.join(extract, "package");
   const required = [
-    "README.md", "LICENSE", "dist/cli.js", "dist/eval-cli.js", "dist/hook-cli.js", "scripts/release-readiness.mjs",
+    "README.md", "CHANGELOG.md", "PRIVACY.md", "SECURITY.md", "LICENSE", "dist/cli.js", "dist/eval-cli.js", "dist/hook-cli.js", "scripts/release-readiness.mjs",
     "skills/linger/SKILL.md", "skills/linger/agents/openai.yaml", "skills/linger/references/protocol.md"
   ];
   for (const file of required) await access(path.join(packageRoot, file));
   const packedManifest = JSON.parse(await readFile(path.join(packageRoot, "package.json"), "utf8"));
-  if (packedManifest.name !== "linger-skill" || packedManifest.bin?.linger !== "dist/cli.js") throw new Error("packed manifest has an invalid name or CLI bin");
+  if (packedManifest.name !== "linger-skill" || packedManifest.bin?.["linger-skill"] !== "dist/cli.js" || packedManifest.bin?.linger !== "dist/cli.js") throw new Error("packed manifest has an invalid name or CLI bin");
   const readiness = JSON.parse((await exec(process.execPath, [path.join(packageRoot, "scripts", "release-readiness.mjs"), "--root", packageRoot])).stdout);
   if (readiness.github_ready !== true || readiness.blockers.length !== 0) {
     throw new Error(`packed release is not GitHub-ready: ${readiness.blockers.join(", ")}`);
@@ -36,7 +36,7 @@ try {
   await writeFile(path.join(consumer, "package.json"), JSON.stringify({ name: "linger-package-consumer", private: true }));
   await runPnpm(["add", "--offline", "--ignore-scripts", tarball], consumer);
   const home = path.join(temporary, "home");
-  const cli = path.join(consumer, "node_modules", ".bin", process.platform === "win32" ? "linger.CMD" : "linger");
+  const cli = path.join(consumer, "node_modules", ".bin", process.platform === "win32" ? "linger-skill.CMD" : "linger-skill");
   await access(cli);
   const installed = JSON.parse((await exec(cli, ["install", "--home", home, "--yes"], { cwd: consumer })).stdout);
   if (!installed.privacy_notice || installed.capabilities.length !== 2) throw new Error("packed installer omitted privacy notice or capability report");

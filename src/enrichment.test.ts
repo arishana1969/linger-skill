@@ -40,10 +40,10 @@ function submission(batch: EnrichmentBatch, agent: "codex" | "claude-code" = "co
       evidence_refs: item.source_events,
       type: "decision",
       title: "Evidence-preserving release workflow",
-      summary: "The user chose a host-native release workflow identified by semantic-orchid because evidence preservation matters.",
+      summary: "The user chose a host-model release workflow identified by semantic-orchid because evidence preservation matters.",
       tags: ["Release Workflow", "Evidence"],
       predictive_tags: ["host native", "semantic orchid"],
-      retrieval_phrases: ["why the host-native release workflow was chosen", "semantic-orchid decision"]
+      retrieval_phrases: ["why the host-model release workflow was chosen", "semantic-orchid decision"]
     }))
   };
 }
@@ -57,7 +57,7 @@ test("host enrichment improves recall without replacing deterministic processed 
   const committed = await commitEnrichment(root, submission(batch));
   assert.equal(committed.committed, 1);
   assert.equal(await readFile(processedFile, "utf8"), baseline);
-  assert.match((await search(root, { projectId: project, query: "semantic-orchid" }))[0]?.snippet ?? "", /host-native release workflow/);
+  assert.match((await search(root, { projectId: project, query: "semantic-orchid" }))[0]?.snippet ?? "", /host-model release workflow/);
   assert.deepEqual(await enrichmentStatus(root, project), { project_id: project, pending: 0, enriched: 1 });
   assert.ok((await readTagRegistry(root, project))?.entries.some(entry => entry.normalized_tag === "semantic-orchid"));
 });
