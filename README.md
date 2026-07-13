@@ -10,7 +10,7 @@ A file-native conversation archive and decision trail for coding agents.
 
 ## Status
 
-Linger is an experimental v0.1 GitHub MVP candidate. It is not published to npm and does not promise perfect archival coverage or universal agent automation.
+Linger is an experimental v0.2.0-alpha.0 GitHub MVP candidate. It is not released or published to npm and does not promise perfect archival coverage or universal agent automation.
 
 ## Origin
 
@@ -44,7 +44,7 @@ If you have restarted a conversation and wished the agent remembered what you di
 
 ## Install from source
 
-The current v0.1 candidate is installed from source:
+The current v0.2.0-alpha.0 candidate is installed from source:
 
     pnpm install --frozen-lockfile
     pnpm build
@@ -63,7 +63,7 @@ The intended command after a future npm publication is:
 
     npx linger-skill install
 
-That npm command is not available in the GitHub-only v0.1 stage.
+That npm command is not available in the GitHub-only v0.2 stage.
 
 ## How it works
 
@@ -123,7 +123,7 @@ Automation differs by host and version. Capability levels are reported from obse
 | --- | ---: | --- |
 | Claude Code | L2 | Claude Code 2.1.207 has executed SessionStart, UserPromptSubmit, Stop, and StopFailure in disposable homes. Ctrl-C did not preserve already-streamed assistant text on the observed path. |
 | Codex | L2 | Codex 0.144.0-alpha.4 executed SessionStart, UserPromptSubmit, and Stop in a disposable home. Both sides of the turn were captured, processed, and returned by exact recall. A fresh install remains L1 until one trusted live session completes this lifecycle. |
-| Other agents | Not implemented | Additional adapters are outside the v0.1 scope. |
+| Other agents | Not implemented | Additional adapters are outside the v0.2 scope. |
 
 Levels:
 
@@ -202,7 +202,7 @@ Pause and resume are available through the CLI. Retrieval bounds can be supplied
 
 Real-use recall sampling is off by default. An explicitly sampled query and its result metadata remain local in the Vault; high-confidence secrets are redacted. Feedback is append-only and can distinguish useful, partial, wrong, and missed recall.
 
-Not every internal processing threshold is exposed as a stable user configuration in v0.1. Configuration files are schema-validated; unsupported versions or invalid bounds fail explicitly instead of being silently rewritten.
+Not every internal processing threshold is exposed as a stable user configuration in v0.2. Configuration files are schema-validated; unsupported versions or invalid bounds fail explicitly instead of being silently rewritten.
 
 ## Limitations
 
@@ -231,7 +231,7 @@ Requires Node.js 20 or later and pnpm.
 
 The current clean candidate passes:
 
-- 157 automated tests.
+- 165 automated tests.
 - Year, adversarial, and 250+ event held-out evaluation gates at macro composite 1.0.
 - Skill validation.
 - Exact tarball package-manager installation.
