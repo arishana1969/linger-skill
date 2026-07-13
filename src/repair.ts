@@ -2,6 +2,7 @@ import { rename } from "node:fs/promises";
 import path from "node:path";
 import { assertReadableInside, assertWritableInside, readJson } from "./io.js";
 import { assertCodexAdapterEvidence, assertCodexAdapterEvidencePath } from "./adapter-evidence.js";
+import { assertEnrichmentBatchPath, assertEnrichmentBatchRecord, assertEnrichmentOverlay, assertEnrichmentOverlayPath } from "./enrichment.js";
 import { vaultPaths } from "./paths.js";
 import { assertRecallSampleRecord } from "./recall-sampling.js";
 import { assertDecisionEvent, assertDecisionView, assertMemoryControlEvent, assertPendingCapture, assertProcessedMemory, assertProcessingRunHistory, assertProjectRecord, assertQueueItem, assertRawEvent, assertSequenceState, assertTagRegistry, assertTermRelation, assertVaultConfig } from "./schema-validation.js";
@@ -19,6 +20,7 @@ export async function quarantineInvalidFiles(root: string): Promise<{ quarantine
   const groups: Array<{ dir: string; kind: string; read: (file: string) => Promise<unknown> }> = [
     { dir: p.raw, kind: "raw", read: async file => { const value = await readJson<unknown>(file); assertRawEvent(value); assertRawRecordPath(p, file, value); } },
     { dir: p.processed, kind: "processed", read: async file => { const value = await readJson<unknown>(file); assertProcessedMemory(value); assertProcessedRecordPath(p, file, value); } },
+    { dir: p.enrichments, kind: "enrichment", read: async file => { const value = await readJson<unknown>(file); assertEnrichmentOverlay(value); assertEnrichmentOverlayPath(p.root, file, value); } },
     { dir: p.queue, kind: "queue", read: async file => { const value = await readJson<unknown>(file); assertQueueItem(value); assertQueueRecordPath(p, file, value); } },
     { dir: path.join(p.tmp, "pending"), kind: "pending", read: async file => { const value = await readJson<unknown>(file); assertPendingCapture(value); assertPendingRecordPath(p, file, value); } },
     { dir: p.decisions, kind: "decision", read: async file => { const value = await readJson<unknown>(file); if (path.basename(file) === "current.json") { assertDecisionView(value); assertDecisionViewPath(p, file, value); } else { assertDecisionEvent(value); assertDecisionEventPath(p, file, value); } } },
@@ -28,7 +30,8 @@ export async function quarantineInvalidFiles(root: string): Promise<{ quarantine
     { dir: p.projects, kind: "project-record", read: async file => { const value = await readJson<unknown>(file); assertProjectRecord(value); assertProjectRecordPath(p, file, value); } },
     { dir: path.join(p.registry, "processing-runs"), kind: "processing-history", read: async file => { const value = await readJson<unknown>(file); assertProcessingRunHistory(value); } },
     { dir: path.join(p.registry, "adapter-evidence"), kind: "adapter-evidence", read: async file => { const value = await readJson<unknown>(file); assertCodexAdapterEvidence(value); assertCodexAdapterEvidencePath(p.root, file); } },
-    { dir: path.join(p.registry, "recall-samples"), kind: "recall-sample", read: async file => { assertRecallSampleRecord(p.root, file, await readJson<unknown>(file)); } }
+    { dir: path.join(p.registry, "recall-samples"), kind: "recall-sample", read: async file => { assertRecallSampleRecord(p.root, file, await readJson<unknown>(file)); } },
+    { dir: path.join(p.registry, "enrichment-batches"), kind: "enrichment-batch", read: async file => { const value = await readJson<unknown>(file); assertEnrichmentBatchRecord(value); assertEnrichmentBatchPath(p.root, file, value); } }
   ];
   for (const group of groups) {
     for (const file of await listVaultJsonCandidates(group.dir, p.root)) {

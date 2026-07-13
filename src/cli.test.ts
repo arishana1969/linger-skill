@@ -23,4 +23,25 @@ test("CLI runs capture to recall and decision trail in separate processes", asyn
   assert.equal(trail.view.current_state, "Use files");
 });
 
+test("CLI accepts the global Vault option before the command", async () => {
+  const vault = await mkdtemp(path.join(os.tmpdir(), "linger-cli-global-vault-"));
+  const initialized = JSON.parse(await run(["--vault", vault, "init"])) as { schema_version: number };
+  assert.equal(initialized.schema_version, 1);
+});
+
+test("CLI reuses recent hook-owned explicit evidence and refuses duplicate decision-add", async () => {
+  const vault = await mkdtemp(path.join(os.tmpdir(), "linger-cli-hook-owned-"));
+  const { capture } = await import("./capture.js");
+  const hook = await capture(vault, {
+    projectId: "p_owned", sessionId: "live", turnId: "turn", role: "user",
+    content: "请用 Linger 记一下：最终验收代号是 aurora-ds-418。完成后继续主任务。",
+    sourceAgent: "claude-code", explicit: true, timestamp: new Date().toISOString()
+  });
+  const reused = JSON.parse(await run(["capture", "--vault", vault, "--project", "p_owned", "--session", "manual", "--turn", "manual", "--role", "user", "--content", "最终验收代号是 aurora-ds-418"]));
+  assert.equal(reused.event_id, hook!.event_id);
+  const status = JSON.parse(await run(["status", "--vault", vault]));
+  assert.equal(status.raw_events, 1);
+  await assert.rejects(run(["decision-add", "--vault", vault, "--project", "p_owned", "--topic", "release", "--statement", "aurora-ds-418", "--source", "user_explicit", "--confidence", "1", "--evidence", hook!.event_id]), /already owned by automatic processing/);
+});
+
 async function run(args: string[]): Promise<string> { return (await exec(node, [cli, ...args])).stdout.trim(); }

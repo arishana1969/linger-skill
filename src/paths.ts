@@ -6,6 +6,7 @@ export interface VaultPaths {
   projects: string;
   raw: string;
   processed: string;
+  enrichments: string;
   queue: string;
   tmp: string;
   registry: string;
@@ -21,6 +22,7 @@ export function vaultPaths(root: string): VaultPaths {
     projects: path.join(resolved, "projects"),
     raw: path.join(resolved, "raw"),
     processed: path.join(resolved, "processed"),
+    enrichments: path.join(resolved, "enrichments"),
     queue: path.join(resolved, "queue"),
     tmp: path.join(resolved, "tmp"),
     registry: path.join(resolved, "registry"),

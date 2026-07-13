@@ -31,8 +31,11 @@ export async function deleteRecord(root: string, input: { projectId: string; tar
     const memory = await readJson<unknown>(file);
     assertProcessedMemory(memory);
     assertProcessedRecordPath(p, file, memory);
+    const enrichmentFile = path.join(p.enrichments, project, `${id}.json`);
+    await assertWritableInside(p.root, enrichmentFile);
     await unlink(file);
     await unlink(path.join(p.processed, project, `${id}.md`)).catch(error => { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; });
+    await unlink(enrichmentFile).catch(error => { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; });
     await appendMemoryControl(root, { kind: "delete", project_id: project, target_memory_id: id, reason: input.reason, evidence_refs: memory.source_events.length ? memory.source_events : [id] });
     await rebuildTagRegistry(root, project);
     return { deleted: true, target: "processed", id, project_id: project, source_events: memory.source_events };

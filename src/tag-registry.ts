@@ -1,6 +1,7 @@
 import path from "node:path";
 import { assertWritableInside, atomicJson, readJson } from "./io.js";
 import { effectiveMemoryStates } from "./memory-events.js";
+import { applyEnrichment, readEnrichmentOverlays } from "./enrichment.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { assertProcessedMemory, assertTagRegistry } from "./schema-validation.js";
 import { assertProcessedRecordPath, assertTagRegistryPath } from "./record-paths.js";
@@ -30,13 +31,15 @@ export async function rebuildTagRegistry(root: string, projectId: string): Promi
   const project = assertSafeId(projectId, "project id");
   const p = vaultPaths(root);
   const states = await effectiveMemoryStates(root, project);
+  const overlays = await readEnrichmentOverlays(root, project);
   const entries = new Map<string, TagRegistryEntry>();
   const skipped: string[] = [];
   for (const file of await listJsonFiles(path.join(p.processed, project), p.root)) {
     try {
-      const memory = await readJson<unknown>(file);
-      assertProcessedMemory(memory);
-      assertProcessedRecordPath(p, file, memory);
+      const baseline = await readJson<unknown>(file);
+      assertProcessedMemory(baseline);
+      assertProcessedRecordPath(p, file, baseline);
+      const memory = applyEnrichment(baseline, overlays.get(baseline.id));
       if (memory.status !== "active" || states.has(memory.id)) continue;
       for (const raw of [...new Set([...memory.tags, ...memory.predictive_tags])]) {
         const normalized = normalizeTag(raw);

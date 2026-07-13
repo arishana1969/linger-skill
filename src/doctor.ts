@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { assertReadableInside, readJson } from "./io.js";
 import { assertCodexAdapterEvidence, assertCodexAdapterEvidencePath } from "./adapter-evidence.js";
+import { assertEnrichmentBatchPath, assertEnrichmentBatchRecord, assertEnrichmentOverlay, assertEnrichmentOverlayPath } from "./enrichment.js";
 import { vaultPaths } from "./paths.js";
 import { assertRecallSampleRecord } from "./recall-sampling.js";
 import { assertDecisionEvent, assertDecisionView, assertMemoryControlEvent, assertPendingCapture, assertProcessedMemory, assertProcessingRunHistory, assertProjectRecord, assertQueueItem, assertRawEvent, assertSequenceState, assertTagRegistry, assertTermRelation, assertVaultConfig } from "./schema-validation.js";
@@ -17,6 +18,7 @@ export async function doctor(root: string): Promise<DoctorReport> {
   try { await initVault(root); const config = await readVaultJson(p.root, p.config); assertVaultConfig(config); }
   catch { report.errors.push("invalid_vault_config:config.json"); }
   const rawHashes = new Map<string, string>();
+  const processed = new Map<string, { source_hash?: string; source_events: string[] }>();
   for (const file of await listVaultJsonCandidates(p.raw, p.root)) {
     try {
       const event = await readVaultJson(p.root, file);
@@ -32,12 +34,24 @@ export async function doctor(root: string): Promise<DoctorReport> {
       const memory = await readVaultJson(p.root, file);
       assertProcessedMemory(memory);
       assertProcessedRecordPath(p, file, memory);
+      processed.set(memory.id, { source_hash: memory.source_hash, source_events: memory.source_events });
       if (!memory.source_events.length) report.warnings.push(`missing_evidence:${memory.id}`);
       if (memory.source_hash) {
         const verified = memory.source_events.some(eventId => rawHashes.get(eventId) === memory.source_hash);
         if (!verified) report.warnings.push(`processed_source_mismatch:${memory.id}`);
       }
     } catch { report.errors.push(`invalid_processed:${path.relative(p.root, file)}`); }
+  }
+  for (const file of await listVaultJsonCandidates(p.enrichments, p.root)) {
+    try {
+      const overlay = await readVaultJson(p.root, file);
+      assertEnrichmentOverlay(overlay);
+      assertEnrichmentOverlayPath(p.root, file, overlay);
+      const source = processed.get(overlay.memory_id);
+      if (!source || source.source_hash !== overlay.source_hash || source.source_events.length !== overlay.source_events.length || !source.source_events.every(event => overlay.source_events.includes(event))) {
+        report.warnings.push(`stale_enrichment:${overlay.memory_id}`);
+      }
+    } catch { report.errors.push(`invalid_enrichment:${path.relative(p.root, file)}`); }
   }
   for (const file of await listVaultJsonCandidates(p.decisions, p.root)) {
     try {
@@ -81,6 +95,13 @@ export async function doctor(root: string): Promise<DoctorReport> {
     try {
       assertRecallSampleRecord(p.root, file, await readVaultJson(p.root, file));
     } catch { report.errors.push(`invalid_recall_sample:${path.relative(p.root, file)}`); }
+  }
+  for (const file of await listVaultJsonCandidates(path.join(p.registry, "enrichment-batches"), p.root)) {
+    try {
+      const value = await readVaultJson(p.root, file);
+      assertEnrichmentBatchRecord(value);
+      assertEnrichmentBatchPath(p.root, file, value);
+    } catch { report.errors.push(`invalid_enrichment_batch:${path.relative(p.root, file)}`); }
   }
   for (const file of await listVaultJsonCandidates(path.join(p.tmp, "pending"), p.root)) {
     try { const pending = await readVaultJson(p.root, file); assertPendingCapture(pending); assertPendingRecordPath(p, file, pending); report.warnings.push(`pending_capture:${pending.pending_id}`); }

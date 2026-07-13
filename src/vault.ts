@@ -47,7 +47,7 @@ function defaultConfig(createdAt = new Date().toISOString()): VaultConfig {
 export async function initVault(root: string): Promise<VaultConfig> {
   const p = vaultPaths(root);
   await Promise.all([
-    p.projects, p.raw, p.processed, p.queue, p.tmp, p.registry, p.decisions, p.quarantine
+    p.projects, p.raw, p.processed, p.enrichments, p.queue, p.tmp, p.registry, p.decisions, p.quarantine
   ].map(ensureDir));
   await assertWritableInside(p.root, p.config);
   try {
@@ -144,14 +144,14 @@ export async function listJsonFiles(dir: string, boundaryRoot: string): Promise<
 export async function vaultStats(root: string): Promise<Record<string, number | boolean>> {
   const p = vaultPaths(root);
   const config = await initVault(root);
-  const [raw, processed, queue, pendingCaptures] = await Promise.all([
-    listJsonFiles(p.raw, p.root), listJsonFiles(p.processed, p.root), listJsonFiles(p.queue, p.root), listJsonFiles(path.join(p.tmp, "pending"), p.root)
+  const [raw, processed, enrichments, queue, pendingCaptures] = await Promise.all([
+    listJsonFiles(p.raw, p.root), listJsonFiles(p.processed, p.root), listJsonFiles(p.enrichments, p.root), listJsonFiles(p.queue, p.root), listJsonFiles(path.join(p.tmp, "pending"), p.root)
   ]);
   const queueCounts = { pending: 0, processing: 0, failed: 0, done: 0, invalid: 0 };
   for (const file of queue) {
     try { const item = await readJson<unknown>(file); assertQueueItem(item); assertQueueRecordPath(p, file, item); queueCounts[item.status] += 1; } catch { queueCounts.invalid += 1; }
   }
   let bytes = 0;
-  for (const file of [...raw, ...processed]) bytes += (await stat(file)).size;
-  return { paused: config.paused, raw_events: raw.length, processed_memories: processed.length, queue_items: queue.length, queue_pending: queueCounts.pending, queue_processing: queueCounts.processing, queue_failed: queueCounts.failed, queue_done: queueCounts.done, queue_invalid: queueCounts.invalid, pending_captures: pendingCaptures.length, bytes };
+  for (const file of [...raw, ...processed, ...enrichments]) bytes += (await stat(file)).size;
+  return { paused: config.paused, raw_events: raw.length, processed_memories: processed.length, enriched_memories: enrichments.length, queue_items: queue.length, queue_pending: queueCounts.pending, queue_processing: queueCounts.processing, queue_failed: queueCounts.failed, queue_done: queueCounts.done, queue_invalid: queueCounts.invalid, pending_captures: pendingCaptures.length, bytes };
 }

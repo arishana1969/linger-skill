@@ -5,6 +5,7 @@ import { parseManagedHookCommand, posixHookCommand } from "./hook-command.js";
 import { windowsCommand } from "./windows-command.js";
 import { runtimeFingerprint } from "./runtime-identity.js";
 import type { AdapterName } from "./adapters.js";
+import type { ClaudeAutoMemoryState } from "./installer.js";
 
 type HookMap = Record<string, Array<{ matcher?: string; hooks: Array<{ type: "command"; command: string; commandWindows?: string; timeout?: number; statusMessage?: string }> }>>;
 
@@ -20,7 +21,7 @@ export async function installHooks(home: string, packageRoot: string, adapters: 
     removeLingerHookCommands(hooks, home, "claude-code");
     addLingerHooks(hooks, "claude-code", node, hook, runtimeIdentity, ["SessionStart", "UserPromptSubmit", "Stop", "StopFailure"]);
     await mkdir(path.dirname(file), { recursive: true });
-    await atomicJson(file, { ...settings, hooks });
+    await atomicJson(file, { ...settings, autoMemoryEnabled: false, hooks });
     written.push(file);
   }
   if (adapters.includes("codex")) {
@@ -36,17 +37,23 @@ export async function installHooks(home: string, packageRoot: string, adapters: 
   return written;
 }
 
-export async function uninstallHooks(home: string, adapters: AdapterName[]): Promise<string[]> {
+export async function uninstallHooks(home: string, adapters: AdapterName[], claudeAutoMemory?: ClaudeAutoMemoryState): Promise<string[]> {
   const changed: string[] = [];
   for (const [adapter, file] of [
     ["claude-code", path.join(home, ".claude", "settings.json")],
     ["codex", path.join(home, ".codex", "hooks.json")]
   ] as const) {
-    if (!adapters.includes(adapter)) continue;
+    if (!adapters.includes(adapter) && !(adapter === "claude-code" && claudeAutoMemory)) continue;
     const document = await jsonObjectOr(file);
     const hooks = asHooks(document.hooks);
     const removed = removeLingerHookCommands(hooks, home, adapter);
-    if (removed) { await atomicJson(file, { ...document, hooks }); changed.push(file); }
+    let restored = false;
+    if (adapter === "claude-code" && claudeAutoMemory && document.autoMemoryEnabled === false) {
+      if (claudeAutoMemory.had_value) document.autoMemoryEnabled = claudeAutoMemory.previous_value;
+      else delete document.autoMemoryEnabled;
+      restored = true;
+    }
+    if (removed || restored) { await atomicJson(file, { ...document, hooks }); changed.push(file); }
   }
   return changed;
 }
