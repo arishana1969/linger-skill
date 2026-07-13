@@ -147,6 +147,7 @@ The Skill helps the agent translate user intent into Linger operations. Exact be
 | “That memory is wrong” | Append a correction with visible evidence; do not rewrite history in place. |
 | “Why did we choose X?” | Search the current project's decision trail and return sourced evidence. |
 | “What did we discuss about Y?” | Search the current project's conversation archive. |
+| “Sample this recall” | Opt in for this query, return an attempt ID, and wait for your quality judgment. |
 | “Status” | Report Vault, queue, pending, and integrity health. |
 
 Forget and delete are different. Forget changes recall eligibility. Delete removes a confirmed record. Purge removes the complete Linger state only after double confirmation.
@@ -198,6 +199,8 @@ Linger initializes conservative defaults:
 - A 2-second search deadline.
 
 Pause and resume are available through the CLI. Retrieval bounds can be supplied per search or recall request.
+
+Real-use recall sampling is off by default. An explicitly sampled query and its result metadata remain local in the Vault; high-confidence secrets are redacted. Feedback is append-only and can distinguish useful, partial, wrong, and missed recall.
 
 Not every internal processing threshold is exposed as a stable user configuration in v0.1. Configuration files are schema-validated; unsupported versions or invalid bounds fail explicitly instead of being silently rewritten.
 

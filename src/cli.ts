@@ -17,6 +17,7 @@ import { rebuildTagRegistry } from "./tag-registry.js";
 import { addTermRelation, type TermRelationType } from "./term-graph.js";
 import { quarantineInvalidFiles } from "./repair.js";
 import { recall } from "./recall.js";
+import { recallSamplingReport, recordRecallAttempt, recordRecallFeedback, type RawLocated, type RecallFeedbackOutcome } from "./recall-sampling.js";
 import { search } from "./search.js";
 import { initVault, listProjects, registerProject, setPaused, vaultStats } from "./vault.js";
 
@@ -67,7 +68,31 @@ async function main(): Promise<void> {
     case "process": output(await processQueue(vault, option("--project"))); break;
     case "tags-rebuild": output(await rebuildTagRegistry(vault, required("--project"))); break;
     case "term-add": output(await addTermRelation(vault, { project_id: required("--project"), term_a: required("--term-a"), term_b: required("--term-b"), relation_type: required("--relation") as TermRelationType, confidence: numberOption("--confidence", 0.8), context_tags: option("--context")?.split(",").filter(Boolean) ?? [], evidence_refs: required("--evidence").split(",").filter(Boolean) })); break;
-    case "recall": output(await recall(vault, { projectId: option("--project") ?? (await registerProject(vault, process.cwd())).project_id, query: option("--query") ?? args.join(" "), includeRaw: flag("--include-raw"), maxCharacters: numberOption("--max-characters", 12000), maxFiles: numberOption("--max-files", 5000), maxRawFragmentCharacters: numberOption("--max-raw-fragment-characters", 500), timeoutMs: numberOption("--timeout-ms", 2000), from: option("--from"), to: option("--to") })); break;
+    case "recall": {
+      const projectId = option("--project") ?? (await registerProject(vault, process.cwd())).project_id;
+      const sample = flag("--sample");
+      const includeRaw = flag("--include-raw");
+      const maxCharacters = numberOption("--max-characters", 12000);
+      const maxFiles = numberOption("--max-files", 5000);
+      const maxRawFragmentCharacters = numberOption("--max-raw-fragment-characters", 500);
+      const timeoutMs = numberOption("--timeout-ms", 2000);
+      const from = option("--from");
+      const to = option("--to");
+      const query = option("--query") ?? args.join(" ");
+      const result = await recall(vault, { projectId, query, includeRaw, maxCharacters, maxFiles, maxRawFragmentCharacters, timeoutMs, from, to });
+      if (!sample) { output(result); break; }
+      const attempt = await recordRecallAttempt(vault, { projectId, query, result });
+      output({ ...result, attempt_id: attempt.attempt_id }); break;
+    }
+    case "recall-feedback": output(await recordRecallFeedback(vault, {
+      projectId: required("--project"),
+      attemptId: required("--attempt"),
+      outcome: required("--outcome") as RecallFeedbackOutcome,
+      rawLocated: (option("--raw-located") ?? "unknown") as RawLocated,
+      decisionTrailUsed: flag("--decision-used"),
+      note: option("--note")
+    })); break;
+    case "recall-samples": output(await recallSamplingReport(vault, required("--project"))); break;
     case "search": output(await search(vault, { projectId: option("--project") ?? (await registerProject(vault, process.cwd())).project_id, query: option("--query") ?? args.join(" "), includeRaw: flag("--include-raw"), maxFiles: numberOption("--max-files", 5000), maxRawFragmentCharacters: numberOption("--max-raw-fragment-characters", 500), timeoutMs: numberOption("--timeout-ms", 2000), from: option("--from"), to: option("--to") })); break;
     case "decision-add": output(await appendDecision(vault, {
       projectId: required("--project"), topic: required("--topic"), kind: (option("--kind") ?? "decision") as DecisionKind,
@@ -88,7 +113,7 @@ async function main(): Promise<void> {
     case "doctor": output(await doctor(vault)); break;
     case "doctor-repair": { if (!flag("--yes")) throw new Error("doctor-repair requires --yes"); output(await quarantineInvalidFiles(vault)); break; }
     default:
-      console.log("linger <install|uninstall|purge|capabilities|init|project-id|projects|capture|recover|process|tags-rebuild|term-add|recall|search|decision-add|decision-get|decision-list|forget|correct|delete|delete-last|inspect|pause|resume|status|doctor|doctor-repair> [options]");
+      console.log("linger <install|uninstall|purge|capabilities|init|project-id|projects|capture|recover|process|tags-rebuild|term-add|recall|recall-feedback|recall-samples|search|decision-add|decision-get|decision-list|forget|correct|delete|delete-last|inspect|pause|resume|status|doctor|doctor-repair> [options]");
       if (command) process.exitCode = 2;
   }
 }

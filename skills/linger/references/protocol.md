@@ -10,7 +10,9 @@ Use `--vault <path>` when an adapter supplies a non-default vault.
 - `linger capture --project ID --session ID --turn ID --role user|assistant --content TEXT [--explicit] [--partial]`: capture an event.
 - `linger recover`: restore staged raw and queue records after interruption.
 - `linger process [--project ID]`: consume work serially.
-- `linger recall --project ID --query TEXT [--max-characters N] [--max-files N] [--from ISO] [--to ISO] [--timeout-ms N]`: return a bounded evidence package with candidates.
+- linger recall --project ID --query TEXT [--sample] [--max-characters N] [--max-files N] [--from ISO] [--to ISO] [--timeout-ms N]: return a bounded evidence package with candidates. --sample is explicit opt-in and adds a local attempt_id.
+- linger recall-feedback --project ID --attempt ID --outcome useful|partial|wrong|missed [--raw-located yes|no|unknown] [--decision-used] [--note TEXT]: append human feedback for an opted-in recall sample.
+- linger recall-samples --project ID: summarize sampled classifications, outcomes, raw-location evidence, Decision Trail use, and unresolved attempts.
 - `linger search --project ID --query TEXT [--include-raw] [--max-files N] [--max-raw-fragment-characters N] [--from ISO] [--to ISO] [--timeout-ms N]`: return evidence packages.
 - `linger inspect --project ID --memory ID`: inspect a record and its effective control state.
 - `linger forget --project ID --memory ID`: append a recall revocation while preserving raw and processed source records.
@@ -41,3 +43,5 @@ When lifecycle processing is unavailable, first capture the visible user/assista
 - L4: capture, processing, recovery, indexing, and recall.
 
 State the detected level. Never describe a lower-level adapter as full linger.
+
+Recall sampling is local and off by default. Use --sample only after explicit user opt-in. A returned hit is not proof that it was useful; wait for user judgment before recording feedback.

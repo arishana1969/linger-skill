@@ -22,6 +22,10 @@ Capture durable content when the user explicitly asks to remember it or when an 
 
 Do not save hidden reasoning. Save only user-visible messages and assistant-visible replies. When the user says not to save the current turn, exclude it from recall according to the installed adapter's capability.
 
+## Recall quality sampling
+
+Do not persist recall queries by default. When the user has explicitly opted into a real-use evaluation period, add --sample to recall. Keep the returned attempt_id. After the user judges the result, record useful, partial, wrong, or missed feedback; note whether the expected raw event was located and whether the Decision Trail helped. Never infer positive feedback from a result merely being returned.
+
 ## Correct and remove
 
 - Append a correction event and supersede the old processed view. Never silently rewrite historical evidence.
