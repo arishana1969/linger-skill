@@ -119,10 +119,10 @@ Recall distinguishes exact, similar, possible, conflicting, unprocessed, and mis
 
 Automation differs by host and version. Capability levels are reported from observed evidence, not from copied files alone.
 
-| Agent | Verified v0.1 level | Current evidence and limitations |
+| Agent | Verified level | Current evidence and limitations |
 | --- | ---: | --- |
 | Claude Code | L2 | Claude Code 2.1.207 has executed SessionStart, UserPromptSubmit, Stop, and StopFailure in disposable homes. Ctrl-C did not preserve already-streamed assistant text on the observed path. |
-| Codex | L1 | Codex 0.144.0-alpha.4 accepts the generated hook configuration but reports it as untrusted. Trust and live lifecycle execution remain unverified. |
+| Codex | L2 | Codex 0.144.0-alpha.4 executed SessionStart, UserPromptSubmit, and Stop in a disposable home. Both sides of the turn were captured, processed, and returned by exact recall. A fresh install remains L1 until one trusted live session completes this lifecycle. |
 | Other agents | Not implemented | Additional adapters are outside the v0.1 scope. |
 
 Levels:
@@ -205,7 +205,7 @@ Not every internal processing threshold is exposed as a stable user configuratio
 
 - This is an MVP and does not promise perfect recall of every word.
 - Automatic capture depends on verified host lifecycle support.
-- Codex hook trust and live execution remain unverified.
+- Codex hooks require explicit host trust. After installing or upgrading Linger, start a new Codex session and complete one turn before relying on automatic capture.
 - Claude Code may lose already-streamed assistant text on Ctrl-C interruption.
 - Processing is event-driven and session-local; there is no persistent idle timer or daemon.
 - Summary, tag, retrieval-phrase, and decision-topic generation use deterministic heuristics and may miss complex semantics.
