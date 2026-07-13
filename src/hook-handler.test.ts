@@ -28,12 +28,13 @@ test("captures user and assistant turn from shared hook fields", async () => {
 
 test("records a complete Codex live lifecycle only after both sides capture", async () => {
   const { root, cwd } = await fixture();
-  const { completedCodexLiveSession, readCodexAdapterEvidence } = await import("./adapter-evidence.js");
-  await handleHook(root, { hook_event_name: "SessionStart", session_id: "live-1", cwd, source: "startup" }, "codex");
-  await handleHook(root, { hook_event_name: "UserPromptSubmit", session_id: "live-1", turn_id: "turn-1", cwd, prompt: "remember live evidence" }, "codex");
-  assert.equal(completedCodexLiveSession(await readCodexAdapterEvidence(root)), undefined);
-  await handleHook(root, { hook_event_name: "Stop", session_id: "live-1", turn_id: "turn-1", cwd, last_assistant_message: "live evidence captured" }, "codex");
-  const completed = completedCodexLiveSession(await readCodexAdapterEvidence(root));
+  const { readCodexAdapterEvidence, verifiedCodexLiveSession } = await import("./adapter-evidence.js");
+  const runtimeIdentity = "e".repeat(64);
+  await handleHook(root, { hook_event_name: "SessionStart", session_id: "live-1", cwd, source: "startup" }, "codex", runtimeIdentity);
+  await handleHook(root, { hook_event_name: "UserPromptSubmit", session_id: "live-1", turn_id: "turn-1", cwd, prompt: "remember live evidence" }, "codex", runtimeIdentity);
+  assert.equal(await verifiedCodexLiveSession(root, await readCodexAdapterEvidence(root), [runtimeIdentity]), undefined);
+  await handleHook(root, { hook_event_name: "Stop", session_id: "live-1", turn_id: "turn-1", cwd, last_assistant_message: "live evidence captured" }, "codex", runtimeIdentity);
+  const completed = await verifiedCodexLiveSession(root, await readCodexAdapterEvidence(root), [runtimeIdentity]);
   assert.equal(completed?.session_id, "live-1");
   assert.ok(completed?.events.UserPromptSubmit?.captured_event_id);
   assert.ok(completed?.events.Stop?.captured_event_id);

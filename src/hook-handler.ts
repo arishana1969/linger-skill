@@ -27,14 +27,16 @@ export interface HookResult {
   output: Record<string, unknown>;
 }
 
-export async function handleHook(root: string, input: HookInput, sourceAgent: "claude-code" | "codex"): Promise<HookResult> {
+export async function handleHook(root: string, input: HookInput, sourceAgent: "claude-code" | "codex", runtimeIdentity?: string): Promise<HookResult> {
   const eventName = typeof input.hook_event_name === "string" ? input.hook_event_name : "unknown";
   const cwd = typeof input.cwd === "string" && input.cwd.trim() ? input.cwd : process.cwd();
+  const evidenceSession = evidenceSessionId(input.session_id);
+  const evidenceRuntime = /^[a-f0-9]{64}$/.test(runtimeIdentity ?? "") ? runtimeIdentity : undefined;
   if (eventName === "SessionStart") {
     const project = (await registerProject(root, cwd)).project_id;
     const recovery = await recoverPending(root).catch(() => ({ recovered: 0, failed: [] }));
     const result = { recovered: recovery.recovered, processed: await scheduledProcessing(root, project, "startup"), output: contextOutput(eventName) };
-    if (sourceAgent === "codex") await recordCodexLiveEvent(root, { sessionId: safeId(input.session_id ?? "unknown-session"), projectId: project, event: "SessionStart" }).catch(() => undefined);
+    if (sourceAgent === "codex" && evidenceSession && evidenceRuntime) await recordCodexLiveEvent(root, { sessionId: evidenceSession, projectId: project, runtimeIdentity: evidenceRuntime, event: "SessionStart" }).catch(() => undefined);
     return result;
   }
   const isUser = eventName === "UserPromptSubmit";
@@ -60,10 +62,11 @@ export async function handleHook(root: string, input: HookInput, sourceAgent: "c
     sensitivity: sensitivity.level
   });
   const processed = event ? await scheduledProcessing(root, project, "automatic") : 0;
-  if (sourceAgent === "codex" && event && (eventName === "UserPromptSubmit" || eventName === "Stop")) {
+  if (sourceAgent === "codex" && event && evidenceSession && evidenceRuntime && (eventName === "UserPromptSubmit" || eventName === "Stop")) {
     await recordCodexLiveEvent(root, {
-      sessionId: safeId(typeof input.session_id === "string" ? input.session_id : "unknown-session"),
+      sessionId: evidenceSession,
       projectId: project,
+      runtimeIdentity: evidenceRuntime,
       event: eventName,
       capturedEventId: event.event_id
     }).catch(() => undefined);
@@ -85,4 +88,8 @@ function contextOutput(eventName: string): Record<string, unknown> {
 function safeId(value: string): string {
   if (/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(value)) return value;
   return `id_${createHash("sha256").update(value).digest("hex").slice(0, 20)}`;
+}
+function evidenceSessionId(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value.trim() || value === "unknown-session") return undefined;
+  return safeId(value);
 }

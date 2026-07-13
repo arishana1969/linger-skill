@@ -1,6 +1,7 @@
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
-import { completedCodexLiveSession, readCodexAdapterEvidence } from "./adapter-evidence.js";
+import { readCodexAdapterEvidence, verifiedCodexLiveSession, type SessionEvidence } from "./adapter-evidence.js";
+import { parseManagedHookCommand } from "./hook-command.js";
 
 export type CapabilityLevel = 0 | 1 | 2 | 3 | 4;
 export type AdapterName = "claude-code" | "codex";
@@ -33,6 +34,7 @@ export async function detectCodex(home: string): Promise<AdapterCapability> {
   const installed = await exists(skill);
   let hooks = false;
   let lingerHooks = false;
+  let runtimeIdentities: string[] = [];
   let hookEvidence: string | undefined;
   try { hooks = /(^|\n)\s*\[hooks(?:\.|\])/m.test(await readFile(config, "utf8")); if (hooks) hookEvidence = config; } catch { /* absent */ }
   if (await exists(hooksFile)) {
@@ -40,13 +42,16 @@ export async function detectCodex(home: string): Promise<AdapterCapability> {
     hookEvidence = hooksFile;
     try {
       const document = JSON.parse(await readFile(hooksFile, "utf8")) as { hooks?: Record<string, Array<{ hooks?: Array<{ command?: string }> }>> };
-      const required = ["SessionStart", "UserPromptSubmit", "Stop"];
-      lingerHooks = required.every(event => document.hooks?.[event]?.some(group => group.hooks?.some(hook => isCodexLingerCommand(hook.command, home))));
+      runtimeIdentities = commonCodexRuntimeIdentities(document, home);
+      lingerHooks = runtimeIdentities.length > 0;
     } catch { /* malformed or unsupported host config */ }
   }
-  let liveSession: ReturnType<typeof completedCodexLiveSession>;
+  let liveSession: SessionEvidence | undefined;
   let invalidEvidence = false;
-  try { liveSession = completedCodexLiveSession(await readCodexAdapterEvidence(path.join(home, ".linger", "vault"))); }
+  try {
+    const vault = path.join(home, ".linger", "vault");
+    liveSession = await verifiedCodexLiveSession(vault, await readCodexAdapterEvidence(vault), runtimeIdentities);
+  }
   catch { invalidEvidence = true; }
   const live = Boolean(installed && lingerHooks && liveSession);
   const level: CapabilityLevel = live ? 2 : installed ? 1 : 0;
@@ -67,9 +72,18 @@ function result(adapter: AdapterName, detected: boolean, installed: boolean, lev
   return { adapter, detected, installed, level, capabilities: { rules: installed, file_access: installed, lifecycle_hooks: hooks, async_processing: false, recovery: hooks }, evidence, limitations };
 }
 async function exists(file: string): Promise<boolean> { try { await access(file); return true; } catch { return false; } }
-function isCodexLingerCommand(command: unknown, home: string): boolean {
-  if (typeof command !== "string" || !command.includes("LINGER_ADAPTER=codex")) return false;
-  const normalized = command.replaceAll("\\", "/");
-  const runtime = path.resolve(home, ".linger", "runtime").replaceAll("\\", "/");
-  return normalized.includes(`${runtime}/`) && normalized.includes("/dist/hook-cli.js");
+
+function commonCodexRuntimeIdentities(
+  document: { hooks?: Record<string, Array<{ hooks?: Array<{ command?: string }> }>> },
+  home: string
+): string[] {
+  const required = ["SessionStart", "UserPromptSubmit", "Stop"];
+  const identities = required.map(event => new Set(
+    (document.hooks?.[event] ?? [])
+      .flatMap(group => group.hooks ?? [])
+      .map(hook => typeof hook.command === "string" ? parseManagedHookCommand(hook.command, home, "codex")?.runtime_identity : undefined)
+      .filter((identity): identity is string => Boolean(identity))
+  ));
+  const first = identities[0];
+  return first ? [...first].filter(identity => identities.every(values => values.has(identity))) : [];
 }

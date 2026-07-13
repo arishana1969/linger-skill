@@ -231,7 +231,7 @@ Requires Node.js 20 or later and pnpm.
 
 The current clean candidate passes:
 
-- 168 automated tests.
+- 172 automated tests.
 - Year, adversarial, and 250+ event held-out evaluation gates at macro composite 1.0.
 - Skill validation.
 - Exact tarball package-manager installation.
