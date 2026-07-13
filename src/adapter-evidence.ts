@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { assertWritableInside, atomicJson, readJson, withFileLock } from "./io.js";
+import { assertReadableInside, assertWritableInside, atomicJson, readJson, withFileLock } from "./io.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { assertRawRecordPath } from "./record-paths.js";
 import { assertRawEvent } from "./schema-validation.js";
@@ -77,6 +77,7 @@ export async function recordCodexLiveEvent(
 export async function readCodexAdapterEvidence(root: string): Promise<CodexAdapterEvidence | undefined> {
   const file = path.join(vaultPaths(root).registry, "adapter-evidence", "codex.json");
   try {
+    await assertReadableInside(root, file);
     const value = await readJson<unknown>(file);
     if (isLegacyEvidence(value)) return undefined;
     assertCodexAdapterEvidence(value);
@@ -108,7 +109,7 @@ async function verifiedCapture(root: string, session: SessionEvidence, eventId: 
   const paths = vaultPaths(root);
   const file = path.join(paths.raw, session.project_id, session.session_id, `${eventId}.json`);
   try {
-    await assertWritableInside(root, file);
+    await assertReadableInside(root, file);
     const event = await readJson<unknown>(file);
     assertRawEvent(event);
     assertRawRecordPath(paths, file, event);
@@ -168,6 +169,11 @@ export function assertCodexAdapterEvidence(value: unknown): asserts value is Cod
       }
     }
   }
+}
+
+export function assertCodexAdapterEvidencePath(root: string, file: string): void {
+  const expected = path.join(vaultPaths(root).registry, "adapter-evidence", "codex.json");
+  if (path.resolve(file) !== path.resolve(expected)) throw new Error("Invalid Codex adapter evidence path");
 }
 
 function assertIsoTimestamp(value: unknown): void {

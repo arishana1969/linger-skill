@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp } from "node:fs/promises";
+import { mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -59,4 +59,26 @@ test("redacts secrets from feedback notes", async () => {
   const feedback = await recordRecallFeedback(root, { projectId: "p", attemptId: attempt.attempt_id, outcome: "wrong", note: "password=do-not-persist-this" });
   assert.doesNotMatch(feedback.note ?? "", /do-not-persist-this/);
   assert.match(feedback.note ?? "", /REDACTED/);
+});
+
+test("refuses a recall attempt JSON symlink that escapes the Vault", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-recall-sampling-"));
+  const external = await mkdtemp(path.join(os.tmpdir(), "linger-recall-external-"));
+  await initVault(root);
+  const attempts = path.join(root, "registry", "recall-samples", "p", "attempts");
+  await mkdir(attempts, { recursive: true });
+  const target = path.join(external, "external.json");
+  await writeFile(target, JSON.stringify({
+    schema_version: 1,
+    attempt_id: "ra_external",
+    project_id: "p",
+    query: "external data must stay unread",
+    query_sensitivity: "normal",
+    classification: "no_reliable_memory_found",
+    hit_sources: [],
+    raw_refs: [],
+    created_at: "2026-01-01T00:00:00.000Z"
+  }));
+  await symlink(target, path.join(attempts, "ra_external.json"));
+  await assert.rejects(recallSamplingReport(root, "p"), /Read target is a symlink|escapes Vault/);
 });

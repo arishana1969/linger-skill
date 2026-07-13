@@ -1,10 +1,13 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { readJson } from "./io.js";
+import { assertReadableInside, readJson } from "./io.js";
+import { assertCodexAdapterEvidence, assertCodexAdapterEvidencePath } from "./adapter-evidence.js";
 import { vaultPaths } from "./paths.js";
+import { assertRecallSampleRecord } from "./recall-sampling.js";
 import { assertDecisionEvent, assertDecisionView, assertMemoryControlEvent, assertPendingCapture, assertProcessedMemory, assertProcessingRunHistory, assertProjectRecord, assertQueueItem, assertRawEvent, assertSequenceState, assertTagRegistry, assertTermRelation, assertVaultConfig } from "./schema-validation.js";
 import { assertDecisionEventPath, assertDecisionViewPath, assertMemoryControlPath, assertPendingRecordPath, assertProcessedRecordPath, assertProjectRecordPath, assertQueueRecordPath, assertRawRecordPath, assertTagRegistryPath, assertTermRelationPath } from "./record-paths.js";
 import { initVault, listJsonFiles } from "./vault.js";
+import { listVaultJsonCandidates } from "./vault-candidates.js";
 
 export interface DoctorReport { ok: boolean; errors: string[]; warnings: string[]; }
 
@@ -66,6 +69,20 @@ export async function doctor(root: string): Promise<DoctorReport> {
   for (const file of await listJsonFiles(path.join(p.registry, "processing-runs"))) {
     try { const value = await readJson<unknown>(file); assertProcessingRunHistory(value); }
     catch { report.errors.push(`invalid_processing_history:${path.relative(p.root, file)}`); }
+  }
+  for (const file of await listVaultJsonCandidates(path.join(p.registry, "adapter-evidence"))) {
+    try {
+      await assertReadableInside(p.root, file);
+      const value = await readJson<unknown>(file);
+      assertCodexAdapterEvidence(value);
+      assertCodexAdapterEvidencePath(p.root, file);
+    } catch { report.errors.push(`invalid_adapter_evidence:${path.relative(p.root, file)}`); }
+  }
+  for (const file of await listVaultJsonCandidates(path.join(p.registry, "recall-samples"))) {
+    try {
+      await assertReadableInside(p.root, file);
+      assertRecallSampleRecord(p.root, file, await readJson<unknown>(file));
+    } catch { report.errors.push(`invalid_recall_sample:${path.relative(p.root, file)}`); }
   }
   for (const file of await listJsonFiles(path.join(p.tmp, "pending"))) {
     try { const pending = await readJson<unknown>(file); assertPendingCapture(pending); assertPendingRecordPath(p, file, pending); report.warnings.push(`pending_capture:${pending.pending_id}`); }

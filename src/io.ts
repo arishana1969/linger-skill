@@ -21,6 +21,17 @@ export async function readJson<T>(file: string): Promise<T> {
   return JSON.parse(await readFile(file, "utf8")) as T;
 }
 
+export async function assertReadableInside(root: string, target: string): Promise<void> {
+  const rootResolved = path.resolve(root);
+  const targetResolved = path.resolve(target);
+  const lexical = path.relative(rootResolved, targetResolved);
+  if (!lexical || lexical.startsWith("..") || path.isAbsolute(lexical)) throw new Error("Read path escapes Vault");
+  const [rootReal, targetReal] = await Promise.all([realpath(rootResolved), realpath(targetResolved)]);
+  const physical = path.relative(rootReal, targetReal);
+  if (!physical || physical.startsWith("..") || path.isAbsolute(physical)) throw new Error("Read path escapes Vault through symlink");
+  if ((await lstat(targetResolved)).isSymbolicLink()) throw new Error("Read target is a symlink");
+}
+
 export async function assertWritableInside(root: string, target: string): Promise<void> {
   const rootResolved = path.resolve(root);
   const targetResolved = path.resolve(target);
