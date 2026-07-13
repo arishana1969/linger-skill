@@ -7,14 +7,15 @@ import type { AdapterName } from "./adapters.js";
 type HookMap = Record<string, Array<{ matcher?: string; hooks: Array<{ type: "command"; command: string; commandWindows?: string; timeout?: number; statusMessage?: string }> }>>;
 
 export async function installHooks(home: string, packageRoot: string, adapters: AdapterName[]): Promise<string[]> {
-  const commandBase = `${quote(process.execPath)} ${quote(path.join(packageRoot, "dist", "hook-cli.js"))}`;
+  const node = process.execPath;
+  const hook = path.join(packageRoot, "dist", "hook-cli.js");
   const written: string[] = [];
   if (adapters.includes("claude-code")) {
     const file = path.join(home, ".claude", "settings.json");
     const settings = await jsonObjectOr(file);
     const hooks = asHooks(settings.hooks);
     removeLingerHookCommands(hooks, home, "claude-code");
-    addLingerHooks(hooks, `LINGER_ADAPTER=claude-code ${commandBase}`, ["SessionStart", "UserPromptSubmit", "Stop", "StopFailure"]);
+    addLingerHooks(hooks, "claude-code", node, hook, ["SessionStart", "UserPromptSubmit", "Stop", "StopFailure"]);
     await mkdir(path.dirname(file), { recursive: true });
     await atomicJson(file, { ...settings, hooks });
     written.push(file);
@@ -24,7 +25,7 @@ export async function installHooks(home: string, packageRoot: string, adapters: 
     const document = await jsonObjectOr(file);
     const hooks = asHooks(document.hooks);
     removeLingerHookCommands(hooks, home, "codex");
-    addLingerHooks(hooks, `LINGER_ADAPTER=codex ${commandBase}`, ["SessionStart", "UserPromptSubmit", "Stop"]);
+    addLingerHooks(hooks, "codex", node, hook, ["SessionStart", "UserPromptSubmit", "Stop"]);
     await mkdir(path.dirname(file), { recursive: true });
     await atomicJson(file, { ...document, hooks });
     written.push(file);
@@ -47,11 +48,13 @@ export async function uninstallHooks(home: string, adapters: AdapterName[]): Pro
   return changed;
 }
 
-function addLingerHooks(hooks: HookMap, command: string, events: string[]): void {
+function addLingerHooks(hooks: HookMap, adapter: AdapterName, node: string, hook: string, events: string[]): void {
+  const command = `LINGER_ADAPTER=${adapter} ${quotePosix(node)} ${quotePosix(hook)}`;
+  const commandWindows = windowsCommand({ adapter, node, hook });
   for (const event of events) {
     const groups = hooks[event] ?? [];
     const already = groups.some(group => group.hooks.some(hook => hook.command === command));
-    if (!already) groups.push({ ...(event === "SessionStart" ? { matcher: "startup|resume|compact" } : {}), hooks: [{ type: "command", command, commandWindows: windowsCommand(command), timeout: 10, statusMessage: "Linger capture" }] });
+    if (!already) groups.push({ ...(event === "SessionStart" ? { matcher: "startup|resume|compact" } : {}), hooks: [{ type: "command", command, commandWindows, timeout: 10, statusMessage: "Linger capture" }] });
     hooks[event] = groups;
   }
 }
@@ -91,8 +94,18 @@ async function jsonObjectOr(file: string): Promise<Record<string, unknown>> {
   } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return {}; throw error; }
 }
 function isLingerHookCommand(command: string, home: string, adapter: AdapterName): boolean {
-  const normalized = command.replaceAll("\\", "/");
+  const parsed = parseManagedCommand(command);
+  if (!parsed || parsed.adapter !== adapter) return false;
+  const normalized = path.resolve(parsed.hook).replaceAll("\\", "/");
   const runtime = path.resolve(home, ".linger", "runtime").replaceAll("\\", "/");
-  return command.includes(`LINGER_ADAPTER=${adapter}`) && normalized.includes(`${runtime}/`) && normalized.includes("/dist/hook-cli.js");
+  return normalized.startsWith(`${runtime}/`) && normalized.endsWith("/dist/hook-cli.js");
 }
-function quote(value: string): string { return `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`; }
+function parseManagedCommand(command: string): { adapter: AdapterName; node: string; hook: string } | undefined {
+  const current = command.match(/^LINGER_ADAPTER=(claude-code|codex) '((?:[^']|'"'"')*)' '((?:[^']|'"'"')*)'$/);
+  if (current) return { adapter: current[1] as AdapterName, node: unquotePosix(current[2]!), hook: unquotePosix(current[3]!) };
+  const legacy = command.match(/^LINGER_ADAPTER=(claude-code|codex) "([^"\r\n]+)" "([^"\r\n]+)"$/);
+  if (legacy) return { adapter: legacy[1] as AdapterName, node: legacy[2]!, hook: legacy[3]!.replaceAll("\\\\", "\\") };
+  return undefined;
+}
+function quotePosix(value: string): string { return `'${value.replaceAll("'", `'"'"'`)}'`; }
+function unquotePosix(value: string): string { return value.replaceAll(`'"'"'`, "'"); }

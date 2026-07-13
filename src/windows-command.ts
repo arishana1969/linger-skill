@@ -1,9 +1,7 @@
-export function windowsCommand(command: string): string {
-  const match = command.match(/^LINGER_ADAPTER=(\S+) "([^"]+)" "([^"]+)"$/);
-  if (!match) return command;
-  const adapter = ps(match[1]!);
-  const node = ps(match[2]!);
-  const hook = ps(match[3]!);
+export function windowsCommand(input: { adapter: string; node: string; hook: string }): string {
+  const adapter = ps(input.adapter);
+  const node = ps(input.node);
+  const hook = ps(input.hook);
   return `powershell.exe -NoProfile -Command "$env:LINGER_ADAPTER='${adapter}'; & '${node}' '${hook}'"`;
 }
 

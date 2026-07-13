@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { promisify } from "node:util";
 import { installHooks, uninstallHooks } from "./hook-installer.js";
+
+const exec = promisify(execFile);
 
 test("merges hooks without overwriting user configuration and is idempotent", async () => {
   const home = await mkdtemp(path.join(os.tmpdir(), "linger-hooks-"));
@@ -48,6 +52,33 @@ test("upgrade replaces prior version hooks instead of duplicating them", async (
     assert.match(commands[0], /runtime\/0\.2\.0\/dist\/hook-cli\.js/);
     assert.doesNotMatch(commands[0], /runtime\/0\.1\.0/);
   }
+});
+
+test("hook commands do not execute shell substitutions embedded in install paths", async (context) => {
+  if (process.platform === "win32") { context.skip("POSIX shell regression"); return; }
+  const base = await mkdtemp(path.join(os.tmpdir(), "linger-hook-quoting-"));
+  const substitution = "$" + "(mkdir$" + "{IFS}pwned)";
+  const home = path.join(base, `home-${substitution}-quote's`);
+  const runtime = path.join(home, ".linger", "runtime", "0.2.0-alpha.0");
+  await installHooks(home, runtime, ["codex"]);
+  const document = JSON.parse(await readFile(path.join(home, ".codex", "hooks.json"), "utf8"));
+  const command = document.hooks.Stop[0].hooks[0].command as string;
+  await assert.rejects(exec("/bin/sh", ["-c", command], { cwd: base }));
+  await assert.rejects(access(path.join(base, "pwned")));
+});
+
+test("upgrade preserves user wrappers that merely contain a Linger command", async () => {
+  const home = await mkdtemp(path.join(os.tmpdir(), "linger-hooks-wrapper-"));
+  const file = path.join(home, ".codex", "hooks.json");
+  await mkdir(path.dirname(file), { recursive: true });
+  const oldRuntime = path.join(home, ".linger", "runtime", "0.1.0", "dist", "hook-cli.js");
+  const wrapper = `notify-before && LINGER_ADAPTER=codex "node" "${oldRuntime}" && notify-after`;
+  await writeFile(file, JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: wrapper }] }] } }));
+  await installHooks(home, path.join(home, ".linger", "runtime", "0.2.0-alpha.0"), ["codex"]);
+  const document = JSON.parse(await readFile(file, "utf8"));
+  const commands = document.hooks.Stop.flatMap((group: { hooks: Array<{ command: string }> }) => group.hooks.map(hook => hook.command));
+  assert.ok(commands.includes(wrapper));
+  assert.equal(commands.length, 2);
 });
 
 test("malformed host hook configuration fails before write and preserves exact bytes", async () => {
