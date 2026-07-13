@@ -2,6 +2,8 @@ import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import { readCodexAdapterEvidence, verifiedCodexLiveSession, type SessionEvidence } from "./adapter-evidence.js";
 import { parseManagedHookCommand } from "./hook-command.js";
+import { runtimeFingerprint } from "./runtime-identity.js";
+import { assertReadableInside } from "./io.js";
 
 export type CapabilityLevel = 0 | 1 | 2 | 3 | 4;
 export type AdapterName = "claude-code" | "codex";
@@ -42,7 +44,7 @@ export async function detectCodex(home: string): Promise<AdapterCapability> {
     hookEvidence = hooksFile;
     try {
       const document = JSON.parse(await readFile(hooksFile, "utf8")) as { hooks?: Record<string, Array<{ hooks?: Array<{ command?: string }> }>> };
-      runtimeIdentities = commonCodexRuntimeIdentities(document, home);
+      runtimeIdentities = await commonCodexRuntimeIdentities(document, home);
       lingerHooks = runtimeIdentities.length > 0;
     } catch { /* malformed or unsupported host config */ }
   }
@@ -73,17 +75,25 @@ function result(adapter: AdapterName, detected: boolean, installed: boolean, lev
 }
 async function exists(file: string): Promise<boolean> { try { await access(file); return true; } catch { return false; } }
 
-function commonCodexRuntimeIdentities(
+async function commonCodexRuntimeIdentities(
   document: { hooks?: Record<string, Array<{ hooks?: Array<{ command?: string }> }>> },
   home: string
-): string[] {
+): Promise<string[]> {
   const required = ["SessionStart", "UserPromptSubmit", "Stop"];
-  const identities = required.map(event => new Set(
-    (document.hooks?.[event] ?? [])
-      .flatMap(group => group.hooks ?? [])
-      .map(hook => typeof hook.command === "string" ? parseManagedHookCommand(hook.command, home, "codex")?.runtime_identity : undefined)
-      .filter((identity): identity is string => Boolean(identity))
-  ));
+  const identities: Array<Set<string>> = [];
+  for (const event of required) {
+    const verified = new Set<string>();
+    for (const hook of (document.hooks?.[event] ?? []).flatMap(group => group.hooks ?? [])) {
+      const parsed = typeof hook.command === "string" ? parseManagedHookCommand(hook.command, home, "codex") : undefined;
+      if (!parsed?.runtime_identity) continue;
+      const packageRoot = path.dirname(path.dirname(parsed.hook));
+      try {
+        await assertReadableInside(home, parsed.hook);
+        if (await runtimeFingerprint(packageRoot, parsed.node) === parsed.runtime_identity) verified.add(parsed.runtime_identity);
+      } catch { /* invalid or changed runtimes remain untrusted */ }
+    }
+    identities.push(verified);
+  }
   const first = identities[0];
   return first ? [...first].filter(identity => identities.every(values => values.has(identity))) : [];
 }

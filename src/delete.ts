@@ -37,7 +37,7 @@ export async function deleteRecord(root: string, input: { projectId: string; tar
     await rebuildTagRegistry(root, project);
     return { deleted: true, target: "processed", id, project_id: project, source_events: memory.source_events };
   }
-  const files = await listJsonFiles(path.join(p.raw, project));
+  const files = await listJsonFiles(path.join(p.raw, project), p.root);
   for (const file of files) {
     let event: RawEvent;
     try { const value = await readJson<unknown>(file); assertRawEvent(value); assertRawRecordPath(p, file, value); event = value; }
@@ -56,14 +56,14 @@ export async function deleteLastRecord(root: string, input: { projectId: string;
   const project = assertSafeId(input.projectId, "project id");
   const p = vaultPaths(root);
   if (input.target === "processed") {
-    const records = (await Promise.all((await listJsonFiles(path.join(p.processed, project))).map(async file => {
+    const records = (await Promise.all((await listJsonFiles(path.join(p.processed, project), p.root)).map(async file => {
       try { const value = await readJson<unknown>(file); assertProcessedMemory(value); assertProcessedRecordPath(p, file, value); return value; } catch { return undefined; }
     }))).filter((value): value is ProcessedMemory => Boolean(value));
     const latest = records.sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id))[0];
     if (!latest) throw new Error(`No processed records found for project ${project}`);
     return await deleteRecord(root, { projectId: project, target: "processed", id: latest.id, confirmed: true, reason: input.reason });
   }
-  const events = (await Promise.all((await listJsonFiles(path.join(p.raw, project))).map(async file => {
+  const events = (await Promise.all((await listJsonFiles(path.join(p.raw, project), p.root)).map(async file => {
     try { const value = await readJson<unknown>(file); assertRawEvent(value); assertRawRecordPath(p, file, value); return value; } catch { return undefined; }
   }))).filter((value): value is RawEvent => Boolean(value));
   const latest = events.sort((a, b) => b.seq_id - a.seq_id || b.timestamp.localeCompare(a.timestamp) || b.event_id.localeCompare(a.event_id))[0];

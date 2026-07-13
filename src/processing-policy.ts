@@ -34,14 +34,14 @@ export async function processingDecision(root: string, projectId: string, trigge
   const p = vaultPaths(root);
   const items: QueueItem[] = [];
   let bytes = 0;
-  for (const file of await listJsonFiles(path.join(p.queue, project))) {
+  for (const file of await listJsonFiles(path.join(p.queue, project), p.root)) {
     try {
       const item = await readJson<unknown>(file);
       assertQueueItem(item);
       assertQueueRecordPath(p, file, item);
       if (item.status !== "pending" && item.status !== "failed") continue;
       items.push(item);
-      for (const rawFile of await listJsonFiles(path.join(p.raw, project))) {
+      for (const rawFile of await listJsonFiles(path.join(p.raw, project), p.root)) {
         try {
           const event = await readJson<unknown>(rawFile);
           assertRawEvent(event);
@@ -55,6 +55,7 @@ export async function processingDecision(root: string, projectId: string, trigge
   if (!items.length) return { should_run: false, reason: "no_pending", ...base };
   if (trigger === "manual") return { should_run: true, reason: "manual", ...base };
   const historyFile = path.join(p.registry, "processing-runs", `${project}.json`);
+  await assertWritableInside(p.root, historyFile);
   const history = await readHistory(historyFile);
   const cutoff = now.getTime() - 60 * 60 * 1000;
   if (history.filter(value => Date.parse(value) >= cutoff).length >= config.max_runs_per_hour) return { should_run: false, reason: "rate_limited", ...base };

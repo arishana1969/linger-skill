@@ -32,7 +32,7 @@ export async function rebuildTagRegistry(root: string, projectId: string): Promi
   const states = await effectiveMemoryStates(root, project);
   const entries = new Map<string, TagRegistryEntry>();
   const skipped: string[] = [];
-  for (const file of await listJsonFiles(path.join(p.processed, project))) {
+  for (const file of await listJsonFiles(path.join(p.processed, project), p.root)) {
     try {
       const memory = await readJson<unknown>(file);
       assertProcessedMemory(memory);

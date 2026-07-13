@@ -53,6 +53,7 @@ export async function capture(root: string, input: CaptureInput): Promise<RawEve
     const raced = await readExistingRaw(p, rawFile, expected);
     if (raced) return raced;
     const sequenceFile = path.join(p.registry, `${project}.sequence.json`);
+    await assertWritableInside(p.root, sequenceFile);
     let current = 0;
     try { const state = await readJson<unknown>(sequenceFile); assertSequenceState(state); current = state.value; } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
     const timestamp = input.timestamp ?? new Date().toISOString();

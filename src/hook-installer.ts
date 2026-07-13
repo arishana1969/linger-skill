@@ -1,9 +1,9 @@
-import { createHash } from "node:crypto";
-import { mkdir, readFile, readdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { atomicJson } from "./io.js";
 import { parseManagedHookCommand, posixHookCommand } from "./hook-command.js";
 import { windowsCommand } from "./windows-command.js";
+import { runtimeFingerprint } from "./runtime-identity.js";
 import type { AdapterName } from "./adapters.js";
 
 type HookMap = Record<string, Array<{ matcher?: string; hooks: Array<{ type: "command"; command: string; commandWindows?: string; timeout?: number; statusMessage?: string }> }>>;
@@ -98,22 +98,4 @@ async function jsonObjectOr(file: string): Promise<Record<string, unknown>> {
 }
 function isLingerHookCommand(command: string, home: string, adapter: AdapterName): boolean {
   return Boolean(parseManagedHookCommand(command, home, adapter));
-}
-async function runtimeFingerprint(packageRoot: string, node: string): Promise<string> {
-  const hash = createHash("sha256").update(path.resolve(packageRoot)).update("\0").update(path.resolve(node));
-  const files = await runtimeFiles(path.join(packageRoot, "dist"));
-  for (const file of files) hash.update("\0").update(path.relative(packageRoot, file)).update("\0").update(await readFile(file));
-  return hash.digest("hex");
-}
-async function runtimeFiles(dir: string): Promise<string[]> {
-  try {
-    const entries = await readdir(dir, { withFileTypes: true });
-    const files: string[] = [];
-    for (const entry of entries) {
-      const target = path.join(dir, entry.name);
-      if (entry.isDirectory()) files.push(...await runtimeFiles(target));
-      else if (entry.isFile()) files.push(target);
-    }
-    return files.sort();
-  } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
 }

@@ -1,7 +1,7 @@
 import { readdir, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { assertWritableInside, atomicJson, ensureDir, readJson } from "./io.js";
+import { assertReadableInside, assertWritableInside, atomicJson, ensureDir, readJson } from "./io.js";
 import { vaultPaths } from "./paths.js";
 import { assertProjectRecord, assertQueueItem, assertVaultConfig } from "./schema-validation.js";
 import { assertProjectRecordPath, assertQueueRecordPath } from "./record-paths.js";
@@ -96,7 +96,7 @@ export async function registerProject(root: string, cwd: string): Promise<Projec
 
 export async function listProjects(root: string): Promise<ProjectRecord[]> {
   const p = vaultPaths(root);
-  return (await Promise.all((await listJsonFiles(p.projects)).map(async file => {
+  return (await Promise.all((await listJsonFiles(p.projects, p.root)).map(async file => {
     try { const value = await readJson<unknown>(file); assertProjectRecord(value); assertProjectRecordPath(p, file, value); return value; } catch { return undefined; }
   }))).filter((record): record is ProjectRecord => Boolean(record)).sort((a, b) => b.last_seen.localeCompare(a.last_seen) || a.project_id.localeCompare(b.project_id));
 }
@@ -123,13 +123,15 @@ async function gitValue(cwd: string, args: string[]): Promise<string | undefined
   });
 }
 
-export async function listJsonFiles(dir: string): Promise<string[]> {
+export async function listJsonFiles(dir: string, boundaryRoot: string): Promise<string[]> {
   try {
+    await assertWritableInside(boundaryRoot, dir);
+    await assertReadableInside(boundaryRoot, dir);
     const entries = await readdir(dir, { withFileTypes: true });
     const files: string[] = [];
     for (const entry of entries) {
       const target = path.join(dir, entry.name);
-      if (entry.isDirectory()) files.push(...await listJsonFiles(target));
+      if (entry.isDirectory()) files.push(...await listJsonFiles(target, boundaryRoot));
       else if (entry.isFile() && entry.name.endsWith(".json")) files.push(target);
     }
     return files.sort();
@@ -143,7 +145,7 @@ export async function vaultStats(root: string): Promise<Record<string, number | 
   const p = vaultPaths(root);
   const config = await initVault(root);
   const [raw, processed, queue, pendingCaptures] = await Promise.all([
-    listJsonFiles(p.raw), listJsonFiles(p.processed), listJsonFiles(p.queue), listJsonFiles(path.join(p.tmp, "pending"))
+    listJsonFiles(p.raw, p.root), listJsonFiles(p.processed, p.root), listJsonFiles(p.queue, p.root), listJsonFiles(path.join(p.tmp, "pending"), p.root)
   ]);
   const queueCounts = { pending: 0, processing: 0, failed: 0, done: 0, invalid: 0 };
   for (const file of queue) {

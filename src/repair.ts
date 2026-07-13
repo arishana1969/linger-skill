@@ -6,18 +6,17 @@ import { vaultPaths } from "./paths.js";
 import { assertRecallSampleRecord } from "./recall-sampling.js";
 import { assertDecisionEvent, assertDecisionView, assertMemoryControlEvent, assertPendingCapture, assertProcessedMemory, assertProcessingRunHistory, assertProjectRecord, assertQueueItem, assertRawEvent, assertSequenceState, assertTagRegistry, assertTermRelation, assertVaultConfig } from "./schema-validation.js";
 import { assertDecisionEventPath, assertDecisionViewPath, assertMemoryControlPath, assertPendingRecordPath, assertProcessedRecordPath, assertProjectRecordPath, assertQueueRecordPath, assertRawRecordPath, assertTagRegistryPath, assertTermRelationPath } from "./record-paths.js";
-import { listJsonFiles } from "./vault.js";
 import { listVaultJsonCandidates } from "./vault-candidates.js";
 
 export async function quarantineInvalidFiles(root: string): Promise<{ quarantined: string[]; skipped: string[] }> {
   const p = vaultPaths(root);
   const quarantined: string[] = [];
   const skipped: string[] = [];
-  try { const value = await readJson<unknown>(p.config); assertVaultConfig(value); }
+  try { await assertReadableInside(p.root, p.config); const value = await readJson<unknown>(p.config); assertVaultConfig(value); }
   catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") await quarantineFile(p, "vault-config", p.root, p.config, quarantined, skipped);
   }
-  const groups: Array<{ dir: string; kind: string; read: (file: string) => Promise<unknown>; candidates?: () => Promise<string[]> }> = [
+  const groups: Array<{ dir: string; kind: string; read: (file: string) => Promise<unknown> }> = [
     { dir: p.raw, kind: "raw", read: async file => { const value = await readJson<unknown>(file); assertRawEvent(value); assertRawRecordPath(p, file, value); } },
     { dir: p.processed, kind: "processed", read: async file => { const value = await readJson<unknown>(file); assertProcessedMemory(value); assertProcessedRecordPath(p, file, value); } },
     { dir: p.queue, kind: "queue", read: async file => { const value = await readJson<unknown>(file); assertQueueItem(value); assertQueueRecordPath(p, file, value); } },
@@ -28,18 +27,18 @@ export async function quarantineInvalidFiles(root: string): Promise<{ quarantine
     { dir: path.join(p.registry, "term-graph"), kind: "term-relation", read: async file => { const value = await readJson<unknown>(file); assertTermRelation(value); assertTermRelationPath(p, file, value); } },
     { dir: p.projects, kind: "project-record", read: async file => { const value = await readJson<unknown>(file); assertProjectRecord(value); assertProjectRecordPath(p, file, value); } },
     { dir: path.join(p.registry, "processing-runs"), kind: "processing-history", read: async file => { const value = await readJson<unknown>(file); assertProcessingRunHistory(value); } },
-    { dir: path.join(p.registry, "adapter-evidence"), kind: "adapter-evidence", candidates: () => listVaultJsonCandidates(path.join(p.registry, "adapter-evidence")), read: async file => { await assertReadableInside(p.root, file); const value = await readJson<unknown>(file); assertCodexAdapterEvidence(value); assertCodexAdapterEvidencePath(p.root, file); } },
-    { dir: path.join(p.registry, "recall-samples"), kind: "recall-sample", candidates: () => listVaultJsonCandidates(path.join(p.registry, "recall-samples")), read: async file => { await assertReadableInside(p.root, file); assertRecallSampleRecord(p.root, file, await readJson<unknown>(file)); } }
+    { dir: path.join(p.registry, "adapter-evidence"), kind: "adapter-evidence", read: async file => { const value = await readJson<unknown>(file); assertCodexAdapterEvidence(value); assertCodexAdapterEvidencePath(p.root, file); } },
+    { dir: path.join(p.registry, "recall-samples"), kind: "recall-sample", read: async file => { assertRecallSampleRecord(p.root, file, await readJson<unknown>(file)); } }
   ];
   for (const group of groups) {
-    for (const file of group.candidates ? await group.candidates() : await listJsonFiles(group.dir)) {
-      try { await group.read(file); }
-      catch { await quarantineFile(p, group.kind, group.dir, file, quarantined, skipped); }
+    for (const file of await listVaultJsonCandidates(group.dir, p.root)) {
+      try { await assertReadableInside(p.root, file); await group.read(file); }
+      catch { await quarantineFile(p, group.kind, p.root, file, quarantined, skipped); }
     }
   }
-  for (const file of (await listJsonFiles(p.registry)).filter(file => path.dirname(file) === p.registry && file.endsWith(".sequence.json"))) {
-    try { const value = await readJson<unknown>(file); assertSequenceState(value); }
-    catch { await quarantineFile(p, "sequence", p.registry, file, quarantined, skipped); }
+  for (const file of (await listVaultJsonCandidates(p.registry, p.root)).filter(file => path.dirname(file) === p.registry && file.endsWith(".sequence.json"))) {
+    try { await assertReadableInside(p.root, file); const value = await readJson<unknown>(file); assertSequenceState(value); }
+    catch { await quarantineFile(p, "sequence", p.root, file, quarantined, skipped); }
   }
   return { quarantined, skipped };
 }
