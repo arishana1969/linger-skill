@@ -35,6 +35,21 @@ test("uninstall removes only Linger hooks", async () => {
   assert.deepEqual(after.hooks.Stop[0].hooks.map((hook: { command: string }) => hook.command), ["keep-me", "/tmp/dist/hook-cli.js"]);
 });
 
+test("upgrade replaces prior version hooks instead of duplicating them", async () => {
+  const home = await mkdtemp(path.join(os.tmpdir(), "linger-hooks-upgrade-"));
+  const oldRuntime = path.join(home, ".linger", "runtime", "0.1.0");
+  const newRuntime = path.join(home, ".linger", "runtime", "0.2.0");
+  await installHooks(home, oldRuntime, ["codex"]);
+  await installHooks(home, newRuntime, ["codex"]);
+  const document = JSON.parse(await readFile(path.join(home, ".codex", "hooks.json"), "utf8"));
+  for (const event of ["SessionStart", "UserPromptSubmit", "Stop"]) {
+    const commands = document.hooks[event].flatMap((group: { hooks: Array<{ command: string }> }) => group.hooks.map(hook => hook.command));
+    assert.equal(commands.length, 1);
+    assert.match(commands[0], /runtime\/0\.2\.0\/dist\/hook-cli\.js/);
+    assert.doesNotMatch(commands[0], /runtime\/0\.1\.0/);
+  }
+});
+
 test("malformed host hook configuration fails before write and preserves exact bytes", async () => {
   const home = await mkdtemp(path.join(os.tmpdir(), "linger-hooks-"));
   const file = path.join(home, ".claude", "settings.json");

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { capabilityReport } from "./adapters.js";
+import { recordCodexLiveEvent } from "./adapter-evidence.js";
 
 test("reports honest degraded adapter levels", async () => {
   const home = await mkdtemp(path.join(os.tmpdir(), "linger-adapters-"));
@@ -25,4 +26,23 @@ test("detects Codex skill and hooks independently", async () => {
   assert.equal(codex.capabilities.lifecycle_hooks, false);
   assert.equal(codex.capabilities.async_processing, false);
   assert.match(codex.limitations.join(" "), /trust/);
+});
+
+test("promotes Codex to L2 only with same-session live lifecycle evidence", async () => {
+  const home = await mkdtemp(path.join(os.tmpdir(), "linger-adapters-live-"));
+  await mkdir(path.join(home, ".codex", "skills", "linger"), { recursive: true });
+  await writeFile(path.join(home, ".codex", "skills", "linger", "SKILL.md"), "installed");
+  const command = `LINGER_ADAPTER=codex "node" "${path.join(home, ".linger", "runtime", "0.2.0", "dist", "hook-cli.js")}"`;
+  const group = { hooks: [{ type: "command", command }] };
+  await writeFile(path.join(home, ".codex", "hooks.json"), JSON.stringify({ hooks: { SessionStart: [group], UserPromptSubmit: [group], Stop: [group] } }));
+  const vault = path.join(home, ".linger", "vault");
+  await mkdir(vault, { recursive: true });
+  await recordCodexLiveEvent(vault, { sessionId: "s-live", projectId: "p", event: "SessionStart" });
+  await recordCodexLiveEvent(vault, { sessionId: "s-live", projectId: "p", event: "UserPromptSubmit", capturedEventId: "evt-user" });
+  assert.equal((await capabilityReport(home))[1]?.level, 1);
+  await recordCodexLiveEvent(vault, { sessionId: "s-live", projectId: "p", event: "Stop", capturedEventId: "evt-assistant" });
+  const report = (await capabilityReport(home))[1]!;
+  assert.equal(report.level, 2);
+  assert.equal(report.capabilities.lifecycle_hooks, true);
+  assert.match(report.evidence.join(" "), /live lifecycle verified/);
 });

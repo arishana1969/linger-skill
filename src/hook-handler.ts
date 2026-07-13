@@ -5,6 +5,7 @@ import { processingDecision, recordProcessingRun } from "./processing-policy.js"
 import { processQueue } from "./processing.js";
 import { classifySensitivity } from "./sensitivity.js";
 import { registerProject } from "./vault.js";
+import { recordCodexLiveEvent } from "./adapter-evidence.js";
 
 export interface HookInput {
   session_id?: string;
@@ -32,7 +33,9 @@ export async function handleHook(root: string, input: HookInput, sourceAgent: "c
   if (eventName === "SessionStart") {
     const project = (await registerProject(root, cwd)).project_id;
     const recovery = await recoverPending(root).catch(() => ({ recovered: 0, failed: [] }));
-    return { recovered: recovery.recovered, processed: await scheduledProcessing(root, project, "startup"), output: contextOutput(eventName) };
+    const result = { recovered: recovery.recovered, processed: await scheduledProcessing(root, project, "startup"), output: contextOutput(eventName) };
+    if (sourceAgent === "codex") await recordCodexLiveEvent(root, { sessionId: safeId(input.session_id ?? "unknown-session"), projectId: project, event: "SessionStart" }).catch(() => undefined);
+    return result;
   }
   const isUser = eventName === "UserPromptSubmit";
   const isAssistant = eventName === "Stop";
@@ -57,6 +60,14 @@ export async function handleHook(root: string, input: HookInput, sourceAgent: "c
     sensitivity: sensitivity.level
   });
   const processed = event ? await scheduledProcessing(root, project, "automatic") : 0;
+  if (sourceAgent === "codex" && event && (eventName === "UserPromptSubmit" || eventName === "Stop")) {
+    await recordCodexLiveEvent(root, {
+      sessionId: safeId(typeof input.session_id === "string" ? input.session_id : "unknown-session"),
+      projectId: project,
+      event: eventName,
+      capturedEventId: event.event_id
+    }).catch(() => undefined);
+  }
   return { captured: event?.event_id, skipped: event ? undefined : "paused", processed, output: {} };
 }
 
