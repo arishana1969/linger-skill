@@ -13,7 +13,7 @@
 ## GitHub MVP 0.1.0
 
 - Freeze the initial public file/schema contract after the final documentation review.
-- Completed for local candidate commit `d19f46465b1cdd7d9e841835a4ff9eeeecd8da15`: disposable clean clone, offline frozen install, 150/150 tests, all three macro-1.0 eval gates, Skill validation, exact packed-artifact smoke, and clean final status.
+- Completed for local candidate implementation checkpoint `8db174c306a419dbbb4fb472905a5d6a588890c7`: disposable clean clone, offline frozen install, tracked-file credential scan, 156/156 tests, all three macro-1.0 eval gates, self-contained Skill validation, exact packed-artifact smoke, and clean final status.
 - Keep Codex capability at L1 until hook trust and live lifecycle execution are observed; keep the Claude Code Ctrl-C degradation explicit.
 - Resolve public-GitHub metadata: license, repository URL, and security contact.
 - Publish the experimental repository only after candidate checks; npm package ownership and publication remain separate user-owned release actions.

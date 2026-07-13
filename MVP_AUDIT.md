@@ -1,8 +1,8 @@
 # MVP implementation audit
 
-Audit date: 2026-07-12
+Audit date: 2026-07-13
 
-Evidence snapshot: automated repository gates and host observations recorded through 2026-07-12. Rerun `RELEASE_CHECKLIST.md` from the candidate commit before release.
+Evidence snapshot: automated repository gates and host observations recorded through 2026-07-13. Rerun `RELEASE_CHECKLIST.md` from the candidate commit before release.
 
 Legend: **Complete**, **Partial**, **Missing**, **Needs host validation**, **External release step**.
 
@@ -14,7 +14,7 @@ The repository has the complete local spine of a GitHub MVP: file-native capture
 
 The implementation is a local GitHub-MVP candidate, not yet a public repository or npm release. Public GitHub readiness still requires maintainer-owned release metadata and a clean-checkout rerun after that metadata changes the candidate commit. Codex can be described only as L1 until trusted live lifecycle execution is observed; that evidence is required before raising its capability claim, not before publishing the experimental repository. Public package publication and clean-machine `npx` proof remain a separate external release step. Interactive install, a persistent in-session timer, richer topic merge, and index fragments can remain post-GitHub-MVP if their degraded behavior is documented honestly.
 
-The local clean-checkout gate is now complete for commit `d19f46465b1cdd7d9e841835a4ff9eeeecd8da15`. A disposable clone installed its frozen lockfile fully offline, passed 150/150 tests, passed the year/adversarial/held-out gates at macro composite `1.0` with no missing predictions, validated the Skill, passed exact-tarball install/capture→recall/uninstall/Vault-preservation smoke, and ended with an empty `git status --short`. This verifies the committed local candidate; it does not resolve the maintainer-owned public metadata or npm publication steps.
+The local clean-checkout gate is now complete for implementation checkpoint `8db174c306a419dbbb4fb472905a5d6a588890c7`. A disposable clone installed its frozen lockfile fully offline, scanned 137 tracked files for high-confidence credentials, passed 156/156 tests, passed the year/adversarial/held-out gates at macro composite `1.0` with no missing predictions, validated the Skill with the self-contained Node validator, passed exact-tarball install/capture→recall/uninstall/Vault-preservation smoke, and ended with an empty `git status --short`. This verifies the committed local candidate; it does not resolve the maintainer-owned public metadata or npm publication steps.
 
 `pnpm verify:release-metadata` now reports the remaining GitHub blockers mechanically. On this candidate they are: `license_file`, `package_license`, `repository_url`, `homepage_url`, `bugs_url`, and `security_contact`. The verifier is included and executed from the exact packed artifact so the published manifest does not expose a missing script.
 
@@ -82,7 +82,7 @@ The local clean-checkout gate is now complete for commit `d19f46465b1cdd7d9e8418
 - High-confidence secrets are redacted at the shared capture persistence boundary; opt-out is skipped; destructive operations are ID/path bounded and confirmation gated. Delete targets and persisted role/decision/relation enum values are runtime-validated rather than trusted from TypeScript casts.
 - Malicious-record regressions cover path-traversing and cross-project queue identities, a pending record targeting another Vault file, cross-project processed/decision/control/term records, timestamp-to-filename injection, and symlink escape attempts across raw/pending/processed/decision/config paths. Invalid records stay inert, are diagnosed, and can be quarantined.
 - Control-integrity regressions verify that a processed record with a forged project identity cannot be inspected, forgotten, corrected, or deleted as valid evidence, and cannot redirect a correction Markdown write into another project.
-- Current tracked text and all 107 local checkpoint commits were audited for high-confidence credential forms; the only historical match was an intentional detector fixture. The fixture no longer contains a static marker, `.env`/project-local Vault/private-key files are ignored, and CI now runs a non-disclosing current-tree secret scan.
+- Current tracked text and all 110 local checkpoint commits were audited for high-confidence credential forms; the only historical match was an intentional detector fixture. The fixture no longer contains a static marker, `.env`/project-local Vault/private-key files are ignored, and CI now runs a non-disclosing current-tree secret scan.
 - Remaining proof: larger adversarial mutation families, broader malicious-repository exercises, and host-level trust UX.
 
 ## Release decision order
