@@ -1,5 +1,5 @@
 import path from "node:path";
-import { atomicJson, ensureDir } from "./io.js";
+import { atomicJson, ensureDir } from "../../io.js";
 import { generateYearDataset } from "./eval-generator.js";
 
 export async function writeYearDataset(output: string, year = 2025): Promise<{ fixture: string; oracle: string; events: number; queries: number }> {

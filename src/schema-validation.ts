@@ -102,7 +102,12 @@ export function assertDecisionView(value: unknown): asserts value is DecisionVie
   enumeration(item.current_status, DECISION_STATUSES, "decision view current_status");
   if (typeof item.confidence !== "number" || item.confidence < 0 || item.confidence > 1) invalid("decision view confidence");
   for (const field of ["current_event_id", "current_state"] as const) if (item[field] !== undefined && typeof item[field] !== "string") invalid(`decision view ${field}`);
-  if (item.current_evidence_refs !== undefined && (!Array.isArray(item.current_evidence_refs) || !item.current_evidence_refs.every(value => typeof value === "string"))) invalid("decision view current_evidence_refs");
+  if (item.current_evidence_refs !== undefined) {
+    if (!Array.isArray(item.current_evidence_refs)) invalid("decision view current_evidence_refs");
+    if (!item.current_evidence_refs.every(value => typeof value === "string")) {
+      invalid("decision view current_evidence_refs");
+    }
+  }
 }
 
 export function assertTagRegistry(value: unknown): asserts value is TagRegistry {
@@ -155,7 +160,10 @@ export function assertProjectRecord(value: unknown): asserts value is ProjectRec
   safeIds(item, ["project_id"], "project record");
   isoTimestamp(item.created_at, "project record created_at");
   isoTimestamp(item.last_seen, "project record last_seen");
-  enumeration(item.identity_source, new Set(["git_remote_root", "git_root", "absolute_path"]), "project record identity_source");
+  enumeration(item.identity_source, new Set(["git_remote_root", "git_root", "git_common_dir", "absolute_path"]), "project record identity_source");
+  if (item.locator_hash !== undefined && (typeof item.locator_hash !== "string" || !/^[a-f0-9]{64}$/.test(item.locator_hash))) invalid("project record locator_hash");
+  if (item.remote_hash !== undefined && (typeof item.remote_hash !== "string" || !/^[a-f0-9]{64}$/.test(item.remote_hash))) invalid("project record remote_hash");
+  if (item.identity_changed !== undefined && typeof item.identity_changed !== "boolean") invalid("project record identity_changed");
 }
 
 export function assertVaultConfig(value: unknown): asserts value is VaultConfig {
@@ -184,11 +192,32 @@ function record(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) invalid(label);
   return value as Record<string, unknown>;
 }
-function schemaOne(item: Record<string, unknown>, label: string): void { if (item.schema_version !== 1) invalid(`${label} schema_version`); }
-function optionalSchemaOne(item: Record<string, unknown>, label: string): void { if (item.schema_version !== undefined && item.schema_version !== 1) invalid(`${label} schema_version`); }
-function strings(item: Record<string, unknown>, fields: string[], label: string): void { for (const field of fields) if (typeof item[field] !== "string" || !(item[field] as string).length) invalid(`${label} ${field}`); }
-function stringArrays(item: Record<string, unknown>, fields: string[], label: string): void { for (const field of fields) if (!Array.isArray(item[field]) || !(item[field] as unknown[]).every(value => typeof value === "string")) invalid(`${label} ${field}`); }
-function safeIds(item: Record<string, unknown>, fields: string[], label: string): void { for (const field of fields) { try { assertSafeId(item[field] as string, `${label} ${field}`); } catch { invalid(`${label} ${field}`); } } }
+function schemaOne(item: Record<string, unknown>, label: string): void {
+  if (item.schema_version !== 1) invalid(`${label} schema_version`);
+}
+function optionalSchemaOne(item: Record<string, unknown>, label: string): void {
+  if (item.schema_version !== undefined && item.schema_version !== 1) invalid(`${label} schema_version`);
+}
+function strings(item: Record<string, unknown>, fields: string[], label: string): void {
+  for (const field of fields) {
+    if (typeof item[field] !== "string" || !(item[field] as string).length) invalid(`${label} ${field}`);
+  }
+}
+function stringArrays(item: Record<string, unknown>, fields: string[], label: string): void {
+  for (const field of fields) {
+    if (!Array.isArray(item[field])) invalid(`${label} ${field}`);
+    if (!(item[field] as unknown[]).every(value => typeof value === "string")) invalid(`${label} ${field}`);
+  }
+}
+function safeIds(item: Record<string, unknown>, fields: string[], label: string): void {
+  for (const field of fields) {
+    try {
+      assertSafeId(item[field] as string, `${label} ${field}`);
+    } catch {
+      invalid(`${label} ${field}`);
+    }
+  }
+}
 function isoTimestamp(value: unknown, label: string): void {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value))) invalid(label);
 }

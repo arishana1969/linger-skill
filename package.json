@@ -1,6 +1,6 @@
 {
   "name": "linger-skill",
-  "version": "0.2.2",
+  "version": "1.0.0",
   "description": "File-native sidecar conversation archive and decision trail for coding agents.",
   "license": "MIT",
   "repository": {
@@ -16,31 +16,36 @@
     "registry": "https://registry.npmjs.org/"
   },
   "type": "module",
-  "bin": { "linger-skill": "dist/cli.js", "linger": "dist/cli.js", "linger-eval": "dist/eval-cli.js" },
+  "bin": { "linger-skill": "dist/cli.js", "linger": "dist/cli.js" },
   "files": [
     "dist",
-    "!dist/*.test.*",
+    "!dist/**/*.test.*",
+    "!dist/dev/**",
+    "!dist/*.d.ts",
+    "!dist/*.map",
+    "local-model-manifests",
+    "local-runtime-manifests",
     "skills",
     "README.md",
     "README.zh-CN.md",
+    "UPGRADING.md",
     "CHANGELOG.md",
     "PRIVACY.md",
     "SECURITY.md",
-    "LICENSE",
-    "scripts/release-readiness.mjs"
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "pnpm run build && node --test dist/*.test.js",
-    "eval:year": "node dist/eval-cli.js generate --output eval-data && node dist/eval-cli.js run --fixture eval-data/fixtures/linger-year-2025.json --oracle eval-data/oracle/linger-year-2025.oracle.json",
-    "eval:adversarial": "node dist/eval-cli.js adversarial",
-    "eval:heldout": "node dist/eval-cli.js heldout",
+    "test": "pnpm run build && node --test dist/*.test.js dist/local/*.test.js dist/dev/eval/*.test.js",
+    "eval:year": "node dist/dev/eval/eval-cli.js generate --output eval-data && node dist/dev/eval/eval-cli.js run --fixture eval-data/fixtures/linger-year-2025.json --oracle eval-data/oracle/linger-year-2025.oracle.json",
+    "eval:adversarial": "node dist/dev/eval/eval-cli.js adversarial",
+    "eval:heldout": "node dist/dev/eval/eval-cli.js heldout",
     "verify:package": "node scripts/package-smoke.mjs",
     "verify:release-metadata": "node scripts/release-readiness.mjs",
     "prepublishOnly": "pnpm test && pnpm verify:package && pnpm verify:release-metadata"
   },
-  "engines": { "node": ">=20" },
+  "engines": { "node": "^22.0.0 || ^24.0.0 || ^26.0.0" },
   "packageManager": "pnpm@10.34.5",
   "devDependencies": {
     "@types/node": "^24.0.0",

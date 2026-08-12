@@ -51,6 +51,6 @@ test("doctor detects tampered raw content", async () => {
   parsed.content = "changed";
   await writeFile(file, JSON.stringify(parsed));
   const report = await doctor(root);
-  assert.equal(report.ok, true);
+  assert.equal(report.ok, false);
   assert.equal(report.warnings.some(value => value.startsWith("tampered:")), true);
 });

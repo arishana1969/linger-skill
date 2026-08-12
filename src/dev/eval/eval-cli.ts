@@ -7,6 +7,7 @@ import { generateHeldoutDataset } from "./eval-heldout.js";
 import type { EvalDataset, EvalEvent, EvalMutation, EvalOracle } from "./eval-generator.js";
 import { writeYearDataset } from "./eval-io.js";
 import { runEvalDataset } from "./eval-runner.js";
+import { assertSupportedRuntime } from "../../runtime-support.js";
 
 const args = process.argv.slice(2);
 const command = args.shift();
@@ -44,6 +45,7 @@ function isEvalMutation(value: unknown): value is EvalMutation {
 }
 
 async function main(): Promise<void> {
+  await assertSupportedRuntime();
   if (command === "generate") {
     const year = Number(option("--year") ?? "2025");
     if (!Number.isInteger(year) || year < 2000 || year > 9999) throw new Error("--year must be an integer between 2000 and 9999");

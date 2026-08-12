@@ -1,14 +1,11 @@
-import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { assertWritableInside, atomicJson, readJson } from "./io.js";
+import { readJson } from "./io.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { assertTermRelation } from "./schema-validation.js";
 import { assertTermRelationPath } from "./record-paths.js";
 import { listJsonFiles } from "./vault.js";
 
 export type TermRelationType = "synonym" | "alias" | "abbreviation" | "related" | "contextual_equivalent" | "location_mapping" | "product_name" | "ambiguous";
-
-const RELATION_TYPES = new Set<TermRelationType>(["synonym", "alias", "abbreviation", "related", "contextual_equivalent", "location_mapping", "product_name", "ambiguous"]);
 
 export interface TermRelation {
   schema_version: 1;
@@ -22,28 +19,6 @@ export interface TermRelation {
   evidence_refs: string[];
   created_at: string;
   last_verified: string;
-}
-
-export async function addTermRelation(root: string, input: Omit<TermRelation, "schema_version" | "relation_id" | "created_at" | "last_verified"> & { timestamp?: string }): Promise<TermRelation> {
-  const project = assertSafeId(input.project_id, "project id");
-  const a = normalize(input.term_a);
-  const b = normalize(input.term_b);
-  if (!a || !b || a === b) throw new Error("Term relation requires two distinct terms");
-  if (!RELATION_TYPES.has(input.relation_type)) throw new Error("Invalid term relation type");
-  if (input.confidence < 0 || input.confidence > 1) throw new Error("Confidence must be between 0 and 1");
-  if (!input.evidence_refs.length) throw new Error("Term relation requires evidence");
-  const timestamp = input.timestamp ?? new Date().toISOString();
-  const relation: TermRelation = {
-    schema_version: 1, relation_id: `tr_${randomUUID()}`, project_id: project, term_a: a, term_b: b,
-    relation_type: input.relation_type, confidence: input.confidence, context_tags: [...new Set(input.context_tags.map(normalize).filter(Boolean))],
-    evidence_refs: [...new Set(input.evidence_refs)], created_at: timestamp, last_verified: timestamp
-  };
-  assertTermRelation(relation);
-  const p = vaultPaths(root);
-  const file = path.join(p.registry, "term-graph", project, `${relation.relation_id}.json`);
-  await assertWritableInside(p.root, file);
-  await atomicJson(file, relation);
-  return relation;
 }
 
 export async function expandTerms(root: string, projectId: string, queryTerms: string[], contextTags: string[] = []): Promise<Map<string, number>> {

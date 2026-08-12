@@ -1,128 +1,133 @@
 import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { assertReadableInside, readJson } from "./io.js";
-import { assertCodexAdapterEvidence, assertCodexAdapterEvidencePath } from "./adapter-evidence.js";
-import { assertEnrichmentBatchPath, assertEnrichmentBatchRecord, assertEnrichmentOverlay, assertEnrichmentOverlayPath } from "./enrichment.js";
+import { embeddingIndexStatus } from "./local/embedding-index.js";
+import { resolveEffectiveSearchDocuments } from "./effective-search-document.js";
 import { vaultPaths } from "./paths.js";
-import { assertRecallSampleRecord } from "./recall-sampling.js";
-import { assertDecisionEvent, assertDecisionView, assertMemoryControlEvent, assertPendingCapture, assertProcessedMemory, assertProcessingRunHistory, assertProjectRecord, assertQueueItem, assertRawEvent, assertSequenceState, assertTagRegistry, assertTermRelation, assertVaultConfig } from "./schema-validation.js";
-import { assertDecisionEventPath, assertDecisionViewPath, assertMemoryControlPath, assertPendingRecordPath, assertProcessedRecordPath, assertProjectRecordPath, assertQueueRecordPath, assertRawRecordPath, assertTagRegistryPath, assertTermRelationPath } from "./record-paths.js";
-import { initVault } from "./vault.js";
+import { serializeProcessedMarkdown } from "./processed-markdown.js";
+import { inspectVaultRecord, listVaultRecordCandidates, type VaultRecordKind } from "./record-inspection.js";
+import { assertVaultConfig } from "./schema-validation.js";
 import { listVaultJsonCandidates } from "./vault-candidates.js";
+import { projectLocatorErrors, readVaultConfig } from "./vault.js";
+import type { ProcessedMemory, QueueItem, RawEvent } from "./types.js";
 
-export interface DoctorReport { ok: boolean; errors: string[]; warnings: string[]; }
+export interface DoctorReport {
+  ok: boolean;
+  state: "healthy" | "degraded" | "broken";
+  errors: string[];
+  warnings: string[];
+}
+
+const ERROR_NAMES: Record<VaultRecordKind, string> = {
+  raw: "raw",
+  processed: "processed",
+  enrichment: "enrichment",
+  queue: "queue",
+  pending: "pending",
+  decision: "decision",
+  tag_registry: "tag_registry",
+  memory_control: "memory_control",
+  term_relation: "term_relation",
+  project_record: "project_record",
+  sequence: "sequence",
+  processing_history: "processing_history",
+  adapter_evidence: "adapter_evidence",
+  lifecycle_evidence: "lifecycle_evidence",
+  session_control: "session_control",
+  recall_sample: "recall_sample",
+  enrichment_batch: "enrichment_batch"
+};
 
 export async function doctor(root: string): Promise<DoctorReport> {
   const p = vaultPaths(root);
-  const report: DoctorReport = { ok: true, errors: [], warnings: [] };
-  try { await initVault(root); const config = await readVaultJson(p.root, p.config); assertVaultConfig(config); }
-  catch { report.errors.push("invalid_vault_config:config.json"); }
-  const rawHashes = new Map<string, string>();
-  const processed = new Map<string, { source_hash?: string; source_events: string[] }>();
-  for (const file of await listVaultJsonCandidates(p.raw, p.root)) {
-    try {
-      const event = await readVaultJson(p.root, file);
-      assertRawEvent(event);
-      assertRawRecordPath(p, file, event);
-      const hash = createHash("sha256").update(event.content).digest("hex");
-      rawHashes.set(event.event_id, hash);
-      if (hash !== event.content_hash) report.warnings.push(`tampered:${path.relative(p.root, file)}`);
-    } catch { report.errors.push(`invalid_raw:${path.relative(p.root, file)}`); }
+  const report: DoctorReport = { ok: true, state: "healthy", errors: [], warnings: [] };
+  let integrityFailure = false;
+  try {
+    const config = await readVaultConfig(root);
+    if (!config) throw new Error("missing config");
+    assertVaultConfig(config);
+  } catch {
+    report.errors.push("invalid_vault_config:config.json");
   }
-  for (const file of await listVaultJsonCandidates(p.processed, p.root)) {
-    try {
-      const memory = await readVaultJson(p.root, file);
-      assertProcessedMemory(memory);
-      assertProcessedRecordPath(p, file, memory);
-      processed.set(memory.id, { source_hash: memory.source_hash, source_events: memory.source_events });
-      if (!memory.source_events.length) report.warnings.push(`missing_evidence:${memory.id}`);
-      if (memory.source_hash) {
-        const verified = memory.source_events.some(eventId => rawHashes.get(eventId) === memory.source_hash);
-        if (!verified) report.warnings.push(`processed_source_mismatch:${memory.id}`);
-      }
-    } catch { report.errors.push(`invalid_processed:${path.relative(p.root, file)}`); }
-  }
-  for (const file of await listVaultJsonCandidates(p.enrichments, p.root)) {
-    try {
-      const overlay = await readVaultJson(p.root, file);
-      assertEnrichmentOverlay(overlay);
-      assertEnrichmentOverlayPath(p.root, file, overlay);
-      const source = processed.get(overlay.memory_id);
-      if (!source || source.source_hash !== overlay.source_hash || source.source_events.length !== overlay.source_events.length || !source.source_events.every(event => overlay.source_events.includes(event))) {
-        report.warnings.push(`stale_enrichment:${overlay.memory_id}`);
-      }
-    } catch { report.errors.push(`invalid_enrichment:${path.relative(p.root, file)}`); }
-  }
-  for (const file of await listVaultJsonCandidates(p.decisions, p.root)) {
-    try {
-      const value = await readVaultJson(p.root, file);
-      if (path.basename(file) === "current.json") { assertDecisionView(value); assertDecisionViewPath(p, file, value); }
-      else { assertDecisionEvent(value); assertDecisionEventPath(p, file, value); }
-    } catch { report.errors.push(`invalid_decision:${path.relative(p.root, file)}`); }
-  }
-  for (const file of await listVaultJsonCandidates(path.join(p.registry, "tags"), p.root)) {
-    try { const value = await readVaultJson(p.root, file); assertTagRegistry(value); assertTagRegistryPath(p, file, value); }
-    catch { report.errors.push(`invalid_tag_registry:${path.relative(p.root, file)}`); }
-  }
-  for (const file of await listVaultJsonCandidates(path.join(p.registry, "memory-events"), p.root)) {
-    try { const value = await readVaultJson(p.root, file); assertMemoryControlEvent(value); assertMemoryControlPath(p, file, value); }
-    catch { report.errors.push(`invalid_memory_control:${path.relative(p.root, file)}`); }
-  }
-  for (const file of await listVaultJsonCandidates(path.join(p.registry, "term-graph"), p.root)) {
-    try { const value = await readVaultJson(p.root, file); assertTermRelation(value); assertTermRelationPath(p, file, value); }
-    catch { report.errors.push(`invalid_term_relation:${path.relative(p.root, file)}`); }
-  }
-  for (const file of await listVaultJsonCandidates(p.projects, p.root)) {
-    try { const value = await readVaultJson(p.root, file); assertProjectRecord(value); assertProjectRecordPath(p, file, value); }
-    catch { report.errors.push(`invalid_project_record:${path.relative(p.root, file)}`); }
-  }
-  for (const file of (await listVaultJsonCandidates(p.registry, p.root)).filter(file => path.dirname(file) === p.registry && file.endsWith(".sequence.json"))) {
-    try { const value = await readVaultJson(p.root, file); assertSequenceState(value); }
-    catch { report.errors.push(`invalid_sequence:${path.relative(p.root, file)}`); }
-  }
-  for (const file of await listVaultJsonCandidates(path.join(p.registry, "processing-runs"), p.root)) {
-    try { const value = await readVaultJson(p.root, file); assertProcessingRunHistory(value); }
-    catch { report.errors.push(`invalid_processing_history:${path.relative(p.root, file)}`); }
-  }
-  for (const file of await listVaultJsonCandidates(path.join(p.registry, "adapter-evidence"), p.root)) {
-    try {
-      const value = await readVaultJson(p.root, file);
-      assertCodexAdapterEvidence(value);
-      assertCodexAdapterEvidencePath(p.root, file);
-    } catch { report.errors.push(`invalid_adapter_evidence:${path.relative(p.root, file)}`); }
-  }
-  for (const file of await listVaultJsonCandidates(path.join(p.registry, "recall-samples"), p.root)) {
-    try {
-      assertRecallSampleRecord(p.root, file, await readVaultJson(p.root, file));
-    } catch { report.errors.push(`invalid_recall_sample:${path.relative(p.root, file)}`); }
-  }
-  for (const file of await listVaultJsonCandidates(path.join(p.registry, "enrichment-batches"), p.root)) {
-    try {
-      const value = await readVaultJson(p.root, file);
-      assertEnrichmentBatchRecord(value);
-      assertEnrichmentBatchPath(p.root, file, value);
-    } catch { report.errors.push(`invalid_enrichment_batch:${path.relative(p.root, file)}`); }
-  }
-  for (const file of await listVaultJsonCandidates(path.join(p.tmp, "pending"), p.root)) {
-    try { const pending = await readVaultJson(p.root, file); assertPendingCapture(pending); assertPendingRecordPath(p, file, pending); report.warnings.push(`pending_capture:${pending.pending_id}`); }
-    catch { report.errors.push(`invalid_pending:${path.relative(p.root, file)}`); }
-  }
+
+  const projects = new Set<string>();
   let backlog = 0;
-  for (const file of await listVaultJsonCandidates(p.queue, p.root)) {
+  for (const candidate of await listVaultRecordCandidates(root)) {
     try {
-      const item = await readVaultJson(p.root, file);
-      assertQueueItem(item);
-      assertQueueRecordPath(p, file, item);
-      if (item.status === "pending" || item.status === "failed") backlog += 1;
-      if (item.status === "failed") report.warnings.push(`failed_task:${item.task_id}`);
-    } catch { report.errors.push(`invalid_queue:${path.relative(p.root, file)}`); }
+      const value = await inspectVaultRecord(root, candidate);
+      if (candidate.kind === "raw") {
+        const event = value as RawEvent;
+        if (createHash("sha256").update(event.content).digest("hex") !== event.content_hash) {
+          report.warnings.push(`tampered:${path.relative(p.root, candidate.file)}`);
+          integrityFailure = true;
+        }
+      }
+      if (candidate.kind === "processed") {
+        const memory = value as ProcessedMemory;
+        projects.add(memory.project_id);
+        const markdown = path.join(p.processed, memory.project_id, `${memory.id}.md`);
+        try {
+          if (await readFile(markdown, "utf8") !== serializeProcessedMarkdown(memory)) report.warnings.push(`processed_markdown_stale:${memory.id}`);
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") report.warnings.push(`processed_markdown_missing:${memory.id}`);
+          else report.errors.push(`invalid_processed_markdown:${memory.id}`);
+        }
+      }
+      if (candidate.kind === "enrichment") projects.add((value as { project_id: string }).project_id);
+      if (candidate.kind === "pending") report.warnings.push(`pending_capture:${(value as { pending_id: string }).pending_id}`);
+      if (candidate.kind === "queue") {
+        const queue = value as QueueItem;
+        if (queue.status === "pending" || queue.status === "failed") backlog += 1;
+        if (queue.status === "failed") report.warnings.push(`failed_task:${queue.task_id}`);
+      }
+    } catch {
+      report.errors.push(`invalid_${ERROR_NAMES[candidate.kind]}:${path.relative(p.root, candidate.file)}`);
+    }
+  }
+
+  for (const project of [...projects].sort()) {
+    for (const document of await resolveEffectiveSearchDocuments(root, project, { maxFiles: 50_000 })) {
+      for (const reason of new Set([...document.ineligible_reasons, ...document.warning_flags])) {
+        if (!isDocumentIntegrityReason(reason)) continue;
+        report.warnings.push(`effective_document:${document.memory_id}:${reason}`);
+        if (!isDegradedDocumentReason(reason)) integrityFailure = true;
+      }
+    }
+  }
+
+  for (const file of await projectLocatorErrors(root)) report.errors.push(`invalid_project_locator:${file}`);
+  const embeddingProjects = new Set<string>();
+  for (const file of await listVaultJsonCandidates(p.embeddings, p.root)) {
+    const project = path.relative(p.embeddings, file).split(path.sep)[0];
+    if (project && /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(project)) embeddingProjects.add(project);
+  }
+  for (const project of [...embeddingProjects].sort()) {
+    if (await embeddingIndexStatus(root, project) === "failed") {
+      report.errors.push(`invalid_embedding_index:${project}`);
+      integrityFailure = true;
+    }
   }
   if (backlog > 100) report.warnings.push(`severe_backlog:${backlog}`);
-  report.ok = report.errors.length === 0;
+  report.ok = report.errors.length === 0 && !integrityFailure;
+  report.state = report.errors.length ? "broken" : report.warnings.length || integrityFailure ? "degraded" : "healthy";
   return report;
 }
 
-async function readVaultJson(root: string, file: string): Promise<unknown> {
-  await assertReadableInside(root, file);
-  return await readJson<unknown>(file);
+function isDocumentIntegrityReason(reason: string): boolean {
+  return [
+    "missing_source",
+    "tampered_source",
+    "source_hash_mismatch",
+    "source_set_mismatch",
+    "wrong_project",
+    "invalid_source_path",
+    "partial_source",
+    "unverified_source",
+    "invalid_overlay",
+    "stale_overlay"
+  ].includes(reason);
+}
+
+function isDegradedDocumentReason(reason: string): boolean {
+  return ["partial_source", "unverified_source", "invalid_overlay", "stale_overlay"].includes(reason);
 }

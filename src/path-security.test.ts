@@ -12,7 +12,7 @@ import { processQueue } from "./processing.js";
 import { processingDecision, recordProcessingRun } from "./processing-policy.js";
 import { quarantineInvalidFiles } from "./repair.js";
 import { search } from "./search.js";
-import { addTermRelation, expandTerms } from "./term-graph.js";
+import { expandTerms, type TermRelation } from "./term-graph.js";
 import { initVault } from "./vault.js";
 
 test("filesystem-routing entry points reject unsafe project IDs", async () => {
@@ -25,6 +25,7 @@ test("filesystem-routing entry points reject unsafe project IDs", async () => {
 
 test("path-traversing queue identity is invalid, inert, and repairable", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "linger-path-security-"));
+  await initVault(root);
   const p = vaultPaths(root);
   const file = path.join(p.queue, "p", "poison.json");
   await mkdir(path.dirname(file), { recursive: true });
@@ -82,13 +83,18 @@ test("timestamps that could alter a decision filename are rejected before persis
 
 test("misplaced derived records cannot cross project scope and are repairable", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "linger-path-security-"));
+  await initVault(root);
   const p = vaultPaths(root);
   const decision = await appendDecision(root, {
     projectId: "p_beta", topic: "runtime", kind: "decision", status: "current", statement: "Use Beta runtime", source: "user_explicit", confidence: 1,
     evidenceRefs: ["evt_beta"]
   });
   const control = await appendMemoryControl(root, { kind: "forget", project_id: "p_beta", target_memory_id: "mem_beta", evidence_refs: [] });
-  const relation = await addTermRelation(root, { project_id: "p_beta", term_a: "db", term_b: "database", relation_type: "abbreviation", confidence: 0.9, context_tags: [], evidence_refs: ["evt_beta"] });
+  const relation: TermRelation = {
+    schema_version: 1, relation_id: "tr_beta", project_id: "p_beta", term_a: "db", term_b: "database",
+    relation_type: "abbreviation", confidence: 0.9, context_tags: [], evidence_refs: ["evt_beta"],
+    created_at: "2026-01-01T00:00:00.000Z", last_verified: "2026-01-01T00:00:00.000Z"
+  };
 
   const wrongDecision = path.join(p.decisions, "p_alpha", decision.event.canonical_id);
   const wrongEvent = path.join(wrongDecision, "events", `${decision.event.timestamp.replaceAll(":", "-")}-${decision.event.event_id}.json`);

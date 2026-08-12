@@ -6,9 +6,11 @@ import test from "node:test";
 import { doctor } from "./doctor.js";
 import { vaultPaths } from "./paths.js";
 import { quarantineInvalidFiles } from "./repair.js";
+import { initVault } from "./vault.js";
 
 test("explicit repair quarantines invalid files and restores doctor availability", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "linger-repair-"));
+  await initVault(root);
   const file = path.join(vaultPaths(root).processed, "p", "broken.json");
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, "broken");
@@ -22,6 +24,7 @@ test("explicit repair quarantines invalid files and restores doctor availability
 
 test("doctor and repair cover adapter evidence and symlinked recall samples", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "linger-repair-registry-"));
+  await initVault(root);
   const external = await mkdtemp(path.join(os.tmpdir(), "linger-repair-external-"));
   const p = vaultPaths(root);
   const adapter = path.join(p.registry, "adapter-evidence", "codex.json");

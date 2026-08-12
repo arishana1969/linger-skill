@@ -5,7 +5,7 @@ import { writeProcessedMarkdown } from "./processed-markdown.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { assertMemoryControlEvent, assertProcessedMemory } from "./schema-validation.js";
 import { assertMemoryControlPath, assertProcessedRecordPath } from "./record-paths.js";
-import { listJsonFiles } from "./vault.js";
+import { initVault, listJsonFiles } from "./vault.js";
 import type { ProcessedMemory } from "./types.js";
 
 export type MemoryControlKind = "forget" | "correct" | "delete";
@@ -33,6 +33,7 @@ export async function appendMemoryControl(root: string, input: Omit<MemoryContro
   const target = assertSafeId(input.target_memory_id, "memory id");
   if (input.kind === "correct" && !input.replacement_memory_id) throw new Error("Correction requires a replacement memory");
   if (input.kind !== "forget" && !input.evidence_refs.length) throw new Error(`${input.kind} requires evidence`);
+  await initVault(root);
   const p = vaultPaths(root);
   return await withFileLock(path.join(p.tmp, `${project}.memory-control.lock`), async () => {
     const event: MemoryControlEvent = {

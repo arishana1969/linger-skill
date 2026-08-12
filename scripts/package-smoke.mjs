@@ -12,7 +12,11 @@ try {
   const pack = await runPnpm(["pack", "--json", "--pack-destination", temporary]);
   const metadata = JSON.parse(pack.stdout);
   const packedPaths = metadata.files.map((file) => file.path);
-  const forbidden = packedPaths.filter((file) => file.startsWith("src/") || file.startsWith("eval-data/") || /(?:^|\/)fixtures?(?:\/|$)|(?:^|\/)oracle(?:\/|$)|\.test\./.test(file));
+  const forbidden = packedPaths.filter((file) => file.startsWith("src/")
+    || file.startsWith("dist/dev/")
+    || file.startsWith("eval-data/")
+    || file.startsWith("scripts/")
+    || /(?:^|\/)fixtures?(?:\/|$)|(?:^|\/)oracle(?:\/|$)|\.test\./.test(file));
   if (forbidden.length) throw new Error(`packed artifact contains forbidden development data: ${forbidden.join(", ")}`);
   const tarball = path.resolve(temporary, metadata.filename);
   const extract = path.join(temporary, "extract");
@@ -20,17 +24,14 @@ try {
   await exec("tar", ["-xzf", tarball, "-C", extract]);
   const packageRoot = path.join(extract, "package");
   const required = [
-    "README.md", "README.zh-CN.md", "CHANGELOG.md", "PRIVACY.md", "SECURITY.md", "LICENSE", "dist/cli.js", "dist/eval-cli.js", "dist/hook-cli.js", "scripts/release-readiness.mjs",
-    "skills/linger/SKILL.md", "skills/linger/agents/openai.yaml", "skills/linger/references/protocol.md"
+    "README.md", "README.zh-CN.md", "UPGRADING.md", "CHANGELOG.md", "PRIVACY.md", "SECURITY.md", "LICENSE", "dist/cli.js", "dist/hook-cli.js",
+    "skills/linger/SKILL.md", "skills/linger/agents/openai.yaml", "skills/linger/references/protocol.md",
+    "local-model-manifests/multilingual-e5-base-onnx-q8.json",
+    "local-runtime-manifests/darwin-arm64-transformers-4.2.0.json"
   ];
   for (const file of required) await access(path.join(packageRoot, file));
   const packedManifest = JSON.parse(await readFile(path.join(packageRoot, "package.json"), "utf8"));
   if (packedManifest.name !== "linger-skill" || packedManifest.bin?.["linger-skill"] !== "dist/cli.js" || packedManifest.bin?.linger !== "dist/cli.js") throw new Error("packed manifest has an invalid name or CLI bin");
-  const readiness = JSON.parse((await exec(process.execPath, [path.join(packageRoot, "scripts", "release-readiness.mjs"), "--root", packageRoot])).stdout);
-  if (readiness.github_ready !== true || readiness.blockers.length !== 0) {
-    throw new Error(`packed release is not GitHub-ready: ${readiness.blockers.join(", ")}`);
-  }
-
   const consumer = path.join(temporary, "consumer");
   await mkdir(consumer, { recursive: true });
   await writeFile(path.join(consumer, "package.json"), JSON.stringify({ name: "linger-package-consumer", private: true }));
@@ -38,16 +39,18 @@ try {
   const home = path.join(temporary, "home");
   const cli = path.join(consumer, "node_modules", ".bin", process.platform === "win32" ? "linger-skill.CMD" : "linger-skill");
   await access(cli);
-  const installed = JSON.parse((await exec(cli, ["install", "--home", home, "--yes"], { cwd: consumer })).stdout);
+  const packagedCli = path.join(consumer, "node_modules", "linger-skill", "dist", "cli.js");
+  const installed = JSON.parse((await exec(process.execPath, [packagedCli, "install", "--home", home, "--yes"], { cwd: consumer })).stdout);
   if (!installed.privacy_notice || installed.capabilities.length !== 2) throw new Error("packed installer omitted privacy notice or capability report");
-  const capabilities = JSON.parse((await exec(cli, ["capabilities", "--home", home], { cwd: consumer })).stdout);
+  const stableCli = path.join(home, ".linger", "bin", process.platform === "win32" ? "linger.cmd" : "linger");
+  const capabilities = JSON.parse((await exec(stableCli, ["capabilities", "--home", home], { cwd: consumer })).stdout);
   if (capabilities[0]?.level !== 2 || capabilities[1]?.level !== 1) throw new Error("packed capability report did not preserve Claude L2 and trust-gated Codex L1");
   const vault = path.join(home, ".linger", "vault");
-  await exec(cli, ["capture", "--vault", vault, "--project", "p_consumer", "--session", "s", "--turn", "t", "--role", "user", "--content", "package-consumer-zephyr durable decision", "--explicit"], { cwd: consumer });
-  await exec(cli, ["process", "--vault", vault, "--project", "p_consumer"], { cwd: consumer });
-  const recalled = JSON.parse((await exec(cli, ["recall", "--vault", vault, "--project", "p_consumer", "--query", "package-consumer-zephyr"], { cwd: consumer })).stdout);
+  await exec(stableCli, ["capture", "--vault", vault, "--project", "p_consumer", "--session", "s", "--turn", "t", "--role", "user", "--content", "package-consumer-zephyr durable decision", "--explicit"], { cwd: consumer });
+  await exec(stableCli, ["process", "--vault", vault, "--project", "p_consumer"], { cwd: consumer });
+  const recalled = JSON.parse((await exec(stableCli, ["recall", "--vault", vault, "--project", "p_consumer", "--query", "package-consumer-zephyr"], { cwd: consumer })).stdout);
   if (recalled.hits?.length !== 1 || !recalled.hits[0]?.snippet?.includes("durable decision")) throw new Error("packed consumer failed capture-to-recall smoke");
-  const uninstalled = JSON.parse((await exec(cli, ["uninstall", "--home", home, "--yes"], { cwd: consumer })).stdout);
+  const uninstalled = JSON.parse((await exec(stableCli, ["uninstall", "--home", home, "--yes"], { cwd: consumer })).stdout);
   if (uninstalled.vault_preserved !== true) throw new Error("packed uninstall did not preserve the Vault contract");
   await access(vault);
   console.log(JSON.stringify({ ok: true, tarball: path.basename(tarball), package_manager_install: true, capture_to_recall: true, vault_preserved: true, required_files: required.length, forbidden_files: forbidden.length, capabilities: capabilities.map((item) => ({ adapter: item.adapter, level: item.level })) }, null, 2));

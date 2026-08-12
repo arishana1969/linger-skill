@@ -72,5 +72,5 @@ export async function readTagRegistry(root: string, projectId: string): Promise<
   catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; }
 }
 
-export function normalizeTag(value: string): string { return value.trim().toLowerCase().replace(/\s+/g, "-").replace(/^-+|-+$/g, ""); }
+function normalizeTag(value: string): string { return value.trim().toLowerCase().replace(/\s+/g, "-").replace(/^-+|-+$/g, ""); }
 function later(a: string, b: string): string { return a.localeCompare(b) >= 0 ? a : b; }

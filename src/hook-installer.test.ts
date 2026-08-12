@@ -21,7 +21,7 @@ test("merges hooks without overwriting user configuration and is idempotent", as
   assert.equal(claude.autoMemoryEnabled, true);
   assert.equal(claude.hooks.Stop[0].hooks[0].command, "user-script");
   assert.equal(claude.hooks.Stop.flatMap((group: { hooks: unknown[] }) => group.hooks).length, 2);
-  assert.deepEqual(Object.keys(claude.hooks).sort(), ["SessionStart", "Stop", "StopFailure", "UserPromptSubmit"]);
+  assert.deepEqual(Object.keys(claude.hooks).sort(), ["SessionEnd", "SessionStart", "Stop", "StopFailure", "UserPromptSubmit"]);
   const codex = JSON.parse(await readFile(path.join(home, ".codex", "hooks.json"), "utf8"));
   assert.deepEqual(Object.keys(codex.hooks).sort(), ["SessionStart", "Stop", "UserPromptSubmit"]);
 });

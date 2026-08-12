@@ -11,11 +11,20 @@ const patterns = [
   ["openai_style_key", /sk-[A-Za-z0-9]{20,}/],
   ["slack_token", /xox[baprs]-[A-Za-z0-9-]{10,}/]
 ];
-const { stdout } = await exec("git", ["ls-files", "-z"], { encoding: "buffer" });
+const { stdout } = await exec("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], { encoding: "buffer" });
+const files = stdout.toString("utf8").split("\0").filter(Boolean);
 const findings = [];
-for (const file of stdout.toString("utf8").split("\0").filter(Boolean)) {
-  const bytes = await readFile(file);
+let scannedFiles = 0;
+for (const file of files) {
+  let bytes;
+  try {
+    bytes = await readFile(file);
+  } catch (error) {
+    if (error.code === "ENOENT") continue;
+    throw error;
+  }
   if (bytes.includes(0)) continue;
+  scannedFiles += 1;
   const content = bytes.toString("utf8");
   for (const [rule, pattern] of patterns) if (pattern.test(content)) findings.push({ file, rule });
 }
@@ -23,5 +32,5 @@ if (findings.length) {
   process.stderr.write(`${JSON.stringify({ ok: false, findings }, null, 2)}\n`);
   process.exitCode = 1;
 } else {
-  process.stdout.write(`${JSON.stringify({ ok: true, scanned_files: stdout.toString("utf8").split("\0").filter(Boolean).length })}\n`);
+  process.stdout.write(`${JSON.stringify({ ok: true, scanned_files: scannedFiles })}\n`);
 }

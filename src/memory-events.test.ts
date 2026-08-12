@@ -13,7 +13,8 @@ test("records correction without mutating old memory", async () => {
   await capture(root, { projectId: "p_test", sessionId: "s1", turnId: "t1", role: "user", content: "决定使用 SQLite", sourceAgent: "test", explicit: true });
   await processQueue(root);
   const old = (await search(root, { projectId: "p_test", query: "SQLite" }))[0]!;
-  const result = await correctMemory(root, "p_test", old.source, { summary: "纠正：当前决定使用本地 JSON 文件", evidenceRefs: ["evt_correction"] });
+  const evidence = await capture(root, { projectId: "p_test", sessionId: "s1", turnId: "t2", role: "user", content: "纠正证据：当前决定使用本地 JSON 文件", sourceAgent: "test" });
+  const result = await correctMemory(root, "p_test", old.source, { summary: "纠正：当前决定使用本地 JSON 文件", evidenceRefs: [evidence!.event_id] });
   const states = await effectiveMemoryStates(root, "p_test");
   assert.equal(states.get(old.source)?.status, "superseded");
   assert.equal(states.get(old.source)?.replacement_memory_id, result.memory.id);

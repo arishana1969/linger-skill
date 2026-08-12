@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [20, 22, 24]
+        node: [22, 24, 26]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
@@ -31,6 +31,28 @@ jobs:
         run: pnpm eval:adversarial
       - if: matrix.node == 24
         run: pnpm eval:heldout
+
+  unsupported-node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsc -p tsconfig.json
+      - run: |
+          set +e
+          output="$(node dist/cli.js init --vault "$RUNNER_TEMP/unsupported-vault" 2>&1)"
+          status=$?
+          set -e
+          test "$status" -eq 1
+          test "$output" = "linger: runtime.unsupported_node:20:supported=22,24,26"
+          test ! -e "$RUNNER_TEMP/unsupported-vault"
 
   artifact-validation:
     runs-on: ubuntu-latest

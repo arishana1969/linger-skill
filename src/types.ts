@@ -69,4 +69,11 @@ export interface SearchHit {
   raw_ref: string[];
   warning_flags: string[];
   sensitivity_flags: string[];
+  lexical_rank?: number;
+  lexical_score?: number;
+  semantic_rank?: number;
+  semantic_similarity?: number;
+  fused_score?: number;
+  retrieval_branch?: "lexical" | "semantic" | "hybrid";
+  index_generation?: string;
 }

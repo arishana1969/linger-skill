@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -13,19 +13,30 @@ test("installs idempotently and keeps untrusted Codex hooks at L1", async () => 
   const first = await install({ home: fakeHome, packageRoot });
   assert.deepEqual(first.capabilities.map(item => item.level), [2, 1]);
   const second = await install({ home: fakeHome, packageRoot });
-  assert.equal(second.manifest.backups.length, 0);
+  assert.equal(Object.hasOwn(second.manifest, "backups"), false);
+  assert.equal(Object.hasOwn(second.manifest, "package_root"), false);
+  assert.equal(Object.hasOwn(second.manifest, "hook_files"), false);
   await access(path.join(fakeHome, ".claude", "skills", "linger", "SKILL.md"));
   await access(path.join(fakeHome, ".codex", "skills", "linger", "SKILL.md"));
+  await access(path.join(fakeHome, ".linger", "bin", "linger"));
+  await assert.rejects(access(path.join(fakeHome, ".linger", "install", "active.json")));
+  assert.equal(first.cli.path, path.join(fakeHome, ".linger", "bin", "linger"));
 });
 
-test("backs up unmanaged skill and uninstall preserves vault", async () => {
+test("unmanaged skill causes zero mutation unless cli-only is explicit", async () => {
   const fakeHome = await home();
   const existing = path.join(fakeHome, ".codex", "skills", "linger");
   await mkdir(existing, { recursive: true });
   await writeFile(path.join(existing, "SKILL.md"), "user-owned");
-  const result = await install({ home: fakeHome, packageRoot, adapters: ["codex"] });
-  assert.equal(result.manifest.backups.length, 1);
-  assert.equal(await readFile(path.join(result.manifest.backups[0]!, "SKILL.md"), "utf8"), "user-owned");
+  await assert.rejects(install({ home: fakeHome, packageRoot, adapters: ["codex"] }), /user-owned; no files were changed/);
+  await assert.rejects(access(path.join(fakeHome, ".linger")));
+  assert.equal(await readFile(path.join(existing, "SKILL.md"), "utf8"), "user-owned");
+
+  const result = await install({ home: fakeHome, packageRoot, adapters: ["codex"], onEntryConflict: "cli-only" });
+  assert.deepEqual(result.manifest.entry_conflicts, [existing]);
+  assert.deepEqual(result.manifest.files, []);
+  assert.equal(await readFile(path.join(existing, "SKILL.md"), "utf8"), "user-owned");
+  await access(path.join(fakeHome, ".linger", "bin", "linger"));
   const vaultSentinel = path.join(fakeHome, ".linger", "vault", "keep.txt");
   await mkdir(path.dirname(vaultSentinel), { recursive: true });
   await writeFile(vaultSentinel, "keep");
@@ -116,4 +127,55 @@ test("programmatic install rejects invalid or duplicate adapters before writes",
   await assert.rejects(install({ home: fakeHome, packageRoot, adapters: ["codex", "codex"] }), /Invalid install adapters/);
   await assert.rejects(install({ home: fakeHome, packageRoot, adapters: ["unknown" as never] }), /Invalid install adapters/);
   await assert.rejects(access(path.join(fakeHome, ".linger")));
+});
+
+test("malformed host hooks fail before installer mutation", async () => {
+  const fakeHome = await home();
+  const hooks = path.join(fakeHome, ".codex", "hooks.json");
+  await mkdir(path.dirname(hooks), { recursive: true });
+  await writeFile(hooks, "[]");
+  await assert.rejects(install({ home: fakeHome, packageRoot, adapters: ["codex"] }), /Invalid host configuration/);
+  assert.equal(await readFile(hooks, "utf8"), "[]");
+  await assert.rejects(access(path.join(fakeHome, ".linger")));
+  await assert.rejects(access(path.join(fakeHome, ".codex", "skills", "linger")));
+});
+
+test("upgrades a manifest-owned legacy Codex skill without touching the Vault", async () => {
+  const fakeHome = await home();
+  const first = await install({ home: fakeHome, packageRoot, adapters: ["codex"] });
+  const skill = path.join(fakeHome, ".codex", "skills", "linger");
+  await rm(path.join(skill, ".linger-managed.json"));
+  await writeFile(path.join(skill, ".linger-managed"), "managed by legacy linger\n");
+  const manifestFile = path.join(fakeHome, ".linger", "install-manifest.json");
+  const manifest = JSON.parse(await readFile(manifestFile, "utf8"));
+  for (const launcher of manifest.cli_launchers) await rm(launcher, { force: true });
+  delete manifest.cli_launchers;
+  await writeFile(manifestFile, JSON.stringify(manifest));
+  const sentinel = path.join(fakeHome, ".linger", "vault", "legacy.json");
+  await mkdir(path.dirname(sentinel), { recursive: true });
+  await writeFile(sentinel, "legacy-content\n");
+  const upgraded = await install({ home: fakeHome, packageRoot, adapters: ["codex"] });
+  assert.equal(upgraded.manifest.files[0], skill);
+  await access(path.join(skill, ".linger-managed.json"));
+  assert.equal(await readFile(sentinel, "utf8"), "legacy-content\n");
+  assert.equal(first.manifest.runtime_root, upgraded.manifest.runtime_root);
+});
+
+test("installs a managed bare CLI into an existing PATH-owned user bin", async () => {
+  const fakeHome = await home();
+  const localBin = path.join(fakeHome, ".local", "bin");
+  await mkdir(localBin, { recursive: true });
+  const previousPath = process.env.PATH;
+  process.env.PATH = `${localBin}${path.delimiter}${previousPath ?? ""}`;
+  try {
+    const result = await install({ home: fakeHome, packageRoot, adapters: ["codex"] });
+    assert.equal(result.cli.path, path.join(localBin, "linger"));
+    assert.equal(result.cli.on_path, true);
+    await access(result.cli.path);
+    const uninstalled = await uninstall(fakeHome);
+    assert.equal(uninstalled.vault_preserved, true);
+    await assert.rejects(access(result.cli.path));
+  } finally {
+    process.env.PATH = previousPath;
+  }
 });

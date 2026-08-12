@@ -12,6 +12,8 @@ export interface VaultPaths {
   registry: string;
   decisions: string;
   quarantine: string;
+  embeddings: string;
+  modelCache: string;
 }
 
 export function vaultPaths(root: string): VaultPaths {
@@ -27,7 +29,9 @@ export function vaultPaths(root: string): VaultPaths {
     tmp: path.join(resolved, "tmp"),
     registry: path.join(resolved, "registry"),
     decisions: path.join(resolved, "decisions"),
-    quarantine: path.join(resolved, "quarantine")
+    quarantine: path.join(resolved, "quarantine"),
+    embeddings: path.join(resolved, "embeddings"),
+    modelCache: path.join(resolved, "model-cache")
   };
 }
 
@@ -36,4 +40,15 @@ export function assertSafeId(value: string, label: string): string {
     throw new Error(`Invalid ${label}`);
   }
   return value;
+}
+
+export function assertSafeRelativePosixPath(value: string, errorCode: string): string {
+  if (!value || Buffer.byteLength(value) > 1024 || value.includes("\\") || value.includes("\0") || path.posix.isAbsolute(value)) {
+    throw new Error(errorCode);
+  }
+  const normalized = path.posix.normalize(value);
+  if (normalized !== value || normalized === "." || normalized.startsWith("../") || value.split("/").some(part => !part || part === "." || part === "..")) {
+    throw new Error(errorCode);
+  }
+  return normalized;
 }

@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { mkdtemp } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { promisify } from "node:util";
 import { install } from "./installer.js";
 import { processQueue } from "./processing.js";
 import { search } from "./search.js";
@@ -20,6 +21,11 @@ test("installed runtime captures after the source package is no longer its execu
   await processQueue(vault);
   const hits = await search(vault, { projectId: await projectId(cwd), query: "稳定运行时" });
   assert.match(hits[0]?.snippet ?? "", /稳定运行时/);
+  const launcher = result.manifest.cli_launchers?.[0];
+  assert.ok(launcher);
+  const status = JSON.parse((await promisify(execFile)(launcher, ["status", "--vault", vault, "--project", await projectId(cwd), "--home", home])).stdout) as { initialized: boolean; raw_events: number };
+  assert.equal(status.initialized, true);
+  assert.equal(status.raw_events, 1);
 });
 
 async function runHook(file: string, home: string, payload: unknown): Promise<void> {

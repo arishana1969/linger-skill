@@ -58,6 +58,7 @@ test("host enrichment improves recall without replacing deterministic processed 
   assert.equal(committed.committed, 1);
   assert.equal(await readFile(processedFile, "utf8"), baseline);
   assert.match((await search(root, { projectId: project, query: "semantic-orchid" }))[0]?.snippet ?? "", /host-model release workflow/);
+  assert.equal((await search(root, { projectId: project, query: "preserve source evidence" }))[0]?.source, batch.items[0]!.memory_id);
   assert.deepEqual(await enrichmentStatus(root, project), { project_id: project, pending: 0, enriched: 1 });
   assert.ok((await readTagRegistry(root, project))?.entries.some(entry => entry.normalized_tag === "semantic-orchid"));
 });

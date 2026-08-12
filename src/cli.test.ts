@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp } from "node:fs/promises";
+import { access, mkdtemp } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -29,6 +29,19 @@ test("CLI accepts the global Vault option before the command", async () => {
   assert.equal(initialized.schema_version, 1);
 });
 
+test("CLI config show is read-only and config set exposes effective source", async () => {
+  const parent = await mkdtemp(path.join(os.tmpdir(), "linger-cli-config-"));
+  const vault = path.join(parent, "vault");
+  const initial = JSON.parse(await run(["config", "show", "--vault", vault, "--project", "p_cli"])) as { values: Record<string, { value: unknown; source: string }> };
+  assert.equal(initial.values["staleness.threshold_days"]?.value, 90);
+  assert.equal(initial.values["staleness.threshold_days"]?.source, "builtin");
+  await assert.rejects(access(vault));
+
+  const updated = JSON.parse(await run(["config", "set", "--vault", vault, "--scope", "project", "--project", "p_cli", "--key", "staleness.threshold_days", "--value", "120"])) as { values: Record<string, { value: unknown; source: string }> };
+  assert.equal(updated.values["staleness.threshold_days"]?.value, 120);
+  assert.equal(updated.values["staleness.threshold_days"]?.source, "project");
+});
+
 test("CLI reuses recent hook-owned explicit evidence and refuses duplicate decision-add", async () => {
   const vault = await mkdtemp(path.join(os.tmpdir(), "linger-cli-hook-owned-"));
   const { capture } = await import("./capture.js");
@@ -39,9 +52,19 @@ test("CLI reuses recent hook-owned explicit evidence and refuses duplicate decis
   });
   const reused = JSON.parse(await run(["capture", "--vault", vault, "--project", "p_owned", "--session", "manual", "--turn", "manual", "--role", "user", "--content", "最终验收代号是 aurora-ds-418"]));
   assert.equal(reused.event_id, hook!.event_id);
-  const status = JSON.parse(await run(["status", "--vault", vault]));
+  const status = JSON.parse(await run(["status", "--vault", vault, "--project", "p_owned"]));
   assert.equal(status.raw_events, 1);
   await assert.rejects(run(["decision-add", "--vault", vault, "--project", "p_owned", "--topic", "release", "--statement", "aurora-ds-418", "--source", "user_explicit", "--confidence", "1", "--evidence", hook!.event_id]), /already owned by automatic processing/);
+});
+
+test("CLI session control is explicit and reflected in status", async () => {
+  const vault = await mkdtemp(path.join(os.tmpdir(), "linger-cli-session-"));
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "linger-cli-session-project-"));
+  const token = "a".repeat(64);
+  assert.equal(JSON.parse(await run(["session-off", "--vault", vault, "--token", token])).capture, "off");
+  const status = JSON.parse(await run(["status", "--vault", vault, "--cwd", cwd, "--session-token", token]));
+  assert.equal(status.capture.session, "off");
+  assert.equal(JSON.parse(await run(["session-on", "--vault", vault, "--token", token])).capture, "on");
 });
 
 async function run(args: string[]): Promise<string> { return (await exec(node, [cli, ...args])).stdout.trim(); }
