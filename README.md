@@ -15,6 +15,26 @@ A file-native conversation archive and decision trail for coding agents.
 Linger v1.0.0 is the first formal product release for Claude Code and Codex. It preserves visible project conversations
 as local, traceable evidence; it does not promise perfect archival coverage or production-grade compliance.
 
+## What's new in v1.0.0
+
+Compared with the previously published v0.2.2, v1.0.0 adds:
+
+- **Visible status and session control:** `/linger` in Claude Code and `$linger` or the Skill picker in Codex show whether
+  Linger is active and can turn it off only for the current conversation.
+- **A stable CLI:** one managed install identity and launcher, explicit PATH diagnostics, and supported Node.js 22/24/26
+  behavior address the recurring “Linger CLI is unavailable” failure mode.
+- **Decision explanations and stronger diagnostics:** `linger why`, integrity-aware inspection, Capture Health, queue state,
+  Local Embedding state, and actionable `doctor` output.
+- **Optional Local-only semantic recall:** a default-off, validated Darwin/arm64 profile with no API/Remote Embedding backend
+  and no embedding API key.
+- **In-place v0.2.2 compatibility:** existing schema-v1 evidence, Vault content, managed installs, and same-root project
+  identities are reused without a bulk history rewrite; uninstall still preserves the Vault.
+- **A smaller public surface:** duplicate install state, unused settings, and undocumented maintenance/evaluation commands
+  were removed or made internal, while evidence and validation paths were simplified.
+
+See [CHANGELOG.md](CHANGELOG.md) for the complete change list and [UPGRADING.md](UPGRADING.md) for compatibility, removed
+surfaces, verification, and rollback guidance.
+
 ## What Linger does
 
 - Captures visible user and assistant turns through managed lifecycle hooks, with a CLI fallback.

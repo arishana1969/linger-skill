@@ -14,6 +14,25 @@
 Linger v1.0.0 是面向 Claude Code 与 Codex 的首个正式产品版本。它把项目中的可见对话保存为本地、可追溯
 的证据，但不承诺完整捕获每个字，也不提供生产级合规保证。
 
+## v1.0.0 更新内容
+
+与此前正式发布的 v0.2.2 相比，v1.0.0 主要新增和调整如下：
+
+- **状态入口与当前会话控制：** Claude Code 使用 `/linger`，Codex 使用 `$linger` 或 Skill picker，可查看
+  Linger 是否开启，并且只在当前对话中关闭或重新开启。
+- **稳定 CLI：** 收敛为单一受管安装身份与 launcher，增加明确的 PATH 诊断，并统一 Node.js 22/24/26
+  支持，处理过去经常出现的“Linger CLI 不可用”问题。
+- **决策解释与诊断：** 新增 `linger why`、完整性感知 inspection、Capture Health、queue 状态、Local Embedding
+  状态以及可执行的 `doctor` 诊断。
+- **可选 Local-only 语义召回：** 提供 default-off 的 Darwin/arm64 已验收 profile；不存在 API/Remote
+  Embedding backend，也不需要 embedding API key。
+- **原地兼容 v0.2.2：** 复用既有 schema-v1 证据、Vault、受管安装与同-root project identity，不批量改写
+  历史；uninstall 仍然保留 Vault。
+- **收窄公开表面：** 删除或内部化重复安装状态、无运行时消费者的设置以及未文档化维护/评测命令，并简化
+  evidence 与 validation 路径。
+
+完整变更见 [CHANGELOG.md](CHANGELOG.md)；兼容范围、移除表面、验证与回退方式见 [UPGRADING.md](UPGRADING.md)。
+
 ## Linger 能做什么
 
 - 通过受管 lifecycle hooks 捕获可见的用户/助手消息，宿主不支持时可退回 CLI。
