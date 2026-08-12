@@ -1,6 +1,7 @@
 import { listDecisionViews } from "./decisions.js";
 import { search, type SearchOptions } from "./search.js";
 import { readTagRegistry } from "./tag-registry.js";
+import { resolveSettings } from "./settings.js";
 import type { SearchHit } from "./types.js";
 
 export interface RecallPackage {
@@ -11,10 +12,12 @@ export interface RecallPackage {
   total_characters: number;
   current_state?: string;
   decision_topic?: string;
+  retrieval_mode: "deterministic" | "hybrid" | "deterministic_fallback";
+  degraded_reason?: string;
 }
 
-export async function recall(root: string, options: SearchOptions & { maxCharacters?: number }): Promise<RecallPackage> {
-  let found = await search(root, options);
+export async function recall(root: string, options: SearchOptions & { maxCharacters?: number; initialHits?: SearchHit[]; retrievalMode?: RecallPackage["retrieval_mode"]; degradedReason?: string }): Promise<RecallPackage> {
+  let found = options.initialHits ?? await search(root, options);
   if (/(?:为什么|原因|理由|why|reason)/i.test(options.query)) {
     const rationale = found.filter(hit => /(?:因为|由于|\b因|because|reason|cost|complexity|constraint)/i.test(hit.snippet));
     if (rationale.length) found = rationale;
@@ -34,7 +37,8 @@ export async function recall(root: string, options: SearchOptions & { maxCharact
     const currentHits = found.filter(hit => hit.raw_ref.some(event => currentEvidence.has(event)));
     if (currentHits.length) found = currentHits;
   }
-  const max = options.maxCharacters ?? 12000;
+  const settings = await resolveSettings(root, { projectId: options.projectId });
+  const max = options.maxCharacters ?? settings.values["recall.max_characters"].value as number;
   const hits: SearchHit[] = [];
   let characters = 0;
   let truncated = false;
@@ -50,6 +54,8 @@ export async function recall(root: string, options: SearchOptions & { maxCharact
   const classification = classify(hits, Boolean(matchedDecision?.conflicts.length));
   return {
     classification, hits, truncated, total_characters: characters, current_state: matchedDecision?.current_state, decision_topic: matchedDecision?.topic,
+    retrieval_mode: options.retrievalMode ?? "deterministic",
+    ...(options.degradedReason ? { degraded_reason: options.degradedReason } : {}),
     candidates: hits.length ? { topics: [], decisions: [], tags: [], time_ranges: [] } : {
       topics: decisions.map(view => view.topic).slice(0, 5),
       decisions: decisions.map(view => view.current_state).filter((value): value is string => Boolean(value)).slice(0, 5),

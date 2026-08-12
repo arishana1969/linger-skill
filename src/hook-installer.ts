@@ -19,7 +19,7 @@ export async function installHooks(home: string, packageRoot: string, adapters: 
     const settings = await jsonObjectOr(file);
     const hooks = asHooks(settings.hooks);
     removeLingerHookCommands(hooks, home, "claude-code");
-    addLingerHooks(hooks, "claude-code", node, hook, runtimeIdentity, ["SessionStart", "UserPromptSubmit", "Stop", "StopFailure"]);
+    addLingerHooks(hooks, "claude-code", node, hook, path.join(home, ".linger", "vault"), runtimeIdentity, ["SessionStart", "SessionEnd", "UserPromptSubmit", "Stop", "StopFailure"]);
     await mkdir(path.dirname(file), { recursive: true });
     await atomicJson(file, { ...settings, hooks });
     written.push(file);
@@ -29,12 +29,17 @@ export async function installHooks(home: string, packageRoot: string, adapters: 
     const document = await jsonObjectOr(file);
     const hooks = asHooks(document.hooks);
     removeLingerHookCommands(hooks, home, "codex");
-    addLingerHooks(hooks, "codex", node, hook, runtimeIdentity, ["SessionStart", "UserPromptSubmit", "Stop"]);
+    addLingerHooks(hooks, "codex", node, hook, path.join(home, ".linger", "vault"), runtimeIdentity, ["SessionStart", "UserPromptSubmit", "Stop"]);
     await mkdir(path.dirname(file), { recursive: true });
     await atomicJson(file, { ...document, hooks });
     written.push(file);
   }
   return written;
+}
+
+export async function preflightHooks(home: string, adapters: AdapterName[]): Promise<void> {
+  if (adapters.includes("claude-code")) asHooks((await jsonObjectOr(path.join(home, ".claude", "settings.json"))).hooks);
+  if (adapters.includes("codex")) asHooks((await jsonObjectOr(path.join(home, ".codex", "hooks.json"))).hooks);
 }
 
 export async function uninstallHooks(home: string, adapters: AdapterName[], claudeAutoMemory?: ClaudeAutoMemoryState): Promise<string[]> {
@@ -58,9 +63,9 @@ export async function uninstallHooks(home: string, adapters: AdapterName[], clau
   return changed;
 }
 
-function addLingerHooks(hooks: HookMap, adapter: AdapterName, node: string, hook: string, runtimeIdentity: string, events: string[]): void {
-  const command = posixHookCommand({ adapter, node, hook, runtime_identity: runtimeIdentity });
-  const commandWindows = windowsCommand({ adapter, node, hook, runtimeIdentity });
+function addLingerHooks(hooks: HookMap, adapter: AdapterName, node: string, hook: string, vault: string, runtimeIdentity: string, events: string[]): void {
+  const command = posixHookCommand({ adapter, node, hook, vault, runtime_identity: runtimeIdentity });
+  const commandWindows = windowsCommand({ adapter, node, hook, vault, runtimeIdentity });
   for (const event of events) {
     const groups = hooks[event] ?? [];
     const already = groups.some(group => group.hooks.some(hook => hook.command === command));

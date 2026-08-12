@@ -27,7 +27,8 @@ test("correction supersedes old recall and exposes replacement", async () => {
   await capture(root, { projectId: "p_test", sessionId: "s1", turnId: "t1", role: "user", content: "数据库用 SQLite", sourceAgent: "test" });
   await processQueue(root);
   const old = (await search(root, { projectId: "p_test", query: "SQLite" }))[0]!;
-  const replacement = await correct(root, "p_test", old.source, "纠正：数据库使用 JSON 文件", ["evt_fix"]);
+  const evidence = await capture(root, { projectId: "p_test", sessionId: "s1", turnId: "t2", role: "user", content: "纠正证据：数据库改为 JSON 文件", sourceAgent: "test" });
+  const replacement = await correct(root, "p_test", old.source, "纠正：数据库使用 JSON 文件", [evidence!.event_id]);
   assert.equal((await search(root, { projectId: "p_test", query: "SQLite" })).length, 0);
   assert.match((await search(root, { projectId: "p_test", query: "JSON 文件" }))[0]?.snippet ?? "", /纠正/);
   assert.equal((await inspect(root, "p_test", old.source)).effective_status, "superseded");

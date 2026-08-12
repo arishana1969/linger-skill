@@ -18,12 +18,10 @@ test("excludes processed memory whose raw source was tampered", async () => {
   assert.deepEqual(await search(root, { projectId: "p", query: "tamper-zephyr" }), []);
 });
 
-test("keeps processed memory with warning after its raw source is deleted", async () => {
+test("fails closed when a processed memory loses its raw source", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "linger-search-integrity-"));
   const event = await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "deleted-raw-zephyr retained summary", sourceAgent: "test" });
   await processQueue(root);
   await rm(path.join(root, event!.raw_ref));
-  const hit = (await search(root, { projectId: "p", query: "deleted-raw-zephyr" }))[0]!;
-  assert.ok(hit.warning_flags.includes("unverified_source"));
-  assert.ok(hit.confidence < 0.65);
+  assert.deepEqual(await search(root, { projectId: "p", query: "deleted-raw-zephyr" }), []);
 });

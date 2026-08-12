@@ -1,31 +1,51 @@
 # Privacy
 
 Linger stores visible agent conversations and derived project memory in local files under `~/.linger/vault` by default.
+It installs no telemetry, analytics, cloud sync, or background daemon.
 
-## Data stored locally
+## Local data
 
-The Vault can contain visible user and assistant messages, project display names and absolute root paths, processed summaries, tags, decision trails, queue state, and integrity metadata. Remote repository URLs may influence a hashed project ID but are not stored in the project registry.
+The Vault can contain visible user and assistant messages, project display names and absolute roots, processed summaries,
+tags, decision trails, queue/config/health state, integrity metadata, recall samples explicitly opted into by the user, and
+optional Local embedding vectors.
 
-Recall-quality sampling is off by default. When explicitly enabled for a query, the query, returned evidence references, and later feedback remain local in the Vault.
+Raw evidence and decision events are source records. Enrichment overlays, registries, and indexes are derived. Disabling
+Local Embedding preserves its index; deleting an index does not delete source memory. Uninstall preserves the Vault. Full
+`purge` is separate and requires `--yes` plus the exact `PURGE` phrase.
 
-Linger installs no telemetry, analytics, cloud sync, embeddings, or background daemon.
+## Host-model data path
 
-## Data sent to the active model provider
+Local-first does not mean that all host activity stays on the device. Recalled evidence and an optional bounded enrichment
+batch enter the current Claude Code or Codex context and may be sent to the provider configured in that host.
 
-Local-first does not mean data never leaves the device. Recalled evidence and bounded host-enrichment batches enter the current Claude Code or Codex context and may be sent to the model provider configured in that host.
+Linger does not select another provider, request a separate API key, or send evidence to a Linger service. Enrichment uses
+only normal-sensitivity, hash-verified records and continues to be optional; deterministic processing works without it.
 
-Linger does not select another provider, request a separate API key, or send evidence to an additional Linger service. If host enrichment does not run, deterministic local processing and recall continue normally.
+## Local Embedding data path
+
+v1.0.0 has no API or Remote Embedding backend. It never reads an embedding provider key.
+
+When Local Embedding is explicitly enabled, eligible normal-sensitivity memory text is sent only to a short-lived local
+worker on the same machine. Vectors and index metadata remain in the Vault. Secret or sensitive queries do not enter the
+worker, and no query/vector telemetry is emitted.
+
+The separately confirmed installer downloads fixed runtime/model artifacts from allowlisted npm and Hugging Face sources.
+Those requests contain no project content, query text, credential, Authorization header, or Linger identifier beyond
+ordinary HTTP metadata. Model/runtime artifacts are not bundled in the npm package.
 
 ## Sensitive content
 
-High-confidence credential patterns are redacted before raw persistence, marked secret, and excluded from normal processing, enrichment, and recall. Contact-like sensitive records are also excluded from ordinary recall by default.
+High-confidence credential patterns are redacted before raw persistence, marked secret, and excluded from normal
+processing, host enrichment, Local Embedding, and recall. Contact-like sensitive records are excluded from ordinary recall
+and Local Embedding by default.
 
-Detection is not complete. Unknown secret formats may be missed, and unrecognized content explicitly marked secret may remain in raw storage. Do not use this experimental build for data that requires audited compliance controls.
+Detection is not complete. Unknown formats may be missed, and unrecognized content explicitly marked secret may remain in
+raw storage. Linger is not encryption or an audited DLP system. Protect the Vault like any local transcript archive.
 
-## Host memory and removal
+## Host-owned memory
 
-Linger operates as a sidecar and does not disable, replace, rewrite, or delete memory owned by Claude Code, Codex, or future host adapters. A host may independently store some of the same visible content in its own location and under its own privacy boundary. Linger recall sends only a bounded relevant evidence package into the active host context; duplicated host and Linger context should be treated as one underlying event, not independent corroboration.
-
-Uninstall removes Linger-managed host integration but preserves the Vault. A full `purge` is separate and requires both `--yes` and the exact `PURGE` confirmation phrase.
+Linger is a sidecar. It does not disable, replace, rewrite, or delete memory owned by Claude Code, Codex, or future host
+adapters. A host may independently retain the same visible content under its own privacy boundary. Duplicate host and
+Linger context represents one underlying event, not independent corroboration; conflicts must remain visible.
 
 See [SECURITY.md](SECURITY.md) for the security boundary and private vulnerability-reporting channel.

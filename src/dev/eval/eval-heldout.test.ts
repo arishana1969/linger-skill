@@ -24,6 +24,6 @@ test("held-out fixture survives noise, near collisions, correction chains, and p
   assert.equal(result.scores.missing_predictions.length, 0);
   assert.equal(result.scores.macro_composite, 1);
   assert.deepEqual(result.predictions.find(item => item.query_id === "ho_q_partial")?.warning_flags, ["partial_source"]);
-  assert.deepEqual(result.predictions.find(item => item.query_id === "ho_q_deleted")?.warning_flags, ["unverified_source"]);
+  assert.deepEqual(result.predictions.find(item => item.query_id === "ho_q_deleted")?.evidence_ids, []);
   assert.deepEqual(result.predictions.find(item => item.query_id === "ho_q_tampered")?.evidence_ids, []);
 });

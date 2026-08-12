@@ -1,9 +1,9 @@
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
-import { readCodexAdapterEvidence, verifiedCodexLiveSession, type SessionEvidence } from "./adapter-evidence.js";
 import { parseManagedHookCommand } from "./hook-command.js";
 import { runtimeFingerprint } from "./runtime-identity.js";
 import { assertReadableInside } from "./io.js";
+import { verifiedCodexLifecycleSession, type VerifiedLiveSession } from "./lifecycle-evidence.js";
 
 export type CapabilityLevel = 0 | 1 | 2 | 3 | 4;
 export type AdapterName = "claude-code" | "codex";
@@ -22,18 +22,24 @@ export async function detectClaudeCode(home: string): Promise<AdapterCapability>
   const detected = await exists(root);
   const installed = await exists(skill);
   let hooks = false;
-  try { const parsed = JSON.parse(await readFile(settings, "utf8")) as { hooks?: Record<string, unknown> }; hooks = Boolean(parsed.hooks && Object.keys(parsed.hooks).length); } catch { /* absent */ }
+  try {
+    const parsed = JSON.parse(await readFile(settings, "utf8")) as { hooks?: Record<string, Array<{ hooks?: Array<{ command?: string }> }>> };
+    hooks = (await commonManagedRuntimeIdentities(parsed, home, "claude-code", ["SessionStart", "UserPromptSubmit", "Stop"])).length > 0;
+  } catch { /* absent or invalid */ }
   const level: CapabilityLevel = hooks && installed ? 2 : installed ? 1 : 0;
-  return result("claude-code", detected, installed, level, hooks, [detected ? root : "Claude Code directory not found", hooks ? settings : "No active hooks detected"], ["MVP hook coverage depends on installed Claude Code lifecycle events.", "Background processing remains session-local; no daemon is installed."]);
+  return result("claude-code", detected, installed, level, hooks, [detected ? root : "Claude Code directory not found", hooks ? `${settings} (managed hooks verified)` : "No verified Linger hooks detected"], ["Lifecycle capability does not by itself prove current-project capture health.", "Background processing remains session-local; no daemon is installed."]);
 }
 
 export async function detectCodex(home: string): Promise<AdapterCapability> {
   const root = path.join(home, ".codex");
   const config = path.join(root, "config.toml");
   const hooksFile = path.join(root, "hooks.json");
-  const skill = path.join(root, "skills", "linger", "SKILL.md");
+  const skill = await firstExisting([
+    path.join(home, ".codex", "skills", "linger", "SKILL.md"),
+    path.join(home, ".agents", "skills", "linger", "SKILL.md")
+  ]);
   const detected = await exists(root);
-  const installed = await exists(skill);
+  const installed = Boolean(skill);
   let hooks = false;
   let lingerHooks = false;
   let runtimeIdentities: string[] = [];
@@ -44,15 +50,15 @@ export async function detectCodex(home: string): Promise<AdapterCapability> {
     hookEvidence = hooksFile;
     try {
       const document = JSON.parse(await readFile(hooksFile, "utf8")) as { hooks?: Record<string, Array<{ hooks?: Array<{ command?: string }> }>> };
-      runtimeIdentities = await commonCodexRuntimeIdentities(document, home);
+      runtimeIdentities = await commonManagedRuntimeIdentities(document, home, "codex", ["SessionStart", "UserPromptSubmit", "Stop"]);
       lingerHooks = runtimeIdentities.length > 0;
     } catch { /* malformed or unsupported host config */ }
   }
-  let liveSession: SessionEvidence | undefined;
+  let liveSession: VerifiedLiveSession | undefined;
   let invalidEvidence = false;
   try {
     const vault = path.join(home, ".linger", "vault");
-    liveSession = await verifiedCodexLiveSession(vault, await readCodexAdapterEvidence(vault), runtimeIdentities);
+    liveSession = await verifiedCodexLifecycleSession(vault, runtimeIdentities);
   }
   catch { invalidEvidence = true; }
   const live = Boolean(installed && lingerHooks && liveSession);
@@ -74,17 +80,22 @@ function result(adapter: AdapterName, detected: boolean, installed: boolean, lev
   return { adapter, detected, installed, level, capabilities: { rules: installed, file_access: installed, lifecycle_hooks: hooks, async_processing: false, recovery: hooks }, evidence, limitations };
 }
 async function exists(file: string): Promise<boolean> { try { await access(file); return true; } catch { return false; } }
+async function firstExisting(files: string[]): Promise<string | undefined> {
+  for (const file of files) if (await exists(file)) return file;
+  return undefined;
+}
 
-async function commonCodexRuntimeIdentities(
+async function commonManagedRuntimeIdentities(
   document: { hooks?: Record<string, Array<{ hooks?: Array<{ command?: string }> }>> },
-  home: string
+  home: string,
+  adapter: AdapterName,
+  required: string[]
 ): Promise<string[]> {
-  const required = ["SessionStart", "UserPromptSubmit", "Stop"];
   const identities: Array<Set<string>> = [];
   for (const event of required) {
     const verified = new Set<string>();
     for (const hook of (document.hooks?.[event] ?? []).flatMap(group => group.hooks ?? [])) {
-      const parsed = typeof hook.command === "string" ? parseManagedHookCommand(hook.command, home, "codex") : undefined;
+      const parsed = typeof hook.command === "string" ? parseManagedHookCommand(hook.command, home, adapter) : undefined;
       if (!parsed?.runtime_identity) continue;
       const packageRoot = path.dirname(path.dirname(parsed.hook));
       try {

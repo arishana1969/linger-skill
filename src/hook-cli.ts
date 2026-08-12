@@ -3,8 +3,10 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { handleHook, type HookInput } from "./hook-handler.js";
+import { assertSupportedRuntime } from "./runtime-support.js";
 
 async function main(): Promise<void> {
+  await assertSupportedRuntime();
   const payload = await readStdin();
   const parsed = JSON.parse(payload) as unknown;
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Invalid hook payload");

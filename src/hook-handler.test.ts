@@ -7,6 +7,7 @@ import { handleHook } from "./hook-handler.js";
 import { processQueue } from "./processing.js";
 import { search } from "./search.js";
 import { projectId } from "./vault.js";
+import { sessionControlStatus, sessionControlToken } from "./session-control.js";
 
 async function fixture(): Promise<{ root: string; cwd: string; project: string }> {
   const root = await mkdtemp(path.join(os.tmpdir(), "linger-hook-vault-"));
@@ -32,21 +33,20 @@ test("captures user and assistant turn from shared hook fields", async () => {
   assert.ok(assistant.captured);
   await processQueue(root);
   const hits = await search(root, { projectId: project, query: "不做 MCP" });
-  assert.equal(hits[0]?.confidence, 1);
+  assert.equal(hits[0]?.confidence, 0.6);
+  assert.ok(hits[0]?.warning_flags.includes("partial_source"));
 });
 
 test("records a complete Codex live lifecycle only after both sides capture", async () => {
   const { root, cwd } = await fixture();
-  const { readCodexAdapterEvidence, verifiedCodexLiveSession } = await import("./adapter-evidence.js");
+  const { verifiedCodexLifecycleSession } = await import("./lifecycle-evidence.js");
   const runtimeIdentity = "e".repeat(64);
   await handleHook(root, { hook_event_name: "SessionStart", session_id: "live-1", cwd, source: "startup" }, "codex", runtimeIdentity);
   await handleHook(root, { hook_event_name: "UserPromptSubmit", session_id: "live-1", turn_id: "turn-1", cwd, prompt: "remember live evidence" }, "codex", runtimeIdentity);
-  assert.equal(await verifiedCodexLiveSession(root, await readCodexAdapterEvidence(root), [runtimeIdentity]), undefined);
+  assert.equal(await verifiedCodexLifecycleSession(root, [runtimeIdentity]), undefined);
   await handleHook(root, { hook_event_name: "Stop", session_id: "live-1", turn_id: "turn-1", cwd, last_assistant_message: "live evidence captured" }, "codex", runtimeIdentity);
-  const completed = await verifiedCodexLiveSession(root, await readCodexAdapterEvidence(root), [runtimeIdentity]);
+  const completed = await verifiedCodexLifecycleSession(root, [runtimeIdentity]);
   assert.equal(completed?.session_id, "live-1");
-  assert.ok(completed?.events.UserPromptSubmit?.captured_event_id);
-  assert.ok(completed?.events.Stop?.captured_event_id);
 });
 
 test("runs event-driven processing at the 50KB threshold", async () => {
@@ -87,9 +87,25 @@ test("captures Claude StopFailure output as partial evidence", async () => {
   assert.ok(hit.warning_flags.includes("partial_source"));
 });
 
+test("session off is isolated, reversible, and stores no control message", async () => {
+  const { root, cwd } = await fixture();
+  const locator = { node: "/trusted/node", cli: "/trusted/runtime/dist/cli.js", vault: root };
+  const token = sessionControlToken("codex", "session-a");
+  const off = await handleHook(root, { hook_event_name: "UserPromptSubmit", session_id: "session-a", cwd, prompt: "$linger off" }, "codex", undefined, locator);
+  assert.equal(off.skipped, "session_disabled");
+  assert.equal((await sessionControlStatus(root, token)).capture, "off");
+  assert.equal((await handleHook(root, { hook_event_name: "UserPromptSubmit", session_id: "session-a", cwd, prompt: "must not be stored" }, "codex")).skipped, "session_disabled");
+  assert.ok((await handleHook(root, { hook_event_name: "UserPromptSubmit", session_id: "session-b", cwd, prompt: "other session remains active" }, "codex")).captured);
+  const on = await handleHook(root, { hook_event_name: "UserPromptSubmit", session_id: "session-a", cwd, prompt: "$linger on" }, "codex", undefined, locator);
+  assert.equal(on.skipped, "session_enabled");
+  assert.equal((await sessionControlStatus(root, token)).capture, "on");
+  assert.ok((await handleHook(root, { hook_event_name: "UserPromptSubmit", session_id: "session-a", cwd, prompt: "capture resumed" }, "codex")).captured);
+});
+
 test("unsupported, empty, malformed, and opt-out hook payloads create no Vault state", async () => {
   for (const input of [
     { hook_event_name: "UnknownEvent", cwd: "/tmp/attacker" },
+    { hook_event_name: "SessionEnd", session_id: "unused-session", cwd: "/tmp/attacker" },
     { hook_event_name: "Stop", cwd: "/tmp/attacker", last_assistant_message: "" },
     { hook_event_name: "UserPromptSubmit", cwd: "/tmp/attacker", prompt: 42 as never },
     { hook_event_name: "UserPromptSubmit", cwd: "/tmp/attacker", prompt: "do not save this" }

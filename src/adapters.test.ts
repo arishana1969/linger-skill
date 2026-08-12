@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { capabilityReport } from "./adapters.js";
-import { readCodexAdapterEvidence } from "./adapter-evidence.js";
 import { posixHookCommand } from "./hook-command.js";
 import { handleHook } from "./hook-handler.js";
 import { runtimeFingerprint } from "./runtime-identity.js";
+import { verifiedCodexLifecycleSession } from "./lifecycle-evidence.js";
+import { projectId } from "./vault.js";
 
 test("reports honest degraded adapter levels", async () => {
   const home = await mkdtemp(path.join(os.tmpdir(), "linger-adapters-"));
@@ -16,13 +17,14 @@ test("reports honest degraded adapter levels", async () => {
   await writeFile(path.join(home, ".claude", "skills", "linger", "SKILL.md"), "installed");
   assert.equal((await capabilityReport(home))[0]?.level, 1);
   await writeFile(path.join(home, ".claude", "settings.json"), JSON.stringify({ hooks: { SessionStart: [{ hooks: [] }] } }));
-  assert.equal((await capabilityReport(home))[0]?.level, 2);
+  assert.equal((await capabilityReport(home))[0]?.level, 1);
 });
 
 test("detects Codex skill and hooks independently", async () => {
   const home = await mkdtemp(path.join(os.tmpdir(), "linger-adapters-"));
-  await mkdir(path.join(home, ".codex", "skills", "linger"), { recursive: true });
-  await writeFile(path.join(home, ".codex", "skills", "linger", "SKILL.md"), "installed");
+  await mkdir(path.join(home, ".agents", "skills", "linger"), { recursive: true });
+  await writeFile(path.join(home, ".agents", "skills", "linger", "SKILL.md"), "installed");
+  await mkdir(path.join(home, ".codex"), { recursive: true });
   await writeFile(path.join(home, ".codex", "config.toml"), "[hooks]\nenabled = true\n");
   const codex = (await capabilityReport(home))[1]!;
   assert.equal(codex.level, 1);
@@ -78,7 +80,7 @@ test("does not aggregate lifecycle evidence without a real session id", async ()
   await handleHook(vault, { hook_event_name: "UserPromptSubmit", turn_id: "user", cwd, prompt: "missing session" }, "codex", runtimeIdentity);
   await handleHook(vault, { hook_event_name: "Stop", turn_id: "assistant", cwd, last_assistant_message: "still missing" }, "codex", runtimeIdentity);
   assert.equal((await capabilityReport(home))[1]?.level, 1);
-  assert.equal(await readCodexAdapterEvidence(vault), undefined);
+  assert.equal(await verifiedCodexLifecycleSession(vault, [runtimeIdentity]), undefined);
 });
 
 test("downgrades L2 when referenced raw evidence is tampered", async () => {
@@ -88,20 +90,21 @@ test("downgrades L2 when referenced raw evidence is tampered", async () => {
   const vault = path.join(home, ".linger", "vault");
   await completeLifecycle(home, cwd, "tamper-session", runtimeIdentity);
   assert.equal((await capabilityReport(home))[1]?.level, 2);
-  const evidence = await readCodexAdapterEvidence(vault);
-  const session = evidence?.sessions[0];
-  const eventId = session?.events.Stop?.captured_event_id;
-  assert.ok(session && eventId);
-  const rawFile = path.join(vault, "raw", session.project_id, session.session_id, `${eventId}.json`);
-  const raw = JSON.parse(await readFile(rawFile, "utf8"));
+  const project = await projectId(cwd, vault);
+  const sessionDir = path.join(vault, "raw", project, "tamper-session");
+  const records = await Promise.all((await readdir(sessionDir)).map(async name => ({ name, value: JSON.parse(await readFile(path.join(sessionDir, name), "utf8")) })));
+  const assistant = records.find(record => record.value.role === "assistant");
+  assert.ok(assistant);
+  const rawFile = path.join(sessionDir, assistant.name);
+  const raw = assistant.value;
   raw.content = "tampered without updating the committed hash";
   await writeFile(rawFile, JSON.stringify(raw));
   assert.equal((await capabilityReport(home))[1]?.level, 1);
 });
 
 async function installCodexFixture(home: string): Promise<string> {
-  await mkdir(path.join(home, ".codex", "skills", "linger"), { recursive: true });
-  await writeFile(path.join(home, ".codex", "skills", "linger", "SKILL.md"), "installed");
+  await mkdir(path.join(home, ".agents", "skills", "linger"), { recursive: true });
+  await writeFile(path.join(home, ".agents", "skills", "linger", "SKILL.md"), "installed");
   const runtime = runtimeRoot(home);
   await mkdir(path.join(runtime, "dist"), { recursive: true });
   await writeFile(path.join(runtime, "dist", "hook-cli.js"), "// installed runtime\n");
@@ -118,6 +121,7 @@ async function writeCodexHooks(home: string, runtimeIdentity: string): Promise<v
     hook: path.join(runtimeRoot(home), "dist", "hook-cli.js")
   });
   const group = { hooks: [{ type: "command", command }] };
+  await mkdir(path.join(home, ".codex"), { recursive: true });
   await writeFile(path.join(home, ".codex", "hooks.json"), JSON.stringify({ hooks: { SessionStart: [group], UserPromptSubmit: [group], Stop: [group] } }));
 }
 

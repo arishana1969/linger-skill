@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "status": "candidate_not_validated",
+  "profile_id": "local-multilingual-e5-base-q8-v1",
+  "repository": "onnx-community/multilingual-e5-base-ONNX",
+  "revision": "d15bb63d1494d49ff653bb0105592a2696e7a8b6",
+  "declared_license": "mit",
+  "dtype": "q8",
+  "pooling": "mean",
+  "normalization": "l2",
+  "dimension": 768,
+  "query_prefix": "query: ",
+  "passage_prefix": "passage: ",
+  "files": [
+    {
+      "relative_path": "config.json",
+      "expected_bytes": 656,
+      "max_bytes": 656,
+      "sha256": "ac7aff5828f41e25b0a7bd9f950424e6d3dd9bb08c6142cb892e81a638156ca9"
+    },
+    {
+      "relative_path": "special_tokens_map.json",
+      "expected_bytes": 964,
+      "max_bytes": 964,
+      "sha256": "8c785abebea9ae3257b61681b4e6fd8365ceafde980c21970d001e834cf10835"
+    },
+    {
+      "relative_path": "tokenizer.json",
+      "expected_bytes": 17082734,
+      "max_bytes": 17082734,
+      "sha256": "3a56def25aa40facc030ea8b0b87f3688e4b3c39eb8b45d5702b3a1300fe2a20"
+    },
+    {
+      "relative_path": "tokenizer_config.json",
+      "expected_bytes": 1177,
+      "max_bytes": 1177,
+      "sha256": "dfb4021b23969fc942e96b2c4ac906d94712b4b96ef7081cb66a0ea211896d51"
+    },
+    {
+      "relative_path": "onnx/model_quantized.onnx",
+      "expected_bytes": 278181947,
+      "max_bytes": 278181947,
+      "sha256": "9d653d5a5ca4e61af7fb43275bdec6c0501d8d002400bec506b814a6b198f48c"
+    }
+  ]
+}

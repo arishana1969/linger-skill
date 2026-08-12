@@ -31,7 +31,7 @@ export function generateHeldoutDataset(year = 2025, noiseEvents = 240): EvalData
     query("ho_q_correction", queryAt, "What is the current adapter decision?", ["ho_adapter_a2"], ["ho_adapter_a", "ho_adapter_b"], "Correction: current adapter decision is webhooks because delivery immediacy matters more than polling compatibility.", ["webhooks", "delivery immediacy"], ["polling because"], "exact_record_found"),
     { ...query("ho_q_partial", queryAt, "What did the Zephyr checkpoint identify?", ["ho_partial"], ["ho_other_zephyr"], undefined, ["queue starvation"], ["completed successfully"], "similar_record_found"), required_warning_flags: ["partial_source"], forbidden_warning_flags: ["unverified_source"] },
     { ...query("ho_q_tampered", queryAt, "What did the Nebula archive benchmark show?", [], ["ho_tampered"], undefined, ["no reliable memory"], ["sharded tar"], "no_reliable_memory_found"), forbidden_warning_flags: ["unverified_source"] },
-    { ...query("ho_q_deleted", queryAt, "What does the Orchid retention note say?", ["ho_deleted_raw"], [], undefined, ["preserve processed summaries", "raw deletion"], [], "similar_record_found"), required_warning_flags: ["unverified_source"], forbidden_warning_flags: ["partial_source"] },
+    { ...query("ho_q_deleted", queryAt, "What does the Orchid retention note say?", [], ["ho_deleted_raw"], undefined, ["no reliable memory"], ["preserve processed summaries", "raw deletion"], "no_reliable_memory_found"), forbidden_warning_flags: ["unverified_source", "partial_source"] },
     query("ho_q_absent", queryAt, "Did we choose DynamoDB for primary storage?", [], [], undefined, ["no reliable memory"], ["DynamoDB was chosen"], "no_reliable_memory_found")
   ];
   return {

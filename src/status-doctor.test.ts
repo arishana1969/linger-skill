@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { access, mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -29,5 +29,25 @@ test("doctor reports invalid pending without crashing", async () => {
   await writeFile(file, "not json");
   const report = await doctor(root);
   assert.equal(report.ok, false);
-  assert.match(report.errors[0] ?? "", /invalid_pending/);
+  assert.equal(report.errors.some(error => error.startsWith("invalid_pending:")), true);
+});
+
+test("status and doctor do not initialize an absent Vault", async () => {
+  const parent = await mkdtemp(path.join(os.tmpdir(), "linger-status-readonly-"));
+  const root = path.join(parent, "absent");
+  const status = await vaultStats(root, "p_current");
+  assert.equal(status.initialized, false);
+  assert.equal(status.scope, "project");
+  assert.equal(status.raw_events, 0);
+  assert.equal((await doctor(root)).errors.includes("invalid_vault_config:config.json"), true);
+  await assert.rejects(access(root));
+});
+
+test("project status excludes records from other projects", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-status-scope-"));
+  await capture(root, { projectId: "p_one", sessionId: "s", turnId: "one", role: "user", content: "one", sourceAgent: "test" });
+  await capture(root, { projectId: "p_two", sessionId: "s", turnId: "two", role: "user", content: "two", sourceAgent: "test" });
+  const status = await vaultStats(root, "p_one");
+  assert.equal(status.raw_events, 1);
+  assert.equal(status.queue_pending, 1);
 });

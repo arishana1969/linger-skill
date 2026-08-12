@@ -19,5 +19,6 @@ test("doctor links processed memory to immutable raw hash", async () => {
   raw.content = "tampered source";
   await writeFile(rawFile, JSON.stringify(raw));
   const report = await doctor(root);
-  assert.equal(report.warnings.some(value => value.startsWith("processed_source_mismatch")), true);
+  assert.equal(report.ok, false);
+  assert.equal(report.warnings.some(value => value.includes("source_hash_mismatch")), true);
 });

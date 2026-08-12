@@ -4,7 +4,7 @@ Linger is still stabilizing its file, adapter, and host-enrichment contracts. Ke
 
 ## Development setup
 
-Requires Node.js 20 or later and pnpm.
+Requires Node.js 22, 24, or 26 and pnpm.
 
 ```sh
 pnpm install --frozen-lockfile

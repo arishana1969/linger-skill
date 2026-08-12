@@ -1,14 +1,13 @@
-import { createHash } from "node:crypto";
 import path from "node:path";
 import { readJson } from "./io.js";
-import { effectiveMemoryStates } from "./memory-events.js";
-import { applyEnrichment, readEnrichmentOverlays } from "./enrichment.js";
+import { resolveEffectiveSearchDocuments, type EffectiveSearchDocument } from "./effective-search-document.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { expandTerms } from "./term-graph.js";
-import { assertProcessedMemory, assertRawEvent } from "./schema-validation.js";
-import { assertProcessedRecordPath, assertRawRecordPath } from "./record-paths.js";
-import type { ProcessedMemory, RawEvent, SearchHit } from "./types.js";
-import { initVault, listJsonFiles } from "./vault.js";
+import { assertRawEvent } from "./schema-validation.js";
+import { assertRawRecordPath } from "./record-paths.js";
+import { resolveSettings } from "./settings.js";
+import type { RawEvent, SearchHit } from "./types.js";
+import { listJsonFiles } from "./vault.js";
 
 const QUERY_STOP = new Set(["a", "an", "did", "do", "does", "for", "is", "of", "our", "the", "to", "was", "we", "were", "what", "which", "why", "我们", "们讨", "讨论", "论过", "之前", "前为", "为什么", "什么", "么没", "没有", "最后", "后定", "定了", "了什", "吗"]);
 
@@ -28,53 +27,48 @@ export interface SearchOptions {
 
 export async function search(root: string, options: SearchOptions): Promise<SearchHit[]> {
   const project = assertSafeId(options.projectId, "project id");
-  const config = await initVault(root);
-  const timeoutMs = nonNegativeInteger(options.timeoutMs ?? config.search_timeout_ms ?? 2000, "timeoutMs");
+  const settings = await resolveSettings(root, { projectId: project });
+  const timeoutMs = nonNegativeInteger(options.timeoutMs ?? settingNumber(settings, "recall.timeout_ms"), "timeoutMs");
   const deadline = Date.now() + timeoutMs;
   assertBeforeDeadline(deadline);
   const p = vaultPaths(root);
   const from = dateBoundary(options.from, "from");
   const to = dateBoundary(options.to, "to");
   if (from !== undefined && to !== undefined && from > to) throw new Error("from must not be after to");
-  const maxFiles = positiveInteger(options.maxFiles ?? config.max_files ?? 5000, "maxFiles");
-  const maxRawFragmentCharacters = positiveInteger(options.maxRawFragmentCharacters ?? config.max_raw_fragment_characters ?? 500, "maxRawFragmentCharacters");
+  const maxFiles = positiveInteger(options.maxFiles ?? settingNumber(settings, "recall.max_files"), "maxFiles");
+  const maxRawFragmentCharacters = positiveInteger(options.maxRawFragmentCharacters ?? settingNumber(settings, "recall.max_raw_fragment_characters"), "maxRawFragmentCharacters");
   const originalTokens = tokenize(options.query).filter(token => !QUERY_STOP.has(token));
   if (!originalTokens.length) return [];
   const expansions = await within(expandTerms(root, project, lexicalTerms(options.query), options.contextTags), deadline);
   const weights = new Map<string, number>(originalTokens.map(token => [token, 1]));
   for (const [term, confidence] of expansions) for (const token of tokenize(term)) weights.set(token, Math.max(weights.get(token) ?? 0, confidence * 0.75));
   const searchTokens = [...weights.keys()];
-  const files = (await within(listJsonFiles(path.join(p.processed, project), p.root), deadline)).slice(0, maxFiles);
-  const baselineMemories = (await within(Promise.all(files.map(async file => {
-    try { const value = await readJson<unknown>(file); assertProcessedMemory(value); assertProcessedRecordPath(p, file, value); return value; } catch { return undefined; }
-  })), deadline)).filter((memory): memory is ProcessedMemory => Boolean(memory));
-  const overlays = await within(readEnrichmentOverlays(root, project), deadline);
-  const memories = baselineMemories.map(memory => applyEnrichment(memory, overlays.get(memory.id)));
-  const rawFiles = (await within(listJsonFiles(path.join(p.raw, project), p.root), deadline)).slice(0, maxFiles);
-  const rawEvents = (await within(Promise.all(rawFiles.map(async file => {
-    try { const value = await readJson<unknown>(file); assertRawEvent(value); assertRawRecordPath(p, file, value); return value; } catch { return undefined; }
-  })), deadline)).filter((event): event is RawEvent => Boolean(event));
-  const rawHashes = new Map(rawEvents.map(event => [event.event_id, { declared: event.content_hash, computed: createHash("sha256").update(event.content).digest("hex") }]));
-  const integrity = new Map(memories.map(memory => [memory.id, sourceIntegrity(memory, rawHashes)]));
-  const controlStates = await within(effectiveMemoryStates(root, project), deadline);
-  const active = memories.filter(memory => memory.status === "active" && !controlStates.has(memory.id) && integrity.get(memory.id) !== "tampered" && inRange(memory.created_at, from, to) && (options.includeSensitive || memory.sensitivity === "normal"));
+  const documents = await within(resolveEffectiveSearchDocuments(root, project, { maxFiles }), deadline);
+  const active = documents.filter(document =>
+    (options.includeSensitive ? document.eligibility.lexical_explicit_sensitive : document.eligibility.lexical_default)
+    && inRange(document.created_at, from, to)
+  );
   const documentFrequency = new Map<string, number>();
   for (const token of searchTokens) {
     assertBeforeDeadline(deadline);
-    documentFrequency.set(token, active.filter(memory => tokenize(searchable(memory)).includes(token)).length);
+    documentFrequency.set(token, active.filter(document => tokenize(document.canonical_text).includes(token)).length);
   }
   const hits: SearchHit[] = [];
   const explicitPriority = new Map<string, number>();
-  for (const memory of active) {
+  for (const document of active) {
     assertBeforeDeadline(deadline);
-    const hit = scoreMemory(memory, originalTokens, searchTokens, weights, documentFrequency, active.length, expansions.size > 0, integrity.get(memory.id) === "verified" ? "verified" : "unverified");
+    const hit = scoreMemory(document, originalTokens, searchTokens, weights, documentFrequency, active.length, expansions.size > 0);
     if (hit.score > 0) {
       hits.push(hit);
-      explicitPriority.set(hit.source, memory.source === "user_explicit" ? 1 : 0);
+      explicitPriority.set(hit.source, document.source === "user_explicit" ? 1 : 0);
     }
   }
 
   if (options.includeRaw) {
+    const rawFiles = (await within(listJsonFiles(path.join(p.raw, project), p.root), deadline)).slice(0, maxFiles);
+    const rawEvents = (await within(Promise.all(rawFiles.map(async file => {
+      try { const value = await readJson<unknown>(file); assertRawEvent(value); assertRawRecordPath(p, file, value); return value; } catch { return undefined; }
+    })), deadline)).filter((event): event is RawEvent => Boolean(event));
     for (const event of rawEvents) {
       assertBeforeDeadline(deadline);
       if (!inRange(event.timestamp, from, to)) continue;
@@ -84,7 +78,11 @@ export async function search(root: string, options: SearchOptions): Promise<Sear
       if (overlap) hits.push({ match_type: "unprocessed_raw", confidence: Math.min(0.6, overlap / searchTokens.length) * (event.savepoint_status === "partial" ? 0.6 : 1), score: overlap, source: event.event_id, snippet: event.content.slice(0, maxRawFragmentCharacters), raw_ref: [event.raw_ref], warning_flags: ["unprocessed_raw", ...(event.savepoint_status === "partial" ? ["partial_source"] : [])], sensitivity_flags: event.sensitivity === "normal" ? [] : [event.sensitivity] });
     }
   }
-  return hits.sort((a, b) => matchRank(b.match_type) - matchRank(a.match_type) || (explicitPriority.get(b.source) ?? 0) - (explicitPriority.get(a.source) ?? 0) || b.score - a.score || b.confidence - a.confidence).slice(0, options.limit ?? config.max_snippets);
+  return hits.sort((a, b) => matchRank(b.match_type) - matchRank(a.match_type) || (explicitPriority.get(b.source) ?? 0) - (explicitPriority.get(a.source) ?? 0) || b.score - a.score || b.confidence - a.confidence).slice(0, options.limit ?? settingNumber(settings, "recall.max_snippets"));
+}
+
+function settingNumber(settings: Awaited<ReturnType<typeof resolveSettings>>, key: "recall.timeout_ms" | "recall.max_files" | "recall.max_raw_fragment_characters" | "recall.max_snippets"): number {
+  return settings.values[key].value as number;
 }
 
 function matchRank(type: SearchHit["match_type"]): number {
@@ -131,8 +129,8 @@ function inRange(timestamp: string, from?: number, to?: number): boolean {
   return Number.isFinite(value) && (from === undefined || value >= from) && (to === undefined || value <= to);
 }
 
-function scoreMemory(memory: ProcessedMemory, original: string[], candidates: string[], weights: Map<string, number>, df: Map<string, number>, total: number, expanded: boolean, integrity: "verified" | "unverified"): SearchHit {
-  const textTokens = tokenize(searchable(memory));
+function scoreMemory(document: EffectiveSearchDocument, original: string[], candidates: string[], weights: Map<string, number>, df: Map<string, number>, total: number, expanded: boolean): SearchHit {
+  const textTokens = tokenize(document.canonical_text);
   let score = 0;
   let expansionHit = false;
   for (const token of candidates) {
@@ -140,30 +138,22 @@ function scoreMemory(memory: ProcessedMemory, original: string[], candidates: st
     if (!tf) continue;
     const idf = Math.log(1 + (total - (df.get(token) ?? 0) + 0.5) / ((df.get(token) ?? 0) + 0.5));
     score += idf * ((tf * 2.2) / (tf + 1.2)) * (weights.get(token) ?? 1);
-    if (memory.tags.includes(token)) score += 2 * (weights.get(token) ?? 1);
+    if (document.search_tags.includes(token)) score += 2 * (weights.get(token) ?? 1);
     if (!original.includes(token)) expansionHit = true;
   }
   const latinOriginal = original.filter(token => /^[a-z0-9]/.test(token));
   const latinCoverage = latinOriginal.length ? latinOriginal.filter(token => textTokens.includes(token)).length / latinOriginal.length : 1;
   if (latinCoverage < 0.5 && !expansionHit) score = 0;
-  if (memory.source === "user_explicit") score *= 1.35;
+  if (document.source === "user_explicit") score *= 1.35;
   const coverage = original.filter(token => textTokens.includes(token)).length / original.length;
+  const partial = document.integrity === "partial";
   return {
     match_type: coverage === 1 ? "exact_record" : coverage >= 0.5 ? "similar_record" : "possible_match",
-    confidence: Math.min(1, memory.confidence * (0.5 + coverage / 2) * (expansionHit && coverage === 0 ? 0.8 : 1) * (memory.source_savepoint_status === "partial" ? 0.6 : 1) * (integrity === "unverified" ? 0.75 : 1)),
-    score, source: memory.id, snippet: memory.summary.slice(0, 500), raw_ref: memory.source_events,
-    warning_flags: [...(expanded && expansionHit ? ["term_expansion"] : []), ...(memory.source_savepoint_status === "partial" ? ["partial_source"] : []), ...(integrity === "unverified" ? ["unverified_source"] : [])], sensitivity_flags: memory.sensitivity === "normal" ? [] : [memory.sensitivity]
+    confidence: Math.min(1, document.confidence * (0.5 + coverage / 2) * (expansionHit && coverage === 0 ? 0.8 : 1) * (partial ? 0.6 : 1)),
+    score, source: document.memory_id, snippet: [...document.display_summary].slice(0, 500).join(""), raw_ref: document.evidence_descriptors.map(source => source.event_id),
+    warning_flags: [...new Set([...(expanded && expansionHit ? ["term_expansion"] : []), ...document.warning_flags])], sensitivity_flags: document.sensitivity === "normal" ? [] : [document.sensitivity]
   };
 }
-
-function sourceIntegrity(memory: ProcessedMemory, rawHashes: Map<string, { declared: string; computed: string }>): "verified" | "tampered" | "unverified" {
-  if (!memory.source_hash) return "unverified";
-  const sources = memory.source_events.map(id => rawHashes.get(id)).filter((value): value is { declared: string; computed: string } => Boolean(value));
-  if (!sources.length) return "unverified";
-  return sources.some(source => source.declared === source.computed && source.computed === memory.source_hash) ? "verified" : "tampered";
-}
-
-function searchable(memory: ProcessedMemory): string { return [memory.title, memory.summary, ...memory.tags, ...memory.predictive_tags, ...memory.retrieval_phrases].join(" "); }
 function lexicalTerms(text: string): string[] { return [...new Set([...(text.toLowerCase().match(/[a-z0-9][a-z0-9_-]*/g) ?? []), ...(text.match(/[\p{Script=Han}]+/gu) ?? []).map(value => value.toLowerCase())])]; }
 export function tokenize(text: string): string[] {
   const normalized = text.toLowerCase();

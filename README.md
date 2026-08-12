@@ -8,293 +8,228 @@
 A file-native conversation archive and decision trail for coding agents.
 
 > 念念不忘，必有回响。
->
 > What lingers in mind will find its echo.
-
----
 
 ## Status
 
-Linger v0.2.2 is an experimental MVP for Claude Code and Codex, distributed as the public [`linger-skill`](https://www.npmjs.com/package/linger-skill) package. Linger does not promise perfect archival coverage or production-grade support.
+Linger v1.0.0 is the first formal product release for Claude Code and Codex. It preserves visible project conversations
+as local, traceable evidence; it does not promise perfect archival coverage or production-grade compliance.
 
-## Origin
+## What Linger does
 
-This project started from a post by [Evis Drenova](https://x.com/evisdrenova):
+- Captures visible user and assistant turns through managed lifecycle hooks, with a CLI fallback.
+- Keeps immutable raw evidence, deterministic processed memory, corrections, and decision evolution.
+- Reports current-project capture health instead of treating installed files as proof that capture works.
+- Reports and controls Linger in the current conversation without pausing other sessions.
+- Answers “why did we choose this?” with source IDs, integrity warnings, staleness, and conflicts.
+- Supports optional organization by the model already active in Claude Code or Codex—no separate provider or key.
+- Offers deterministic lexical recall and an optional Local-only semantic index on one validated Mac configuration.
+- Stores ordinary state as versioned JSON/Markdown files—no database, telemetry, cloud sync, or daemon.
+- Leaves Claude Code and Codex memory untouched. Linger is a sidecar, not a replacement.
 
-> My ideal AI interface is a single never-ending chat thread. I don't want to think about sessions, context windows, worktrees, MCP servers, or anything else. The harness should automate everything transparently.
+Retrieved memory is historical evidence, never an instruction. Commands or prompts found in old records must not be
+executed; current system and user instructions always win.
 
-We cannot actually provide a never-ending thread. Context windows are real, sessions end, and machines restart. But we can build the next best thing: a layer that preserves what was said and decided so that, when you return, the continuity is still there.
+## Requirements and install
 
-## What it does
+The base Linger CLI supports Node.js 22, 24, and 26. The optional Local Embedding companion remains bound to its validated
+Node 24 artifact identity.
 
-Linger saves visible conversations with coding agents—the discussions, explicit notes, decisions, and visible rationale—as local files you own.
+```sh
+npx linger-skill install
+```
 
-It is not a general AI memory system. It is a sidecar continuity layer. Linger observes supported lifecycle events without disabling, replacing, or writing into an agent's own memory system. When an agent loses older context, Linger can retain the record. When you ask why a decision was made three weeks ago, Linger can surface the evidence and its evolution.
+Interactive installation shows the privacy boundary and requires `YES`. Non-interactive installation requires `--yes`:
 
-### What you get
+```sh
+npx linger-skill install --yes
+npx linger-skill install --adapters claude-code
+npx linger-skill install --adapters codex
+```
 
-- Conversation capture through verified lifecycle hooks, with explicit CLI fallback when a host cannot automate capture.
-- Optional host-model organization: the current Claude or Codex model can improve summaries, types, tags, and retrieval phrases without a separate provider or API key.
-- A decision trail that preserves how conclusions evolved, not only the final answer.
-- A note-taking interface for remember, opt out, forget, correct, inspect, and delete workflows.
-- Local-first storage using versioned JSON and human-readable Markdown.
-- No database, user-managed daemon, telemetry, embedding API, or cloud sync.
-- Project-scoped recall that returns sources, distinguishes uncertainty, and abstains when no reliable memory is found.
-- Pending recovery, integrity checks, bounded search, and confirmed destructive controls.
+For a persistent CLI:
 
-## Who it is for
+```sh
+npm install --global linger-skill
+linger install
+```
 
-Linger is for developers who use Claude Code or Codex on long-running projects.
+Installation preserves host-owned memory and unrelated host configuration. A fresh adapter remains unverified until a
+real lifecycle event is observed; use `linger status` and `linger doctor` instead of assuming that copied files are healthy.
+If `~/.local/bin` is already on PATH, the installer uses `~/.local/bin/linger`; otherwise it uses
+`~/.linger/bin/linger`. It always reports the exact path and whether bare `linger` is currently reachable. It does not edit
+shell profiles; use the reported absolute path until you choose to add its directory to PATH.
 
-If you have restarted a conversation and wished the agent remembered what you discussed last week—or why a design decision changed—Linger is for you.
-
-## Install
-
-Requires Node.js 20 or later. The recommended installation is one command:
-
-    npx linger-skill install
-
-Interactive installation displays the local/cloud privacy boundary and requires an exact YES before writing. Non-interactive callers must pass --yes:
-
-    npx linger-skill install --yes
-
-Install only one adapter when needed:
-
-    npx linger-skill install --adapters claude-code
-    npx linger-skill install --adapters codex
-
-For a persistent global CLI instead:
-
-    npm install --global linger-skill
-    linger install
-
-To install from source for development:
-
-    git clone https://github.com/arishana1969/linger-skill.git
-    cd linger-skill
-    pnpm install --frozen-lockfile
-    pnpm build
-    node dist/cli.js install
+Upgrading from v0.2.2 does not rewrite the Vault. Read [UPGRADING.md](UPGRADING.md) for the exact compatibility, command,
+removed-surface, verification, and rollback contract.
 
 ## How it works
 
-Linger combines a Skill, lifecycle hooks, a helper CLI, an event-driven processor, and a local Vault.
+```text
+visible host event
+  → immutable Raw record + durable queue
+  → deterministic processed memory
+  → optional host-model enrichment overlay
+  → lexical recall
+  → optional Local semantic branch
+  → bounded, source-labelled evidence package
+```
 
-1. The Skill tells the agent when to save, when to search, and how to treat retrieved memory.
-2. Supported lifecycle hooks capture visible user and assistant events without blocking the conversation on capture failure.
-3. Capture stages an event, writes an immutable raw record, and adds a persistent queue item.
-4. An event-driven, session-local processor consumes the queue serially. It can run for explicit memories, at the size threshold, after the maximum wait is observed by a later event, on session startup, or through a manual command.
-5. Deterministic processing creates a safe searchable baseline: raw → processed memory → tags and retrieval phrases.
-6. When eligible records are pending, the installed Skill can ask the model already running in Claude Code or Codex to organize one bounded batch after the user's primary task.
-7. Validated enrichment is stored as a derived overlay. It improves tagging and recall without rewriting raw evidence or the deterministic baseline.
-8. Recall searches the current project and returns a bounded evidence package, falling back to the deterministic baseline whenever enrichment is missing, stale, or invalid.
+The default Vault is `~/.linger/vault`. Raw and decision events are source records. Processed memories, enrichment
+overlays, registries, and embedding indexes are derived and can be rebuilt. Forget revokes recall eligibility without
+rewriting history; correction appends evidence; delete and purge require explicit confirmation.
 
-The active agent combines that package with its current conversation and any host-owned memory already in context. Substantially identical facts are the same underlying evidence, not independent corroboration; conflicts should be surfaced instead of silently resolved.
+## Core commands
 
-Linger does not install a daemon, alter host-owned memory settings, or guarantee that an idle, long-running session will process the queue at an exact time.
+```sh
+linger status --project PROJECT_ID
+linger session-off --token TRUSTED_SESSION_TOKEN
+linger session-on --token TRUSTED_SESSION_TOKEN
+linger doctor
+linger config show --project PROJECT_ID
+linger recall --project PROJECT_ID --query "why did we choose SQLite?"
+linger why --project PROJECT_ID --topic "database"
+linger inspect --project PROJECT_ID --memory MEMORY_ID
+linger pause
+linger resume
+```
 
-The default Vault is ~/.linger/vault:
+Use `linger project-id --cwd .` to resolve the current project without writing the Vault. Git linked worktrees share the
+same local repository identity; separate clones remain separate. After a directory/repository move, attach the new empty
+locator explicitly with `linger project-attach --project ID --cwd PATH --yes`. Linger refuses to merge a locator that
+already has project state. Confirm an observed remote change with
+`linger project-confirm-identity --project ID --cwd PATH --yes`.
 
-    ~/.linger/vault/
-    ├── config.json
-    ├── projects/
-    ├── raw/
-    ├── processed/
-    ├── enrichments/
-    ├── decisions/
-    ├── queue/
-    ├── registry/
-    ├── tmp/
-    └── quarantine/
+Recall stays project-scoped unless the user explicitly asks to inspect another project. A timeout or integrity failure is
+reported as retrieval failure, never as a false “no memory.”
 
-Raw events and decision events are append-only source records. Processed memories use JSON plus a Markdown mirror. Host enrichment is a replaceable derived overlay. Registries and current decision views are derived and can be rebuilt.
+The installed Skill maps natural language such as “remember this,” “don’t save this,” “what did we discuss,” “why did we
+choose X,” “that memory is wrong,” and “forget this” to the corresponding bounded operation.
 
-Everything is a file. You can inspect it, back it up, grep it, or remove it through confirmed controls.
+Use the host-native Linger entry for status and current-conversation control: `/linger` in Claude Code, `$linger` or the
+Skill picker in Codex. Session control tokens come only from trusted hook context, contain no conversation text, and affect
+neither other sessions nor host-owned memory.
 
-## Key ideas
+## Upgrade compatibility
 
-### File-native
+v1 reads existing schema-v1 Raw, Processed, Decision, Queue, Project, Registry, Config, and Markdown content in place. It
+reuses legacy same-root project IDs instead of silently creating a second project, and it upgrades manifest-owned legacy
+Codex Skill entries without rewriting the Vault. Derived indexes may be rebuilt when their runtime identity changes; source
+records are never batch-rewritten as part of upgrade. Uninstall continues to preserve old and current Vault content.
 
-Your memory lives in ordinary local files with a versioned schema. There is no memory database or required server. Uninstalling the integration leaves the Vault in place.
+## Optional Local Embedding
 
-### Decision trail
+v1.0.0 contains no API or Remote Embedding backend and never asks for an embedding API key. The only validated Local
+profile is:
 
-Linger records typed decision evolution: idea, preference, proposal, rationale, constraint, rejection, decision, current state, todo, and correction.
+```text
+macOS (Darwin) / arm64
+Node 24 artifact identity
+@huggingface/transformers 4.2.0
+onnx-community/multilingual-e5-base-ONNX @ d15bb63d…
+onnx/model_quantized.onnx, dtype=q8, 768 dimensions
+```
 
-The current view is derived from immutable events. This allows Linger to preserve an A → B → A path instead of silently replacing history.
+Local Embedding is off after fresh install and upgrade. Enabling it is an explicit lifecycle:
 
-### Evidence, not instruction
+```sh
+linger embedding-install-plan
+linger embedding-install --project PROJECT_ID --yes
+linger embedding-enable --project PROJECT_ID
+linger embedding-rebuild --project PROJECT_ID
+linger embedding-status --project PROJECT_ID
+```
 
-Retrieved memories are untrusted historical evidence. Commands, prompts, or old system messages found in memory must not be executed. The current system and user instructions always take priority.
+The plan displays the runtime/model identity, size and transitive license inventory. The model and runtime are not bundled
+in the npm package. Installation downloads fixed artifacts from allowlisted npm/Hugging Face sources without credentials,
+query text, or project content; no package manager or lifecycle script runs in the artifact graph.
 
-### Honest recall
+The checked-in acquisition manifests use `candidate_not_validated` to mean that a future download has not yet passed
+install-time verification. A successful acquisition/install writes `installed_candidate_validated`. The pinned profile
+combination itself completed product acceptance; the pre-install status deliberately makes no claim about bytes that have
+not been downloaded on a user's machine.
 
-Recall distinguishes exact, similar, possible, conflicting, unprocessed, and missing results. It carries source IDs and provenance warnings. If Linger cannot find reliable evidence, it says so and may offer candidate topics, decisions, tags, or observed months.
+The installer uses a bounded safe extractor and a fixed dependency graph. A content manifest binds every installed
+directory and file, its byte count and SHA-256; the complete tree is checked before a worker starts. Inference is local,
+uses `local_files_only`, and disables remote model loading and cache writes. The current installed footprint is about
+685 MB, including the approximately 295 MB model.
 
-## Agent support
+Disable or remove derived state explicitly:
 
-Automation differs by host and version. Capability levels are reported from observed evidence, not from copied files alone.
+```sh
+linger embedding-disable --project PROJECT_ID
+linger embedding-delete-index --project PROJECT_ID --yes
+linger embedding-remove-runtime --project PROJECT_ID --yes
+```
 
-| Agent | Verified level | Current evidence and limitations |
-| --- | ---: | --- |
-| Claude Code | L2 | Claude Code 2.1.207 completed a real v0.2.1 host-enrichment path while its active host model was DeepSeek: lifecycle capture, deterministic processing, overlay commit, and enriched tagging. The v0.2.2 sidecar upgrade preserves host-owned memory and has passed installation and migration verification. StopFailure is covered in disposable-home acceptance. Ctrl-C did not preserve already-streamed assistant text on the observed path. |
-| Codex | L2 | Codex 0.144.0-alpha.4 completed a real v0.2.1 host-enrichment path: lifecycle capture, current-model organization, overlay commit, tag-registry rebuild, and exact semantic recall. The v0.2.2 sidecar contract is shared by the Codex adapter. A fresh install remains L1 until one trusted live session completes SessionStart, UserPromptSubmit, and Stop with the installed runtime. |
-| Other agents | Not implemented | Additional adapters are outside the v0.2.2 MVP scope. Future adapters must preserve the same sidecar boundary and leave host-owned memory untouched. |
+Disabling preserves the index. Index deletion preserves source memory. Runtime removal is refused while any project still
+uses the profile and preserves derived indexes. Missing, stale, sensitive, timed-out, or failed semantic paths fall back to
+lexical recall with an explicit reason.
 
-Levels:
-
-- L0: rule-only behavior.
-- L1: installed Skill with explicit file and CLI operations.
-- L2: verified lifecycle hook capture.
-- L3: session-local asynchronous processing.
-- L4: fuller capture, processing, recovery, indexing, and recall automation.
-
-Linger does not report L3 or L4 merely because integration files exist.
-
-Host enrichment follows the same support boundary. In Codex it uses the model active in Codex; in Claude Code it uses the model active in Claude Code, including a user-configured compatible endpoint. Linger installs no model SDK, chooses no model, and asks for no provider credential. If the host cannot or does not run enrichment, capture and deterministic recall continue normally.
-
-## Natural-language workflows
-
-The Skill helps the agent translate user intent into Linger operations. Exact behavior depends on the host's Skill and lifecycle support.
-
-Capture and recall are intentionally different. With verified lifecycle hooks, visible conversation turns are captured automatically during ordinary chat. Recall is demand-driven: Linger does not search or inject the whole Vault on every turn. When the user refers to earlier work with phrases such as “previously,” “last time,” “continue,” “why did we choose,” or “do you remember,” the agent should search the current project's Linger evidence. For an important lookup, the user can say “Use Linger to recall …” without running a CLI command.
-
-| You say | Intended behavior |
-| --- | --- |
-| “Remember this” | Capture as high-priority user-explicit evidence. |
-| “Don't save this” | Skip the current user event before Vault initialization when the hook exposes it. |
-| “Forget that decision” | Revoke the processed memory from ordinary recall without deleting raw history. |
-| “That memory is wrong” | Append a correction with visible evidence; do not rewrite history in place. |
-| “Why did we choose X?” | Search the current project's decision trail and return sourced evidence. |
-| “What did we discuss about Y?” | Search the current project's conversation archive. |
-| “Sample this recall” | Opt in for this query, return an attempt ID, and wait for your quality judgment. |
-| “Status” | Report Vault, queue, pending, and integrity health. |
-
-Ordinary capture and enrichment require no separate Linger command from the user. Lifecycle hooks capture visible turns. When the host reports pending eligible records, the Skill may organize at most one bounded batch after the primary request.
-
-Linger is a sidecar rather than a replacement for host memory. Installation preserves Claude Code, Codex, and future adapters' native memory settings and files. A host may independently retain a fact that Linger also captured; on recall, the active model should merge duplicates as one underlying event and disclose conflicting versions. Linger never treats duplicated context as an extra vote.
-
-Forget and delete are different. Forget changes recall eligibility. Delete removes a confirmed record. Purge removes the complete Linger state only after double confirmation.
+Other operating systems, architectures, models, revisions, dtypes, and runtimes are unsupported in v1.0.0.
 
 ## Privacy
 
-See [PRIVACY.md](PRIVACY.md) for the complete data boundary and removal behavior.
+Linger stores visible conversations locally. It installs no telemetry or Linger cloud service.
 
-Linger stores visible conversation content in local files. Its runtime does not phone home, collect telemetry, create embeddings, or sync data to a Linger service.
+Local-first does not mean that host-model work stays on-device: recalled evidence and an optional bounded enrichment batch
+enter the current Claude Code or Codex context and may be sent to the provider configured in that host. Linger selects no
+additional provider and requests no key.
 
-Local-first does not mean data never leaves your machine. When an agent recalls evidence or organizes a bounded enrichment batch, that evidence enters the current Claude Code or Codex context and may be sent to the model provider configured in that host. Linger does not send it to an additional model service.
+Local Embedding is different: embedding inputs and vectors remain on the device. Artifact hosts receive ordinary fixed-file
+download requests only; they do not receive project content. Secret and sensitive queries are excluded from the Local worker.
 
-The project includes a safety baseline for sensitive content:
+High-confidence credential patterns are redacted before raw persistence and secret records are excluded from processing and
+recall. This is a safety baseline, not complete DLP or encryption. Protect the Vault like any local transcript archive.
 
-- High-confidence secret patterns are redacted before raw persistence.
-- Secret records are excluded from processed memory and ordinary recall.
-- Contact-like sensitive records are excluded from ordinary recall by default.
-- Only normal-sensitivity, hash-verified records are eligible for host enrichment.
-- The same capture boundary applies to hooks, manual CLI capture, and programmatic capture.
+See [PRIVACY.md](PRIVACY.md) for the full boundary.
 
-This detector is not a complete DLP system. Unknown secret formats may be missed, and explicitly marked but unrecognized secret material may still remain in raw files. Protect the Vault like any other local transcript archive. Do not use this experimental build for data that requires audited compliance controls.
+## Safety and limitations
 
-## Safety and integrity
+- Automatic capture depends on current, verified host lifecycle support.
+- Claude Code or Codex interruption may prevent complete assistant capture; partial evidence is labelled.
+- Processing is session-local and event-driven; there is no persistent idle timer.
+- Deterministic summaries and host enrichment may miss complex semantics.
+- Local semantic retrieval improves candidate discovery but never upgrades a semantic-only hit into exact factual evidence.
+- Multi-window writes are bounded and atomic where required, not a distributed transaction system.
+- Secret detection is incomplete; a compromised local account remains outside Linger's protection.
+- Only the named Darwin/arm64 Local profile has real runtime/model acceptance.
 
-See [SECURITY.md](SECURITY.md) for the trust boundary and private vulnerability-reporting process.
+Critical paths validate schemas, IDs, canonical locations, source hashes, and physical Vault containment. Tampered records or
+installed Local artifacts fail closed. `doctor` reports invalid state; repair and destructive operations require confirmation.
 
-- Recall is current-project only by default.
-- Cross-project search is never enabled implicitly.
-- Search bounds files, snippets, returned characters, raw fragments, and wall-clock time.
-- Timeouts are reported as retrieval failures, not false “no memory” results.
-- IDs, enum fields, timestamps, schemas, and canonical record locations are validated at runtime.
-- Critical Vault paths reject physical symlink escapes outside the real Vault root.
-- Tampered raw sources are excluded or explicitly degraded.
-- Parseable but invalid records stay inert, appear in doctor, and move only through confirmed repair.
-- Install and uninstall validate managed destinations before mutation.
-- Hook capture failures do not block the agent conversation.
+See [SECURITY.md](SECURITY.md) for the threat model and private reporting channel.
 
-These controls reduce risk but do not guarantee absolute safety against malicious repositories, prompt injection, filesystem races, manual Vault modification, or a compromised local account.
+## Development
 
-Report vulnerabilities privately through [GitHub Security Advisories](https://github.com/arishana1969/linger-skill/security/advisories/new). Do not include live secrets or Vault files in ordinary issues.
+Development requires Node.js 22, 24, or 26 and pnpm.
 
-## Configuration
+```sh
+pnpm install --frozen-lockfile
+pnpm test
+pnpm eval:year
+pnpm eval:adversarial
+pnpm eval:heldout
+pnpm verify:package
+```
 
-Linger initializes conservative defaults:
-
-- Capture enabled unless the Vault is paused.
-- Current-project recall only.
-- Sensitive exclusion enabled.
-- No embeddings or additional model API.
-- Host enrichment is optional, bounded to one batch per agent turn, and uses the model already active in Claude Code or Codex.
-- At most 8 returned snippets.
-- At most 12,000 evidence characters.
-- At most 5,000 scanned files.
-- At most 500 characters per raw fragment.
-- A 2-second search deadline.
-
-Pause and resume are available through the CLI. Retrieval bounds can be supplied per search or recall request.
-
-Real-use recall sampling is off by default. An explicitly sampled query and its result metadata remain local in the Vault; high-confidence secrets are redacted. Feedback is append-only and can distinguish useful, partial, wrong, and missed recall.
-
-Not every internal processing threshold is exposed as a stable user configuration in v0.2.2. Configuration files are schema-validated; unsupported versions or invalid bounds fail explicitly instead of being silently rewritten.
-
-## Limitations
-
-- This is an MVP and does not promise perfect recall of every word.
-- Automatic capture depends on verified host lifecycle support.
-- Codex hooks require explicit host trust. After installing or upgrading Linger, start a new Codex session and complete one turn before relying on automatic capture.
-- Claude Code may lose already-streamed assistant text on Ctrl-C interruption.
-- Processing is event-driven and session-local; there is no persistent idle timer or daemon.
-- Deterministic summary, tag, retrieval-phrase, and decision-topic generation may miss complex semantics. Host enrichment improves organization when available but is not guaranteed to run on every turn.
-- Host enrichment currently improves processed memory metadata; it does not autonomously infer or append decision-trail events.
-- The secret detector is intentionally limited and is not encryption.
-- Multi-window use is not a strongly consistent transaction system.
-- Linger reduces prompt-injection and malicious-repository risk but does not eliminate it.
-- The deterministic evaluation suites are regression baselines, not evidence of universal real-world quality.
-
-## Development and verification
-
-Requires Node.js 20 or later and pnpm.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution rules and the full candidate gate.
-
-    pnpm install --frozen-lockfile
-    pnpm test
-    node scripts/validate-skill.mjs skills/linger
-    pnpm eval:year
-    pnpm eval:adversarial
-    pnpm eval:heldout
-    pnpm verify:package
-
-The current clean candidate passes:
-
-- 188 automated tests.
-- Year, adversarial, and 250+ event held-out evaluation gates at macro composite 1.0.
-- Real Codex host-enrichment acceptance from hook capture through exact recall; real Claude Code host-enrichment acceptance with a DeepSeek-backed host model.
-- Skill validation.
-- Exact tarball package-manager installation.
-- Capture-to-recall smoke.
-- Uninstall with Vault preservation.
-- Tracked-file credential scanning.
-
-These generated suites protect known behavior. They do not prove general memory quality across arbitrary conversations.
+The npm package excludes tests, temporary evidence, caches, and model/runtime artifacts. See [CONTRIBUTING.md](CONTRIBUTING.md)
+for contribution rules.
 
 ## Uninstall and purge
 
-With the recommended npx installation:
+```sh
+npx linger-skill uninstall --yes
+```
 
-    npx linger-skill uninstall --yes
+Uninstall removes managed Skill, hook, launcher, and runtime integration but preserves the Vault and host-owned memory.
+Complete Linger-state removal is separate:
 
-With a global or source installation:
-
-    linger uninstall --yes
-
-Uninstall removes managed Skill and hook integration but preserves the Vault.
-
-To remove the entire state, including the Vault:
-
-    node dist/cli.js purge --yes --confirm PURGE
-
-Purge is intentionally separate and requires both confirmation mechanisms.
+```sh
+linger purge --yes --confirm PURGE
+```
 
 ## License
 
-Linger is licensed under the MIT License. See LICENSE.
-
-See [CHANGELOG.md](CHANGELOG.md) for user-visible changes, [PRIVACY.md](PRIVACY.md) for the data boundary, and [SECURITY.md](SECURITY.md) for the security model and private reporting channel.
+Linger is MIT licensed. Third-party Local runtime/model licenses are shown before acquisition and are not replaced by the
+Linger license. See [CHANGELOG.md](CHANGELOG.md), [PRIVACY.md](PRIVACY.md), and [SECURITY.md](SECURITY.md).

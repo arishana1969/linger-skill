@@ -1,10 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
-import { assertWritableInside, atomicJson, readJson, withFileLock } from "./io.js";
+import { assertReadableInside, assertWritableInside, atomicJson, readJson, withFileLock } from "./io.js";
 import { assertSafeId, vaultPaths } from "./paths.js";
 import { assertDecisionEvent, assertDecisionView } from "./schema-validation.js";
 import { assertDecisionEventPath, assertDecisionViewPath } from "./record-paths.js";
-import { listJsonFiles } from "./vault.js";
+import { initVault, listJsonFiles } from "./vault.js";
 
 export type DecisionKind = "idea" | "preference" | "proposal" | "rationale" | "constraint" | "rejection" | "decision" | "current_state" | "todo" | "correction";
 export type DecisionStatus = "proposed" | "accepted" | "rejected" | "superseded" | "reopened" | "current" | "unknown";
@@ -68,6 +68,7 @@ export async function appendDecision(root: string, input: AppendDecisionInput): 
   validateInput(input);
   const project = assertSafeId(input.projectId, "project id");
   const canonicalId = canonicalDecisionId(project, input.topic);
+  await initVault(root);
   const p = vaultPaths(root);
   const topicDir = path.join(p.decisions, project, canonicalId);
   return await withFileLock(path.join(p.tmp, `${project}.${canonicalId}.decision.lock`), async () => {
@@ -98,7 +99,7 @@ export async function appendDecision(root: string, input: AppendDecisionInput): 
   });
 }
 
-export async function rebuildDecisionView(root: string, projectId: string, canonicalId: string): Promise<DecisionView> {
+async function rebuildDecisionView(root: string, projectId: string, canonicalId: string): Promise<DecisionView> {
   const p = vaultPaths(root);
   const topicDir = path.join(p.decisions, assertSafeId(projectId, "project id"), assertSafeId(canonicalId, "decision id"));
   const files = await listJsonFiles(path.join(topicDir, "events"), p.root);
@@ -107,7 +108,7 @@ export async function rebuildDecisionView(root: string, projectId: string, canon
   }))).filter((event): event is DecisionEvent => Boolean(event)).sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.event_id.localeCompare(b.event_id));
   if (!events.length) throw new Error(`No decision events for ${canonicalId}`);
   const superseded = new Set(events.flatMap(event => event.supersedes));
-  const eligible = events.filter(event => !superseded.has(event.event_id) && canSetCurrent(event));
+  const eligible = events.filter(event => !superseded.has(event.event_id) && isStateSettingDecision(event));
   const explicit = eligible.filter(event => event.source === "user_explicit");
   const candidates = explicit.length ? explicit : eligible;
   const current = candidates.at(-1);
@@ -142,13 +143,13 @@ export async function getDecisionTrail(root: string, projectId: string, topic: s
   const topicDir = path.join(p.decisions, project, id);
   try {
     const viewFile = path.join(topicDir, "current.json");
-    await assertWritableInside(p.root, viewFile);
+    await assertReadableInside(p.root, viewFile);
     const view = await readJson<unknown>(viewFile);
     assertDecisionView(view);
     assertDecisionViewPath(p, viewFile, view);
     const events = (await Promise.all((await listJsonFiles(path.join(topicDir, "events"), p.root)).map(async file => {
-      try { const value = await readJson<unknown>(file); assertDecisionEvent(value); assertDecisionEventPath(p, file, value); return value; } catch { return undefined; }
-    }))).filter((event): event is DecisionEvent => Boolean(event)).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+      try { await assertReadableInside(p.root, file); const value = await readJson<unknown>(file); assertDecisionEvent(value); assertDecisionEventPath(p, file, value); return value; } catch { return undefined; }
+    }))).filter((event): event is DecisionEvent => Boolean(event)).sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.event_id.localeCompare(b.event_id));
     return { view, events };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
@@ -161,7 +162,7 @@ export async function listDecisionViews(root: string, projectId: string): Promis
   const base = path.join(p.decisions, assertSafeId(projectId, "project id"));
   const files = (await listJsonFiles(base, p.root)).filter(file => path.basename(file) === "current.json");
   return (await Promise.all(files.map(async file => {
-    try { const value = await readJson<unknown>(file); assertDecisionView(value); assertDecisionViewPath(p, file, value); return value; } catch { return undefined; }
+    try { await assertReadableInside(p.root, file); const value = await readJson<unknown>(file); assertDecisionView(value); assertDecisionViewPath(p, file, value); return value; } catch { return undefined; }
   }))).filter((view): view is DecisionView => Boolean(view));
 }
 
@@ -178,7 +179,7 @@ function validateInput(input: AppendDecisionInput): void {
   if (!DECISION_SOURCES.has(input.source)) throw new Error("Invalid decision source");
 }
 
-function canSetCurrent(event: DecisionEvent): boolean {
+export function isStateSettingDecision(event: DecisionEvent): boolean {
   if (event.source === "agent_inferred" && event.confidence < 0.75) return false;
   return ["accepted", "rejected", "reopened", "current"].includes(event.status) && ["decision", "current_state", "correction", "rejection"].includes(event.kind);
 }

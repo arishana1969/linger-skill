@@ -1,12 +1,12 @@
 import { rm } from "node:fs/promises";
 import path from "node:path";
-import { capture } from "./capture.js";
+import { capture } from "../../capture.js";
 import type { EvalDataset } from "./eval-generator.js";
-import { atomicJson, readJson } from "./io.js";
-import { processQueue } from "./processing.js";
-import { recall } from "./recall.js";
+import { atomicJson, readJson } from "../../io.js";
+import { processQueue } from "../../processing.js";
+import { recall } from "../../recall.js";
 import { scoreSuite, type EvalPrediction } from "./eval-scorer.js";
-import type { RawEvent } from "./types.js";
+import type { RawEvent } from "../../types.js";
 
 export async function runEvalDataset(root: string, dataset: EvalDataset): Promise<{ predictions: EvalPrediction[]; scores: ReturnType<typeof scoreSuite>; imported: number; skipped: number }> {
   const rawToFixture = new Map<string, string>();
