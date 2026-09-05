@@ -11,6 +11,8 @@ final review and release approval remain pending. No publication or production i
 
 - POSIX installs expose `~/.local/bin/linger` consistently instead of choosing a different directory from the install-time
   PATH. Upgrade refreshes previously managed absolute launcher paths; old installs without launchers gain the entry.
+- Fresh Local Embedding acquisition budgets all 55 artifact requests plus the redirects permitted for the five fixed model
+  files. The previous file-count-only budget could stop a valid first install before the model download completed.
 - Managed runtimes include package metadata, Skill assets, and Local acquisition manifests as well as compiled code.
   `--version`, `embedding-install-plan`, and managed reinstall survive removal of the original package or npx cache.
 - Hooks provide a trusted Node/CLI/Vault locator even without pending enrichment. Subcommand `--help` shows the overview;

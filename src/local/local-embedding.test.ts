@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { access, mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -10,6 +10,17 @@ import { setSetting } from "../settings.js";
 import { capture } from "../capture.js";
 import { processQueue } from "../processing.js";
 import { configureLocalEmbedding, LocalEmbeddingWorker, suggestLocalTags } from "./local-embedding-runtime.js";
+import { LOCAL_CANDIDATE_MAX_REQUESTS } from "./local-candidate-acquisition.js";
+import { modelArtifactSpecs, validateLocalModelCandidateManifest } from "./local-model-manifest.js";
+import { runtimeArtifactSpecs, validateLocalRuntimeCandidateManifest } from "./local-runtime-manifest.js";
+
+test("Local artifact request cap includes every permitted redirect", async () => {
+  const runtime = validateLocalRuntimeCandidateManifest(JSON.parse(await readFile("local-runtime-manifests/darwin-arm64-transformers-4.2.0.json", "utf8")));
+  const model = validateLocalModelCandidateManifest(JSON.parse(await readFile("local-model-manifests/multilingual-e5-base-onnx-q8.json", "utf8")));
+  const specs = [...runtimeArtifactSpecs(runtime), ...modelArtifactSpecs(model)];
+  assert.equal(specs.length, 55);
+  assert.equal(LOCAL_CANDIDATE_MAX_REQUESTS, specs.reduce((total, spec) => total + 1 + (spec.redirect?.max_hops ?? 0), 0));
+});
 
 test("Local Embedding status and bounded tag worker lifecycle use the selected profile", async t => {
   const parent = await mkdtemp(path.join(os.tmpdir(), "linger-local-embedding-"));

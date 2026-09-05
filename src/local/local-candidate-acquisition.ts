@@ -26,6 +26,9 @@ export interface LocalCandidateAcquisitionReceipt {
   acquired_at: string;
 }
 
+// 55 initial requests plus up to two redirects for each of the five model files.
+export const LOCAL_CANDIDATE_MAX_REQUESTS = 65;
+
 export async function acquireLocalCandidate(
   root: string,
   input: { transactionId: string; runtimeManifest: unknown; modelManifest: unknown; now?: Date }
@@ -39,11 +42,16 @@ export async function acquireLocalCandidate(
   const filesystem = await statfs(root);
   const freeBytes = filesystem.bavail * filesystem.bsize;
   if (!Number.isSafeInteger(freeBytes) || freeBytes < 632 * 1024 * 1024) throw new Error("embedding.artifact_disk_space_insufficient");
-  const budget: LocalArtifactBudget = { max_bytes: 600 * 1024 * 1024, used_bytes: 0, max_requests: 55, used_requests: 0 };
   const runtimeSpecs = runtimeArtifactSpecs(runtime);
   const modelSpecs = modelArtifactSpecs(model);
   const specs = [...runtimeSpecs, ...modelSpecs];
   if (specs.length !== 55) throw new Error("embedding.candidate_request_plan_invalid");
+  const budget: LocalArtifactBudget = {
+    max_bytes: 600 * 1024 * 1024,
+    used_bytes: 0,
+    max_requests: LOCAL_CANDIDATE_MAX_REQUESTS,
+    used_requests: 0
+  };
   const predecessor: LocalArtifactReceipt[] = [];
   const downloaded: LocalArtifactReceipt[] = [];
   for (const spec of specs) {
