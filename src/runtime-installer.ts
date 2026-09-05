@@ -30,7 +30,10 @@ export async function installRuntime(home: string, packageRoot: string): Promise
   }
   try {
     await mkdir(staged, { mode: 0o700 });
-    await cp(sourceDist, path.join(staged, "dist"), { recursive: true, force: false });
+    // The CLI also reads package metadata, install assets, and the Local manifests.
+    for (const entry of ["dist", "package.json", "skills", "local-model-manifests", "local-runtime-manifests", "LICENSE"]) {
+      await cp(path.join(packageRoot, entry), path.join(staged, entry), { recursive: true, force: false });
+    }
     await writeFile(path.join(staged, ".linger-managed"), "managed by linger-skill\n", { mode: 0o600, flag: "wx" });
     await stat(path.join(staged, "dist", "hook-cli.js"));
     if (await exists(root)) await rename(root, previous);
@@ -48,7 +51,7 @@ export async function installRuntime(home: string, packageRoot: string): Promise
 }
 
 export async function preflightStableCli(home: string, previous?: RuntimeInstall & StableCliInstall): Promise<void> {
-  for (const target of stableCliTargets(home)) {
+  for (const target of stableCliTargets(home, previous?.launchers)) {
     if (!await exists(target)) continue;
     const previouslyManaged = Boolean(previous?.launchers.some(file => path.resolve(file) === path.resolve(target))
       && await isManagedLauncher(target, previous.root));
@@ -62,21 +65,18 @@ export async function installStableCli(
   previous?: RuntimeInstall & StableCliInstall
 ): Promise<StableCliInstall> {
   await preflightStableCli(home, previous);
-  const launcher = stableCliTargets(home)[0]!;
-  const bin = path.dirname(launcher);
+  const launchers = stableCliTargets(home, previous?.launchers);
   const cli = path.join(runtime.root, "dist", "cli.js");
-  await mkdir(bin, { recursive: true, mode: 0o700 });
-  if (process.platform === "win32") {
-    await atomicWrite(launcher, `@echo off\r\nrem managed by linger-skill\r\n"${process.execPath.replaceAll('"', '""')}" "${cli.replaceAll('"', '""')}" %*\r\n`);
-  } else {
-    await atomicWrite(launcher, `#!/bin/sh\n# managed by linger-skill\nexec ${quote(process.execPath)} ${quote(cli)} "$@"\n`);
-    await chmod(launcher, 0o700);
+  for (const launcher of launchers) {
+    await mkdir(path.dirname(launcher), { recursive: true, mode: 0o700 });
+    if (process.platform === "win32") {
+      await atomicWrite(launcher, `@echo off\r\nrem managed by linger-skill\r\n"${process.execPath.replaceAll('"', '""')}" "${cli.replaceAll('"', '""')}" %*\r\n`);
+    } else {
+      await atomicWrite(launcher, `#!/bin/sh\n# managed by linger-skill\nexec ${quote(process.execPath)} ${quote(cli)} "$@"\n`);
+      await chmod(launcher, 0o700);
+    }
   }
-  for (const stale of previous?.launchers ?? []) {
-    if (path.resolve(launcher) === path.resolve(stale)) continue;
-    if (await isManagedLauncher(stale, previous!.root)) await rm(stale, { force: true });
-  }
-  return { launchers: [launcher] };
+  return { launchers };
 }
 
 export async function uninstallStableCli(runtimeRoot: string, launchers: string[]): Promise<string[]> {
@@ -111,13 +111,12 @@ async function exists(file: string): Promise<boolean> {
 }
 function quote(value: string): string { return `'${value.replaceAll("'", `'"'"'`)}'`; }
 
-function stableCliTargets(home: string): string[] {
-  if (process.platform === "win32") return [path.join(home, ".linger", "bin", "linger.cmd")];
-  const localBin = path.join(home, ".local", "bin");
-  const onPath = (process.env.PATH ?? "").split(path.delimiter)
-    .some(entry => entry && path.resolve(entry) === path.resolve(localBin));
-  const bin = onPath ? localBin : path.join(home, ".linger", "bin");
-  return [path.join(bin, "linger")];
+function stableCliTargets(home: string, previous: string[] = []): string[] {
+  const primary = process.platform === "win32"
+    ? path.join(home, ".linger", "bin", "linger.cmd")
+    : path.join(home, ".local", "bin", "linger");
+  // Preserve previously advertised absolute paths across upgrades.
+  return [...new Set([primary, ...previous].map(file => path.resolve(file)))];
 }
 
 async function isManagedLauncher(file: string, runtimeRoot: string): Promise<boolean> {

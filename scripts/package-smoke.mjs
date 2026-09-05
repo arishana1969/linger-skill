@@ -7,10 +7,11 @@ import { promisify } from "node:util";
 const exec = promisify(execFile);
 const root = process.cwd();
 const temporary = await mkdtemp(path.join(os.tmpdir(), "linger-package-smoke-"));
+const npmEnv = { ...process.env, npm_config_cache: path.join(temporary, "npm-cache") };
 
 try {
-  const pack = await runPnpm(["pack", "--json", "--pack-destination", temporary]);
-  const metadata = JSON.parse(pack.stdout);
+  const pack = await exec("npm", ["pack", "--ignore-scripts", "--json", "--pack-destination", temporary], { cwd: root, env: npmEnv });
+  const [metadata] = JSON.parse(pack.stdout);
   const packedPaths = metadata.files.map((file) => file.path);
   const forbidden = packedPaths.filter((file) => file.startsWith("src/")
     || file.startsWith("dist/dev/")
@@ -35,14 +36,29 @@ try {
   const consumer = path.join(temporary, "consumer");
   await mkdir(consumer, { recursive: true });
   await writeFile(path.join(consumer, "package.json"), JSON.stringify({ name: "linger-package-consumer", private: true }));
-  await runPnpm(["add", "--offline", "--ignore-scripts", tarball], consumer);
+  await exec("npm", ["install", "--offline", "--ignore-scripts", "--no-audit", "--no-fund", tarball], { cwd: consumer, env: npmEnv });
   const home = path.join(temporary, "home");
   const cli = path.join(consumer, "node_modules", ".bin", process.platform === "win32" ? "linger-skill.CMD" : "linger-skill");
   await access(cli);
   const packagedCli = path.join(consumer, "node_modules", "linger-skill", "dist", "cli.js");
   const installed = JSON.parse((await exec(process.execPath, [packagedCli, "install", "--home", home, "--yes"], { cwd: consumer })).stdout);
   if (!installed.privacy_notice || installed.capabilities.length !== 2) throw new Error("packed installer omitted privacy notice or capability report");
-  const stableCli = path.join(home, ".linger", "bin", process.platform === "win32" ? "linger.cmd" : "linger");
+  for (const name of ["linger", "linger-skill"]) {
+    const bin = path.join(consumer, "node_modules", ".bin", process.platform === "win32" ? `${name}.cmd` : name);
+    if ((await exec(bin, ["--version"], { cwd: consumer })).stdout.trim() !== packedManifest.version) throw new Error(`broken npm binary: ${name}`);
+  }
+  const stableCli = installed.cli.path;
+  // An npx/package-manager cache is not part of the managed runtime's lifetime.
+  await rm(path.join(consumer, "node_modules"), { recursive: true, force: true });
+  if ((await exec(stableCli, ["--version"])).stdout.trim() !== packedManifest.version) throw new Error("managed runtime lost package metadata");
+  if (process.platform === "darwin" && process.arch === "arm64") {
+    await exec(stableCli, ["embedding-install-plan"]);
+  }
+  await exec(stableCli, ["install", "--home", home, "--yes"]);
+  if (process.platform !== "win32") {
+    const env = { ...process.env, PATH: `${path.dirname(stableCli)}${path.delimiter}/usr/bin:/bin` };
+    if ((await exec("/bin/sh", ["-c", "linger --version"], { env })).stdout.trim() !== packedManifest.version) throw new Error("managed CLI cannot run from a fresh shell PATH");
+  }
   const capabilities = JSON.parse((await exec(stableCli, ["capabilities", "--home", home], { cwd: consumer })).stdout);
   if (capabilities[0]?.level !== 2 || capabilities[1]?.level !== 1) throw new Error("packed capability report did not preserve Claude L2 and trust-gated Codex L1");
   const vault = path.join(home, ".linger", "vault");
@@ -53,13 +69,7 @@ try {
   const uninstalled = JSON.parse((await exec(stableCli, ["uninstall", "--home", home, "--yes"], { cwd: consumer })).stdout);
   if (uninstalled.vault_preserved !== true) throw new Error("packed uninstall did not preserve the Vault contract");
   await access(vault);
-  console.log(JSON.stringify({ ok: true, tarball: path.basename(tarball), package_manager_install: true, capture_to_recall: true, vault_preserved: true, required_files: required.length, forbidden_files: forbidden.length, capabilities: capabilities.map((item) => ({ adapter: item.adapter, level: item.level })) }, null, 2));
+  console.log(JSON.stringify({ ok: true, tarball: path.basename(tarball), package_manager_install: true, both_npm_bins: true, cache_independent_runtime: true, managed_reinstall: true, capture_to_recall: true, vault_preserved: true, required_files: required.length, forbidden_files: forbidden.length, capabilities: capabilities.map((item) => ({ adapter: item.adapter, level: item.level })) }, null, 2));
 } finally {
   await rm(temporary, { recursive: true, force: true });
-}
-
-async function runPnpm(args, cwd = root) {
-  const executable = process.env.npm_execpath;
-  if (executable) return await exec(process.execPath, [executable, ...args], { cwd });
-  return await exec("pnpm", args, { cwd });
 }

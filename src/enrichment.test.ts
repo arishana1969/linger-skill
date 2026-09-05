@@ -14,6 +14,7 @@ import { quarantineInvalidFiles } from "./repair.js";
 import { search } from "./search.js";
 import { readTagRegistry } from "./tag-registry.js";
 import { vaultPaths } from "./paths.js";
+import { expandTerms, setTermRelation } from "./term-graph.js";
 
 const exec = promisify(execFile);
 const cli = path.resolve("dist/cli.js");
@@ -61,6 +62,13 @@ test("host enrichment improves recall without replacing deterministic processed 
   assert.equal((await search(root, { projectId: project, query: "preserve source evidence" }))[0]?.source, batch.items[0]!.memory_id);
   assert.deepEqual(await enrichmentStatus(root, project), { project_id: project, pending: 0, enriched: 1 });
   assert.ok((await readTagRegistry(root, project))?.entries.some(entry => entry.normalized_tag === "semantic-orchid"));
+  // A candidate uses the registry's hyphenated key while this overlay stores "host native".
+  await setTermRelation(root, { projectId: project, termA: "project-helper", termB: "host-native", relationType: "alias",
+    confidence: 0.9, evidenceRefs: batch.items[0]!.source_events });
+  const expanded = (await search(root, { projectId: project, query: "project-helper" }))[0]!;
+  assert.equal(expanded.source, batch.items[0]!.memory_id);
+  assert.equal(expanded.match_type, "possible_match");
+  assert.equal((await expandTerms(root, project, ["host native"])).get("project-helper"), 0.9);
 });
 
 test("enrichment is limited to normal evidence and rejects mismatched or tampered sources", async () => {

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { access, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -18,9 +19,10 @@ test("installs idempotently and keeps untrusted Codex hooks at L1", async () => 
   assert.equal(Object.hasOwn(second.manifest, "hook_files"), false);
   await access(path.join(fakeHome, ".claude", "skills", "linger", "SKILL.md"));
   await access(path.join(fakeHome, ".codex", "skills", "linger", "SKILL.md"));
-  await access(path.join(fakeHome, ".linger", "bin", "linger"));
+  await access(path.join(fakeHome, ".local", "bin", "linger"));
   await assert.rejects(access(path.join(fakeHome, ".linger", "install", "active.json")));
-  assert.equal(first.cli.path, path.join(fakeHome, ".linger", "bin", "linger"));
+  assert.equal(first.cli.path, path.join(fakeHome, ".local", "bin", "linger"));
+  assert.equal(first.cli.on_path, false);
 });
 
 test("unmanaged skill causes zero mutation unless cli-only is explicit", async () => {
@@ -36,7 +38,7 @@ test("unmanaged skill causes zero mutation unless cli-only is explicit", async (
   assert.deepEqual(result.manifest.entry_conflicts, [existing]);
   assert.deepEqual(result.manifest.files, []);
   assert.equal(await readFile(path.join(existing, "SKILL.md"), "utf8"), "user-owned");
-  await access(path.join(fakeHome, ".linger", "bin", "linger"));
+  await access(path.join(fakeHome, ".local", "bin", "linger"));
   const vaultSentinel = path.join(fakeHome, ".linger", "vault", "keep.txt");
   await mkdir(path.dirname(vaultSentinel), { recursive: true });
   await writeFile(vaultSentinel, "keep");
@@ -178,4 +180,21 @@ test("installs a managed bare CLI into an existing PATH-owned user bin", async (
   } finally {
     process.env.PATH = previousPath;
   }
+});
+
+test("upgrade retains the v1.0.0 absolute launcher while exposing a stable user-bin entry", async () => {
+  const fakeHome = await home();
+  const installed = await install({ home: fakeHome, packageRoot, adapters: ["codex"] });
+  const legacyLauncher = path.join(fakeHome, ".linger", "bin", "linger");
+  await mkdir(path.dirname(legacyLauncher), { recursive: true });
+  await rename(installed.cli.path, legacyLauncher);
+  const manifestFile = path.join(fakeHome, ".linger", "install-manifest.json");
+  await writeFile(manifestFile, JSON.stringify({ ...installed.manifest, cli_launchers: [legacyLauncher] }));
+  const upgraded = await install({ home: fakeHome, packageRoot, adapters: ["codex"] });
+  assert.deepEqual(upgraded.manifest.cli_launchers, [installed.cli.path, legacyLauncher]);
+  for (const launcher of upgraded.manifest.cli_launchers!) {
+    assert.equal(execFileSync(launcher, ["version"], { encoding: "utf8" }).trim(), upgraded.manifest.package_version);
+  }
+  await uninstall(fakeHome);
+  for (const launcher of upgraded.manifest.cli_launchers!) await assert.rejects(access(launcher));
 });

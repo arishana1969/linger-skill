@@ -150,7 +150,7 @@ export function assertTermRelation(value: unknown): asserts value is TermRelatio
   isoTimestamp(item.last_verified, "term relation last_verified");
   stringArrays(item, ["context_tags", "evidence_refs"], "term relation");
   enumeration(item.relation_type, TERM_RELATION_TYPES, "term relation type");
-  if (typeof item.confidence !== "number" || item.confidence < 0 || item.confidence > 1) invalid("term relation confidence");
+  if (typeof item.confidence !== "number" || !Number.isFinite(item.confidence) || item.confidence < 0 || item.confidence > 1) invalid("term relation confidence");
 }
 
 export function assertProjectRecord(value: unknown): asserts value is ProjectRecord {

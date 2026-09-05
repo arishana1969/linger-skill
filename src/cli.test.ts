@@ -67,4 +67,21 @@ test("CLI session control is explicit and reflected in status", async () => {
   assert.equal(JSON.parse(await run(["session-on", "--vault", vault, "--token", token])).capture, "on");
 });
 
+test("CLI exposes tag discovery and explicit contextual curation without requiring embedding", async () => {
+  const vault = await mkdtemp(path.join(os.tmpdir(), "linger-cli-tags-"));
+  const shared = ["--vault", vault, "--project", "p_cli"];
+  const evidence = JSON.parse(await run(["capture", ...shared, "--content", "The database vocabulary is reviewed for this project."]));
+  await run(["process", ...shared]);
+  assert.equal(JSON.parse(await run(["tags", "suggest", ...shared, "--term", "database"])).semantic_status, "off");
+  assert.ok(JSON.parse(await run(["tags", "list", ...shared])).entries.length > 0);
+  await run(["tags", "relate", ...shared, "--from", "db", "--to", "database", "--type", "contextual_equivalent", "--context", "backend", "--confidence", "0.95", "--evidence", evidence.event_id]);
+  assert.equal(JSON.parse(await run(["tags", "relations", ...shared])).length, 1);
+  assert.equal(JSON.parse(await run(["search", ...shared, "--query", "db"])).length, 0);
+  const hits = JSON.parse(await run(["search", ...shared, "db", "--context", "backend"]));
+  assert.equal(hits[0]?.match_type, "possible_match");
+  assert.ok(hits[0]?.warning_flags.includes("term_expansion"));
+  assert.equal(JSON.parse(await run(["recall", ...shared, "--query", "db", "--context", "backend"])).hits.length, 1);
+  assert.match(await run(["tags", "--help"]), /never auto-create relations/);
+});
+
 async function run(args: string[]): Promise<string> { return (await exec(node, [cli, ...args])).stdout.trim(); }

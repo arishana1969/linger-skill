@@ -338,7 +338,7 @@ function identityRecord(record: EmbeddingIndexRecord): object {
   };
 }
 
-function normalize(vector: number[], dimension: number): number[] {
+export function normalize(vector: number[], dimension: number): number[] {
   if (vector.length !== dimension || !vector.every(Number.isFinite)) throw new Error("embedding.response_dimension_mismatch");
   const norm = Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0));
   if (!Number.isFinite(norm) || norm <= Number.EPSILON) throw new Error("embedding.response_non_finite");
@@ -360,7 +360,7 @@ function decodeVector(buffer: Buffer, offset: number, dimension: number): number
   return vector;
 }
 
-function dot(left: number[], right: number[]): number { return left.reduce((sum, value, index) => sum + value * right[index]!, 0); }
+export function dot(left: number[], right: number[]): number { return left.reduce((sum, value, index) => sum + value * right[index]!, 0); }
 function validIdentity(value: unknown): value is string { return typeof value === "string" && value.length > 0 && value.length <= 256 && !/[\u0000-\u001f\u007f]/.test(value); }
 function assertPreparedInputs(inputs: string[]): void {
   if (inputs.some(value => typeof value !== "string" || value.length === 0 || Buffer.byteLength(value) > 65_536)) throw new Error("embedding.input_invalid");

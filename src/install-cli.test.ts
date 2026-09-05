@@ -16,7 +16,7 @@ test("CLI install, capabilities, and confirmed uninstall", async () => {
   const installed = JSON.parse((await exec(process.execPath, [cli, "install", "--home", home, "--yes"])).stdout);
   assert.equal(installed.capabilities[0].level, 2);
   await access(path.join(home, ".codex", "skills", "linger", "SKILL.md"));
-  await access(path.join(home, ".linger", "bin", "linger"));
+  await access(path.join(home, ".local", "bin", "linger"));
   const capabilities = JSON.parse((await exec(process.execPath, [cli, "capabilities", "--home", home])).stdout);
   assert.deepEqual(capabilities.map((item: { level: number }) => item.level), [2, 1]);
   await assert.rejects(exec(process.execPath, [cli, "uninstall", "--home", home]), /uninstall requires --yes/);

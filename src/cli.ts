@@ -23,7 +23,9 @@ import { assertDecisionEvidenceNotHookOwned } from "./hook-ownership.js";
 import { why } from "./why.js";
 import { deleteEmbeddingIndex } from "./local/embedding-index.js";
 import { localEmbeddingStatus } from "./local/local-embedding.js";
-import { localHybridSearch, rebuildLocalEmbeddingIndex, setLocalEmbeddingEnabled } from "./local/local-embedding-runtime.js";
+import { localHybridSearch, rebuildLocalEmbeddingIndex, setLocalEmbeddingEnabled, suggestLocalTags } from "./local/local-embedding-runtime.js";
+import { readTagRegistry, rebuildTagRegistry } from "./tag-registry.js";
+import { readTermRelations, setTermRelation, type TermRelationType } from "./term-graph.js";
 import { installLocalEmbeddingForProject, localEmbeddingInstallPlan, removeLocalEmbeddingRuntime } from "./local/local-embedding-install.js";
 import { assertSupportedRuntime } from "./runtime-support.js";
 import { disableSession, enableSession, sessionControlStatus } from "./session-control.js";
@@ -66,7 +68,7 @@ function optionalNumberOption(name: string): number | undefined {
 }
 
 async function main(): Promise<void> {
-  if (!command || command === "help" || command === "--help" || command === "-h") {
+  if (!command || command === "help" || command === "--help" || command === "-h" || flag("--help") || flag("-h")) {
     printHelp();
     return;
   }
@@ -142,6 +144,22 @@ async function main(): Promise<void> {
     }
     case "enrich-commit": output(await commitEnrichment(vault, await readSubmission(required("--input")))); break;
     case "enrich-status": output(await enrichmentStatus(vault, option("--project") ?? (await registerProject(vault, process.cwd())).project_id)); break;
+    case "tags": {
+      const action = args.shift();
+      const project = required("--project");
+      if (action === "list") output(await readTagRegistry(vault, project) ?? { project_id: project, entries: [] });
+      else if (action === "rebuild") output(await rebuildTagRegistry(vault, project));
+      else if (action === "suggest") output(await suggestLocalTags(vault, project, required("--term"), optionalNumberOption("--limit")));
+      else if (action === "relations") output(await readTermRelations(vault, project));
+      else if (action === "relate") output(await setTermRelation(vault, {
+        projectId: project, termA: required("--from"), termB: required("--to"),
+        relationType: required("--type") as TermRelationType, confidence: Number(required("--confidence")),
+        contextTags: option("--context")?.split(",").map(tag => tag.trim()).filter(Boolean),
+        evidenceRefs: required("--evidence").split(",").map(ref => ref.trim()).filter(Boolean)
+      }));
+      else throw new Error("tags requires list, rebuild, suggest, relate, or relations");
+      break;
+    }
     case "embedding-status": {
       const embeddingProject = option("--project") ?? await projectId(option("--cwd") ?? process.cwd(), vault);
       output(await localEmbeddingStatus(vault, embeddingProject)); break;
@@ -166,8 +184,9 @@ async function main(): Promise<void> {
       const timeoutMs = optionalNumberOption("--timeout-ms");
       const from = option("--from");
       const to = option("--to");
+      const contextTags = option("--context")?.split(",").map(tag => tag.trim()).filter(Boolean);
       const query = option("--query") ?? args.join(" ");
-      const hybrid = await localHybridSearch(vault, { projectId, query, includeRaw, maxFiles, maxRawFragmentCharacters, timeoutMs, from, to });
+      const hybrid = await localHybridSearch(vault, { projectId, query, includeRaw, maxFiles, maxRawFragmentCharacters, timeoutMs, from, to, contextTags });
       const retrievalMode = hybrid.effective_mode === "hybrid"
         ? "hybrid"
         : hybrid.semantic_status === "failed" || hybrid.semantic_status === "timeout"
@@ -183,6 +202,7 @@ async function main(): Promise<void> {
         timeoutMs,
         from,
         to,
+        contextTags,
         initialHits: hybrid.hits,
         retrievalMode,
         degradedReason: hybrid.degraded_reason
@@ -190,16 +210,17 @@ async function main(): Promise<void> {
       output(result); break;
     }
     case "search": {
-      const result = await localHybridSearch(vault, {
+      const searchOptions = {
         projectId: option("--project") ?? (await registerProject(vault, process.cwd())).project_id,
-        query: option("--query") ?? args.join(" "),
         includeRaw: flag("--include-raw"),
         maxFiles: optionalNumberOption("--max-files"),
         maxRawFragmentCharacters: optionalNumberOption("--max-raw-fragment-characters"),
         timeoutMs: optionalNumberOption("--timeout-ms"),
         from: option("--from"),
-        to: option("--to")
-      });
+        to: option("--to"),
+        contextTags: option("--context")?.split(",").map(tag => tag.trim()).filter(Boolean)
+      };
+      const result = await localHybridSearch(vault, { ...searchOptions, query: option("--query") ?? args.join(" ") });
       output(result.hits);
       break;
     }
@@ -285,8 +306,16 @@ Core: status, recall, search, why, inspect, forget, correct, delete
 Session: session-off, session-on, session-status
 Control: pause, resume, doctor, doctor-repair
 Projects: project-id, projects, project-attach, project-confirm-identity
+Tags: tags list|rebuild|relations --project ID
+      tags suggest --project ID --term TEXT [--limit 1..20]
+      tags relate --project ID --from TERM --to TERM --type TYPE --confidence 0..1 --evidence EVENT_IDS [--context TAGS]
+Types: synonym, alias, abbreviation, contextual_equivalent, related, ambiguous (legacy location_mapping/product_name supported)
+Tag suggestions use optional Local Embedding, never auto-create relations; related/ambiguous do not expand queries.
+Search/recall accept --context TAGS (comma-separated); contextual equivalence requires matching explicit context.
 Local embedding: embedding-status, embedding-install-plan, embedding-install, embedding-enable, embedding-disable, embedding-rebuild, embedding-delete-index, embedding-remove-runtime
 Install: install, uninstall, purge, capabilities
-Run "linger <command> --help" is not yet supported; see the installed Linger Skill protocol for exact options.`);
+The managed CLI is ~/.local/bin/linger on POSIX, ~/.linger/bin/linger.cmd on Windows. Add its directory to PATH or use its absolute path.
+Local Embedding remains default-off; missing runtime/inference preserves lexical retrieval. Tag vectors are ephemeral.
+--help shows this overview; see the installed Linger Skill protocol for exact options.`);
 }
 main().catch(error => { console.error(`linger: ${(error as Error).message}`); process.exitCode = 1; });
