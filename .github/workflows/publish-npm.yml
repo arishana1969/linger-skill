@@ -1,4 +1,4 @@
-name: Publish v1.0.0 to npm
+name: Publish v1.1.0 to npm
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: publish-linger-skill-v1.0.0
+  group: publish-linger-skill-v1.1.0
   cancel-in-progress: false
 
 jobs:
@@ -18,10 +18,10 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          ref: d17301fb96457d8981d84b2721ba15e38ab0c0bf
+          ref: 6286c2222d9e2ec158dc5612387e7f9e39989f46
           persist-credentials: false
       - name: Verify exact release commit
-        run: test "$(git rev-parse HEAD)" = d17301fb96457d8981d84b2721ba15e38ab0c0bf
+        run: test "$(git rev-parse HEAD)" = 6286c2222d9e2ec158dc5612387e7f9e39989f46
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
         with:
           version: 10.34.5
