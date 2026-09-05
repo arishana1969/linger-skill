@@ -6,6 +6,10 @@ import { assertSafeId, vaultPaths } from "./paths.js";
 import { assertProcessedMemory, assertTagRegistry } from "./schema-validation.js";
 import { assertProcessedRecordPath, assertTagRegistryPath } from "./record-paths.js";
 import { listJsonFiles } from "./vault.js";
+import { resolveEffectiveSearchDocuments } from "./effective-search-document.js";
+import { dot, normalize as normalizeVector } from "./local/embedding-index.js";
+import { resolveSettings } from "./settings.js";
+import { classifySensitivity } from "./sensitivity.js";
 
 export interface TagRegistryEntry {
   raw_tag: string;
@@ -70,6 +74,70 @@ export async function readTagRegistry(root: string, projectId: string): Promise<
   await assertWritableInside(p.root, file);
   try { const value = await readJson<unknown>(file); assertTagRegistry(value); assertTagRegistryPath(p, file, value); return value; }
   catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; }
+}
+
+interface TagCandidate {
+  tag: string;
+  semantic_similarity?: number;
+  evidence_refs: string[];
+}
+
+export interface TagSuggestions {
+  project_id: string;
+  term: string;
+  semantic_status: "off" | "active" | "privacy_blocked" | "unavailable";
+  considered_tags: number;
+  total_tags: number;
+  candidates: TagCandidate[];
+}
+
+/** Read-only discovery. Similarity is a ranking signal, never a relation or its confidence. */
+export async function suggestTags(root: string, projectId: string, term: string, options: {
+  limit?: number;
+  embed?: (query: string, tags: string[]) => Promise<{ dimension: number; vectors: number[][] }>;
+} = {}): Promise<TagSuggestions> {
+  const project = assertSafeId(projectId, "project id");
+  if (!term.trim() || [...term].length > 128) throw new Error("Tag query must contain 1 to 128 characters");
+  const normalizedTerm = normalizeTag(term);
+  const limit = options.limit ?? 8;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 20) throw new Error("Tag limit must be from 1 to 20");
+  const result: TagSuggestions = { project_id: project, term, semantic_status: "off", considered_tags: 0, total_tags: 0, candidates: [] };
+  if (classifySensitivity(term).level !== "normal") return { ...result, semantic_status: "privacy_blocked" };
+  const registry = await readTagRegistry(root, project);
+  // A stale registry cannot authorize embedding revoked, sensitive, or invalid evidence.
+  const evidenceByTag = new Map<string, string[]>();
+  for (const document of await resolveEffectiveSearchDocuments(root, project)) {
+    if (!document.eligibility.index) continue;
+    for (const tag of document.tag_terms) {
+      const key = normalizeTag(tag);
+      // One eligible source document is enough to make the candidate inspectable.
+      if (!evidenceByTag.has(key)) evidenceByTag.set(key, document.evidence_descriptors.map(source => source.event_id).slice(0, 5));
+    }
+  }
+  const entries = (registry?.entries ?? []).filter(entry => evidenceByTag.has(entry.normalized_tag))
+    .sort((a, b) => Number(b.normalized_tag === normalizedTerm) - Number(a.normalized_tag === normalizedTerm)
+      || b.usage_count - a.usage_count || a.normalized_tag.localeCompare(b.normalized_tag));
+  result.total_tags = entries.length;
+  const candidates: TagCandidate[] = entries.slice(0, 128).map(entry => ({
+    tag: entry.normalized_tag,
+    evidence_refs: evidenceByTag.get(entry.normalized_tag)!
+  }));
+  result.considered_tags = candidates.length;
+  result.candidates = candidates.filter(candidate => candidate.tag === normalizedTerm).slice(0, limit);
+  const settings = await resolveSettings(root, { projectId: project });
+  if (settings.values["embedding.desired_enabled"].value !== true || !candidates.length) return result;
+  if (!options.embed) return { ...result, semantic_status: "unavailable" };
+  try {
+    const embedded = await options.embed(term, candidates.map(candidate => candidate.tag));
+    if (embedded.vectors.length !== candidates.length + 1) throw new Error("embedding.response_dimension_mismatch");
+    const vectors = embedded.vectors.map(vector => normalizeVector(vector, embedded.dimension));
+    candidates.forEach((candidate, index) => { candidate.semantic_similarity = dot(vectors[0]!, vectors[index + 1]!); });
+    candidates.sort((a, b) => Number(b.tag === normalizedTerm) - Number(a.tag === normalizedTerm)
+      || b.semantic_similarity! - a.semantic_similarity! || a.tag.localeCompare(b.tag));
+    return { ...result, semantic_status: "active", candidates: candidates.slice(0, limit) };
+  } catch {
+    return { ...result, semantic_status: "unavailable" };
+  }
 }
 
 function normalizeTag(value: string): string { return value.trim().toLowerCase().replace(/\s+/g, "-").replace(/^-+|-+$/g, ""); }

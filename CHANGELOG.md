@@ -2,6 +2,51 @@
 
 Notable user-visible changes to Linger are recorded here.
 
+## 1.1.0 — 2026-09-05
+
+Compared with v1.0.0; includes the CLI reliability fixes previously considered for v1.0.1. Independent ablation is complete;
+the final review includes a real v0.2.2 upgrade and a bounded real-E5 Tag measurement.
+
+### Fixed
+
+- POSIX installs expose `~/.local/bin/linger` consistently instead of choosing a different directory from the install-time
+  PATH. Upgrade refreshes previously managed absolute launcher paths; old installs without launchers gain the entry.
+- Fresh Local Embedding acquisition budgets all 55 artifact requests plus the redirects permitted for the five fixed model
+  files. The previous file-count-only budget could stop a valid first install before the model download completed.
+- Managed runtimes include package metadata, Skill assets, and Local acquisition manifests as well as compiled code.
+  `--version`, `embedding-install-plan`, and managed reinstall survive removal of the original package or npx cache.
+- Hooks provide a trusted Node/CLI/Vault locator even without pending enrichment. Subcommand `--help` shows the overview;
+  bare search text no longer absorbs trailing options into the query.
+
+### Added and constrained
+
+- `tags list|rebuild|suggest|relate|relations` operates on the existing Tag Registry and Term Graph. Tag discovery reuses the
+  optional Local E5 runtime, embeds up to 128 eligible tags per request, and discards vectors after ranking candidates.
+- Candidate output keeps tag names, optional cosine values and a bounded evidence sample from one eligible document;
+  response status and coverage describe the discovery result. No redundant per-candidate exact-match flag or fixed error
+  alias is exposed. Independent ablation also removes duplicate evidence aggregation, query normalization and source preflight work.
+- Explicit relation curation records type, confidence, context, timestamps, and verified project evidence. No similarity
+  score automatically creates a synonym. `search` and `recall` accept explicit `--context` tags.
+- Confident equivalences expand one hop with reduced lexical weight. `related` and `ambiguous` never expand, and veto a
+  competing equivalence for the same pair in the applicable context. Contextual equivalence requires matching context.
+  Semantic-only document hits retain their existing possible-match behavior; they are not filtered by the term graph.
+
+### Compatibility and boundaries
+
+- No dependencies, cloud API, model, service, vector database, parallel index, settings, or migrations added. Local profile,
+  document embedding indexes, lexical ranking/confidence, and existing Vault/config/record formats remain compatible.
+- Tag Registry and Term Graph remain schema-v1. Existing relation IDs and evidence remain readable. Legacy
+  `location_mapping`/`product_name` mappings retain their behavior; `related` expansion and context-free contextual
+  equivalence are deliberately narrowed without rewriting those records.
+- Embedding remains default-off; upgrades preserve existing settings. Disabled/unavailable Tag discovery returns normalized
+  exact names and a status; curated relations continue to work in lexical retrieval. Candidate cosine values are not
+  calibrated Tag confidence. The fixed acceptance set verifies the contract with controlled vectors, not real E5 quality.
+
+### Verification
+
+- Bounded unit/integration, removal experiments and temporary npm-package/upgrade checks are recorded in `ABLATION_REPORT.md`,
+  with a compact summary in `DEVELOPMENT.md`. Production HOME/Vault and GitHub remain unchanged.
+
 ## 1.0.0 — 2026-08-12
 
 This is the complete user-visible delta from the last public release, v0.2.2. The v0.3.0 section below records the internal

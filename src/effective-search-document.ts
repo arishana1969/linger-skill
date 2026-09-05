@@ -66,6 +66,7 @@ export interface EffectiveSearchDocument {
   source: ProcessedMemory["source"];
   display_summary: string;
   search_tags: string[];
+  tag_terms: string[];
 }
 
 interface EvidenceCandidate {
@@ -226,7 +227,9 @@ function resolveDocument(
     confidence: memory.confidence,
     source: memory.source,
     display_summary: usableOverlay.valid ? usableOverlay.overlay.summary : memory.summary,
-    search_tags: uniqueSorted([...(memory.tags ?? []), ...(usableOverlay.valid ? usableOverlay.overlay.tags : [])])
+    search_tags: uniqueSorted([...(memory.tags ?? []), ...(usableOverlay.valid ? usableOverlay.overlay.tags : [])]),
+    tag_terms: uniqueSorted([...memory.tags, ...memory.predictive_tags,
+      ...(usableOverlay.valid ? [...usableOverlay.overlay.tags, ...usableOverlay.overlay.predictive_tags] : [])])
   };
 }
 

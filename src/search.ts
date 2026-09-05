@@ -39,9 +39,14 @@ export async function search(root: string, options: SearchOptions): Promise<Sear
   const maxRawFragmentCharacters = positiveInteger(options.maxRawFragmentCharacters ?? settingNumber(settings, "recall.max_raw_fragment_characters"), "maxRawFragmentCharacters");
   const originalTokens = tokenize(options.query).filter(token => !QUERY_STOP.has(token));
   if (!originalTokens.length) return [];
-  const expansions = await within(expandTerms(root, project, lexicalTerms(options.query), options.contextTags), deadline);
+  const expansions = await within(expandTerms(root, project, [options.query, ...lexicalTerms(options.query)], options.contextTags), deadline);
   const weights = new Map<string, number>(originalTokens.map(token => [token, 1]));
-  for (const [term, confidence] of expansions) for (const token of tokenize(term)) weights.set(token, Math.max(weights.get(token) ?? 0, confidence * 0.75));
+  for (const [term, confidence] of expansions) {
+    // Registry keys join words with hyphens; effective documents retain the original tag spelling.
+    for (const token of [...tokenize(term), ...tokenize(term.replaceAll("-", " ")), ...tokenize(term.replaceAll(" ", "-"))]) {
+      weights.set(token, Math.max(weights.get(token) ?? 0, confidence * 0.75));
+    }
+  }
   const searchTokens = [...weights.keys()];
   const documents = await within(resolveEffectiveSearchDocuments(root, project, { maxFiles }), deadline);
   const active = documents.filter(document =>

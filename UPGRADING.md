@@ -1,4 +1,51 @@
-# Upgrading Linger from v0.2.2 to v1.0.0
+# Upgrading Linger
+
+## v1.0.0 → v1.1.0
+
+Upgrade with `npx linger-skill@1.1.0 install --yes`, or update the global npm package first. The installer updates managed
+runtime and integration files in place while preserving the Vault.
+
+- No Vault/config/raw/processed/Tag/Term Graph migration. Existing Local intent/profile/indexes are preserved. Tag
+  suggestions reuse the selected Local profile and need no index rebuild. Missing/corrupt Tag registries can be explicitly
+  regenerated with `tags rebuild --project ID`; old source records are unchanged.
+- POSIX installs use `~/.local/bin/linger` regardless of install-time PATH. Previously advertised managed launchers are
+  refreshed, and v0.2.x manifests without launchers gain the new entry. Add `$HOME/.local/bin` to PATH or invoke the reported
+  absolute path. Windows retains `~/.linger/bin/linger.cmd`. The installer does not change shell profiles.
+- The managed runtime now contains its CLI data dependencies, so `--version`, Local install-plan, and reinstall survive
+  removal of the package cache. Hooks supply their trusted locator even when enrichment is empty.
+- New `tags` commands expose the existing registries. `related`/`ambiguous` no longer authorize query expansion;
+  `contextual_equivalent` requires explicit matching `--context`. Existing records remain readable without rewriting.
+  Other confident curated mappings retain bidirectional, one-hop expansion with lexical confidence protection.
+- Disabling embedding stops candidate inference and document semantics; already curated relations still work lexically.
+  No new provider, credentials, setting, model, or dependency is introduced.
+- The new Tag suggestion output uses status/coverage plus candidate names, optional cosine and a bounded evidence sample.
+  Existing Registry and Term Graph files are unchanged; no candidate-output migration is needed.
+
+After upgrading, verify `linger --version`, `linger embedding-install-plan`, `linger tags list --project ID`,
+and a known old-record recall. A new hook installation still needs observed lifecycle events to demonstrate capture health.
+
+An integration rollback uses the preserved Vault and an older published installer; never use `purge`. v1.0.0 can read the
+schema-v1 relations but applies its older, broader `related` expansion semantics. Preserve newer evidence before any backup
+restore. v1.0.0 also has the incomplete managed-runtime issue; invoke its packaged CLI via npx for package-dependent commands.
+
+## v1.0.0 → v1.1.0
+
+使用 `npx linger-skill@1.1.0 install --yes` 升级，或先更新全局 npm 包。安装器会原位更新受管 runtime 与集成文件，
+并保留 Vault。
+
+无 Vault、配置、Raw、Processed、Tag 或 Term Graph 迁移；保留已有 Local 启用意图、profile 与文档索引。
+Tag 候选不需要文档索引重建；必要时显式 `tags rebuild --project ID` 重建派生 Registry。
+POSIX 入口固定为 `~/.local/bin/linger`，同时刷新旧受管入口；Windows 路径不变。目录不在 PATH 时直接用绝对路径
+或自行配置 PATH，安装器不会改 shell profile。受管 runtime 补齐包资源，删除包缓存后版本、安装计划、重装仍可用。
+
+新增 `tags` 命令；相关与歧义关系不再用于词法扩展，上下文等价必须显式匹配 `--context`。旧关系只兼容读取，
+不批量改写。关闭 embedding 后，已整理关系仍可用于词法召回；没有新增 provider、凭据、配置、模型或依赖。
+新 Tag 候选输出包含状态、覆盖计数、名称、可选余弦值和有界证据样本；不改变 Registry/Term Graph 文件，无需迁移。
+升级后的验证与回退按上面的说明执行。回退 v1.0.0 会恢复它较宽的 related 扩展行为以及已知受管 runtime 限制。
+
+---
+
+# Upgrading Linger from v0.2.2 to v1.0.0 (historical)
 
 [简体中文](#从-v022-升级到-v100)
 

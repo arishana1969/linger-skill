@@ -11,6 +11,7 @@ import type { LocalRuntimeInstallManifest } from "./local-runtime-install.js";
 import { assertSafeId, vaultPaths } from "../paths.js";
 import { resolveSettings, setSetting } from "../settings.js";
 import type { SearchOptions } from "../search.js";
+import { suggestTags, type TagSuggestions } from "../tag-registry.js";
 
 const PROFILE_ID = "local-multilingual-e5-base-q8-v1";
 const MODEL_SOURCE = "onnx-community/multilingual-e5-base-ONNX@d15bb63d1494d49ff653bb0105592a2696e7a8b6";
@@ -128,6 +129,26 @@ export async function localHybridSearch(root: string, options: SearchOptions): P
   } finally {
     if (worker) await worker.close();
   }
+}
+
+export async function suggestLocalTags(root: string, projectId: string, term: string, limit?: number): Promise<TagSuggestions> {
+  let worker: LocalEmbeddingWorker | undefined;
+  try {
+    return await suggestTags(root, projectId, term, { limit, embed: async (query, tags) => {
+      const deadline = Date.now() + 30_000;
+      const settings = await resolveSettings(root, { projectId });
+      const profile = await readCurrentProfile(root, String(settings.values["embedding.profile_id"].value));
+      worker = await LocalEmbeddingWorker.start(root, profile.install_root);
+      const inputs = [prepareE5Input("query", query), ...tags.map(tag => prepareE5Input("passage", tag.replaceAll("-", " ")))];
+      const vectors: number[][] = [];
+      for (let index = 0; index < inputs.length; index += 16) {
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) throw new Error("embedding.worker_timeout");
+        vectors.push(...(await worker.embed(inputs.slice(index, index + 16), profile.dimension, remaining)).vectors);
+      }
+      return { dimension: profile.dimension, vectors };
+    } });
+  } finally { if (worker) await worker.close(); }
 }
 
 export async function readInstalledLocalRuntime(root: string, installRootInput: string): Promise<InstalledLocalRuntime> {

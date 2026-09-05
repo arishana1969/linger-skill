@@ -12,28 +12,24 @@ A file-native conversation archive and decision trail for coding agents.
 
 ## Status
 
-Linger v1.0.0 is the first formal product release for Claude Code and Codex. It preserves visible project conversations
-as local, traceable evidence; it does not promise perfect archival coverage or production-grade compliance.
+This repository contains **v1.1.0**, compared with the previous v1.0.0 release. Independent ablation and final release
+review are complete; the compatibility and remaining platform limits are documented below.
 
-## What's new in v1.0.0
+## What's new in v1.1.0
 
-Compared with the previously published v0.2.2, v1.0.0 adds:
+- **CLI installation fixes:** a fixed POSIX launcher location, preserved legacy launcher paths on upgrade, and a complete
+  managed runtime. Version, reinstall, and Local install-plan commands work after the original package/cache is removed.
+  Hooks supply their trusted CLI locator even when no enrichment is pending.
+- **Tag candidate discovery:** the existing optional Local E5 model ranks nearby project tags on demand. Tag vectors live
+  only in memory; there is no second index or vector store.
+- **Typed term relations:** explicitly record synonym, alias, abbreviation, contextual equivalence, related, or ambiguous
+  relations with confidence and project evidence. Similarity never chooses a relation type or writes a synonym.
+- **Controlled query expansion:** confident equivalences expand one hop; related and ambiguous pairs do not expand.
+  Explicit context gates contextual relations. Exact lexical matches retain their rank and confidence protection.
+- **Compatibility:** v1.0.0 and legacy Vault/config/record/registry formats stay readable. Document hybrid search and its
+  local profile are retained, with no new dependencies, settings, services, or migrations.
 
-- **Visible status and session control:** `/linger` in Claude Code and `$linger` or the Skill picker in Codex show whether
-  Linger is active and can turn it off only for the current conversation.
-- **A stable CLI:** one managed install identity and launcher, explicit PATH diagnostics, and supported Node.js 22/24/26
-  behavior address the recurring “Linger CLI is unavailable” failure mode.
-- **Decision explanations and stronger diagnostics:** `linger why`, integrity-aware inspection, Capture Health, queue state,
-  Local Embedding state, and actionable `doctor` output.
-- **Optional Local-only semantic recall:** a default-off, validated Darwin/arm64 profile with no API/Remote Embedding backend
-  and no embedding API key.
-- **In-place v0.2.2 compatibility:** existing schema-v1 evidence, Vault content, managed installs, and same-root project
-  identities are reused without a bulk history rewrite; uninstall still preserves the Vault.
-- **A smaller public surface:** duplicate install state, unused settings, and undocumented maintenance/evaluation commands
-  were removed or made internal, while evidence and validation paths were simplified.
-
-See [CHANGELOG.md](CHANGELOG.md) for the complete change list and [UPGRADING.md](UPGRADING.md) for compatibility, removed
-surfaces, verification, and rollback guidance.
+See [CHANGELOG.md](CHANGELOG.md) and [UPGRADING.md](UPGRADING.md) for the full delta and compatibility boundaries.
 
 ## What Linger does
 
@@ -76,12 +72,21 @@ linger install
 
 Installation preserves host-owned memory and unrelated host configuration. A fresh adapter remains unverified until a
 real lifecycle event is observed; use `linger status` and `linger doctor` instead of assuming that copied files are healthy.
-If `~/.local/bin` is already on PATH, the installer uses `~/.local/bin/linger`; otherwise it uses
-`~/.linger/bin/linger`. It always reports the exact path and whether bare `linger` is currently reachable. It does not edit
-shell profiles; use the reported absolute path until you choose to add its directory to PATH.
+The managed POSIX entry is always `~/.local/bin/linger`; Windows uses `~/.linger/bin/linger.cmd`. The installer reports
+its absolute path and whether that directory is on the installing process's PATH. It does not edit shell profiles or
+change a parent shell's environment. On POSIX, if needed, run:
 
-Upgrading from v0.2.2 does not rewrite the Vault. Read [UPGRADING.md](UPGRADING.md) for the exact compatibility, command,
-removed-surface, verification, and rollback contract.
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+linger --version
+```
+
+Add the same directory to your own shell configuration for future sessions, or invoke the reported absolute path. A global
+npm install also exposes `linger` and `linger-skill` through npm's bin directory; `npx linger-skill install` itself is not a
+global npm install. Existing managed `~/.linger/bin/linger` paths are refreshed on upgrade. Hooks invoke their recorded
+Node/CLI paths directly, independently of shell PATH. Re-run the installer after replacing/removing that Node installation.
+
+Upgrading from v0.2.2 or v1.0.0 does not rewrite the Vault. See [UPGRADING.md](UPGRADING.md).
 
 ## How it works
 
@@ -139,7 +144,7 @@ records are never batch-rewritten as part of upgrade. Uninstall continues to pre
 
 ## Optional Local Embedding
 
-v1.0.0 contains no API or Remote Embedding backend and never asks for an embedding API key. The only validated Local
+v1.1.0 contains no API or Remote Embedding backend and never asks for an embedding API key. The only validated Local
 profile is:
 
 ```text
@@ -150,7 +155,7 @@ onnx-community/multilingual-e5-base-ONNX @ d15bb63d…
 onnx/model_quantized.onnx, dtype=q8, 768 dimensions
 ```
 
-Local Embedding is off after fresh install and upgrade. Enabling it is an explicit lifecycle:
+Local Embedding defaults to off. Upgrades preserve existing project intent and profiles. Enabling it is an explicit lifecycle:
 
 ```sh
 linger embedding-install-plan
@@ -186,7 +191,64 @@ Disabling preserves the index. Index deletion preserves source memory. Runtime r
 uses the profile and preserves derived indexes. Missing, stale, sensitive, timed-out, or failed semantic paths fall back to
 lexical recall with an explicit reason.
 
-Other operating systems, architectures, models, revisions, dtypes, and runtimes are unsupported in v1.0.0.
+Other operating systems, architectures, models, revisions, dtypes, and runtimes are unsupported in v1.1.0.
+
+## Tag discovery and relations
+
+```sh
+linger tags list --project PROJECT_ID
+linger tags rebuild --project PROJECT_ID
+linger tags suggest --project PROJECT_ID --term "db" --limit 8
+# After inspecting source evidence and deciding that this abbreviation is valid:
+linger tags relate --project PROJECT_ID --from db --to database --type abbreviation --confidence 0.95 --evidence EVENT_ID
+linger tags relations --project PROJECT_ID
+linger recall --project PROJECT_ID --query "db" --context backend
+```
+
+`list` reads the existing Tag Registry; processing/enrichment already rebuild it. `suggest` is read-only and uses the same
+Local runtime/profile as document search, without requiring a document index. It considers up to 128 current eligible tags
+(exact normalized name first, then usage), returns up to 20 (default 8), and reports `considered_tags` / `total_tags`.
+Only tags backed by complete, verified, normal-sensitivity effective documents enter the worker. Each request has a 30-second
+inference budget. Vectors are discarded afterwards; no vectors are written into the Tag Registry or Term Graph.
+
+Each candidate contains `tag`, optional `semantic_similarity`, and up to five `evidence_refs` sampled from one eligible
+source document. The response includes the project/query, coverage counts, and `semantic_status`: `off`, `active`,
+`privacy_blocked`, or `unavailable`.
+
+`semantic_similarity` is cosine ranking, not synonym confidence or a calibrated Tag threshold. Near neighbors may be
+broader/narrower terms, opposites, or unrelated in this project. Review the returned evidence IDs before `relate`; the command
+checks evidence integrity and project scope, while the curator is responsible for semantic correctness. It upserts the same
+normalized pair/context in the existing schema-v1 Term Graph, preserving type, confidence, evidence, and timestamps.
+
+| Relation | Query expansion at confidence ≥ 0.6 |
+| --- | --- |
+| `synonym`, `alias`, `abbreviation` | Bidirectional, one hop |
+| `contextual_equivalent` | Only with nonempty context and at least one explicitly matching `--context` tag |
+| `related`, `ambiguous` | Never; also veto competing equivalences for the same pair in the applicable context |
+| Legacy `location_mapping`, `product_name` | Retained as curated bidirectional mappings, not inferred synonyms |
+
+Any relation with context tags needs at least one matching query context. Expansion contributes reduced lexical weight;
+expansion-only hits remain `possible_match`. No embedding score creates or strengthens a relation. `related_terms` and
+`aliases` in the existing Tag Registry remain unchanged; the typed graph is the authority for semantic relations.
+
+If embedding is off or unavailable, `suggest` returns exact normalized tag matches with an explicit status. Lexical
+search and curated graph expansion continue normally. Existing document hybrid retrieval is unchanged; semantic-only
+matches remain candidates even for words whose graph relation is non-equivalent. This relation layer constrains term
+expansion, not all documents that a local model can rank nearby.
+
+## Configuration
+
+Use `linger config show --project PROJECT_ID` to inspect effective values and their source. v1.1.0 adds no settings:
+
+| Existing key | Scope / effect |
+| --- | --- |
+| `embedding.desired_enabled` | Project; authorizes local document retrieval and explicit Tag discovery; default `false` |
+| `embedding.profile_id` | Project; selects the same validated Local runtime/model for both |
+| `embedding.semantic_weight` | Global/project; document hybrid weight (default `0.7`); does not curate relations or control Tag suggestions |
+| `recall.*` | Existing lexical time/file/output limits remain in effect |
+
+Disable with `embedding-disable --project PROJECT_ID` to stop both local semantic uses. Existing typed relations remain
+available to lexical recall. Use `--context` per query instead of adding global context state.
 
 ## Privacy
 

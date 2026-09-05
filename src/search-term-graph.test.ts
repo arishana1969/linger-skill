@@ -7,6 +7,7 @@ import { capture } from "./capture.js";
 import { processQueue } from "./processing.js";
 import { search } from "./search.js";
 import { vaultPaths } from "./paths.js";
+import { setTermRelation } from "./term-graph.js";
 
 test("recall expands project alias with lower confidence and warning", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "linger-search-terms-"));
@@ -25,4 +26,17 @@ test("recall expands project alias with lower confidence and warning", async () 
   assert.deepEqual(hit.warning_flags, ["term_expansion"]);
   assert.equal(hit.match_type, "possible_match");
   assert.ok(hit.confidence < 0.65);
+});
+
+test("expansion retains spaced, hyphenated and mixed legacy term spellings", async () => {
+  for (const [term, content] of [["host-native", "host native"], ["host native", "host-native"], ["proof-link guide", "proof-link"]]) {
+    const root = await mkdtemp(path.join(os.tmpdir(), "linger-term-spelling-"));
+    const evidence = await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content, sourceAgent: "test" });
+    await processQueue(root);
+    await setTermRelation(root, { projectId: "p", termA: "projecthelper", termB: term, relationType: "alias", confidence: 0.9, evidenceRefs: [evidence!.event_id] });
+    const hits = await search(root, { projectId: "p", query: "projecthelper" });
+    assert.equal(hits.length, 1, `${term} must find ${content}`);
+    assert.equal(hits[0]?.match_type, "possible_match");
+    assert.ok(hits[0]!.confidence < 0.5);
+  }
 });

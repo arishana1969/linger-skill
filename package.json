@@ -1,6 +1,6 @@
 {
   "name": "linger-skill",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "File-native sidecar conversation archive and decision trail for coding agents.",
   "license": "MIT",
   "repository": {

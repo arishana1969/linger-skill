@@ -76,6 +76,9 @@ test("honors opt-out, marks secrets, and tolerates startup", async () => {
   assert.equal(startup.processed, 0);
   assert.match(JSON.stringify(startup.output), /evidence/);
   assert.doesNotMatch(JSON.stringify(startup.output), /already captured the current user event/);
+  const ready = await handleHook(root, { hook_event_name: "SessionStart", session_id: "s2", cwd }, "claude-code", undefined,
+    { node: process.execPath, cli: "/trusted/runtime/dist/cli.js", vault: root });
+  assert.match(JSON.stringify(ready.output), /Trusted Linger CLI locator/);
 });
 
 test("captures Claude StopFailure output as partial evidence", async () => {
