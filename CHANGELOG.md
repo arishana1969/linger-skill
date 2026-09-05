@@ -2,10 +2,10 @@
 
 Notable user-visible changes to Linger are recorded here.
 
-## 1.1.0 — Unreleased development candidate
+## 1.1.0 — 2026-09-05
 
 Compared with v1.0.0; includes the CLI reliability fixes previously considered for v1.0.1. Independent ablation is complete;
-final review and release approval remain pending. No publication or production installation is part of this candidate.
+the final review includes a real v0.2.2 upgrade and a bounded real-E5 Tag measurement.
 
 ### Fixed
 

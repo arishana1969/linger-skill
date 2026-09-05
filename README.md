@@ -12,8 +12,8 @@ A file-native conversation archive and decision trail for coding agents.
 
 ## Status
 
-This checkout is the **v1.1.0 development candidate**, compared with the released v1.0.0 baseline. It awaits independent
-ablation and release review. The npm install commands below install the published package, not this unpublished candidate.
+This repository contains **v1.1.0**, compared with the previous v1.0.0 release. Independent ablation and final release
+review are complete; the compatibility and remaining platform limits are documented below.
 
 ## What's new in v1.1.0
 

@@ -1,10 +1,9 @@
 # Upgrading Linger
 
-## v1.0.0 → v1.1.0 candidate
+## v1.0.0 → v1.1.0
 
-v1.1.0 is not published by this development task. After final review and release approval, the upgrade entry will be
-`npx linger-skill@1.1.0 install --yes` (or update the global npm package first). For local candidate verification, build and
-pack this checkout and install only into a temporary `--home` / `--vault`; do not use the production HOME.
+Upgrade with `npx linger-skill@1.1.0 install --yes`, or update the global npm package first. The installer updates managed
+runtime and integration files in place while preserving the Vault.
 
 - No Vault/config/raw/processed/Tag/Term Graph migration. Existing Local intent/profile/indexes are preserved. Tag
   suggestions reuse the selected Local profile and need no index rebuild. Missing/corrupt Tag registries can be explicitly
@@ -22,17 +21,17 @@ pack this checkout and install only into a temporary `--home` / `--vault`; do no
 - The new Tag suggestion output uses status/coverage plus candidate names, optional cosine and a bounded evidence sample.
   Existing Registry and Term Graph files are unchanged; no candidate-output migration is needed.
 
-After an approved upgrade, verify `linger --version`, `linger embedding-install-plan`, `linger tags list --project ID`,
+After upgrading, verify `linger --version`, `linger embedding-install-plan`, `linger tags list --project ID`,
 and a known old-record recall. A new hook installation still needs observed lifecycle events to demonstrate capture health.
 
 An integration rollback uses the preserved Vault and an older published installer; never use `purge`. v1.0.0 can read the
 schema-v1 relations but applies its older, broader `related` expansion semantics. Preserve newer evidence before any backup
 restore. v1.0.0 also has the incomplete managed-runtime issue; invoke its packaged CLI via npx for package-dependent commands.
 
-## v1.0.0 → v1.1.0 候选
+## v1.0.0 → v1.1.0
 
-本任务不发布 v1.1.0。最终审查与发布批准后，升级入口为 `npx linger-skill@1.1.0 install --yes`；本地验证只将
-当前工作区 build/pack 后安装到临时 `--home` / `--vault`，不使用正式 HOME。
+使用 `npx linger-skill@1.1.0 install --yes` 升级，或先更新全局 npm 包。安装器会原位更新受管 runtime 与集成文件，
+并保留 Vault。
 
 无 Vault、配置、Raw、Processed、Tag 或 Term Graph 迁移；保留已有 Local 启用意图、profile 与文档索引。
 Tag 候选不需要文档索引重建；必要时显式 `tags rebuild --project ID` 重建派生 Registry。
