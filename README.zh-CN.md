@@ -195,6 +195,9 @@ runtime/profile，不要求文档索引。每次最多考虑 128 个当前合格
 默认返回 8 个、最多 20 个，用 `considered_tags` / `total_tags` 报告覆盖范围。只有来自完整、校验通过、普通敏感级别
 有效文档的 Tag 才进入 worker；推理预算为 30 秒。向量随后丢弃，不写进 Tag Registry 或 Term Graph。
 
+每个候选包含 `tag`、可选的 `semantic_similarity`，以及来自一个合格来源文档的最多 5 个 `evidence_refs`。
+响应同时给出项目、查询词、覆盖计数与 `semantic_status`：`off`、`active`、`privacy_blocked` 或 `unavailable`。
+
 `semantic_similarity` 是余弦排序值，不是同义置信度，也没有经过 Tag 效果阈值校准。相近候选可能是上下位词、
 反义词，或在本项目中无关。先查看候选证据 ID，再执行 `relate`；命令校验证据完整性与项目范围，关系含义由整理者
 判断。同一标准化词对与 context 会在现有 schema-v1 Term Graph 中更新，保留类型、置信度、证据与时间戳。

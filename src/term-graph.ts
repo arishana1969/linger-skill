@@ -77,7 +77,7 @@ export async function setTermRelation(root: string, input: {
 }
 
 export async function expandTerms(root: string, projectId: string, queryTerms: string[], contextTags: string[] = []): Promise<Map<string, number>> {
-  const query = queryTerms.map(normalize).filter(Boolean);
+  const query = queryTerms.map(termKey).filter(Boolean);
   const context = new Set(contextTags.map(normalize).filter(Boolean));
   const relations = (await readTermRelations(root, projectId)).filter(relation => relation.confidence >= 0.6
     && (!relation.context_tags.length || relation.context_tags.some(tag => context.has(normalize(tag)))));
@@ -99,8 +99,5 @@ function termKey(value: string): string { return normalize(value.replaceAll("-",
 function pairKey(relation: TermRelation): string { return JSON.stringify([termKey(relation.term_a), termKey(relation.term_b)].sort()); }
 function matches(query: string[], term: string): boolean {
   const phrase = termKey(term);
-  return query.some(value => {
-    const text = termKey(value);
-    return text === phrase || (phrase.includes(" ") && ` ${text} `.includes(` ${phrase} `));
-  });
+  return query.some(text => text === phrase || (phrase.includes(" ") && ` ${text} `.includes(` ${phrase} `)));
 }

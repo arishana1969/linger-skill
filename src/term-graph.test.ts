@@ -31,6 +31,7 @@ test("curation is project-scoped and idempotent; contextual phrases and ambiguit
     confidence: 0.95, evidenceRefs: [evidence!.event_id], contextTags: [" Backend "] };
   await assert.rejects(setTermRelation(root, { ...input, contextTags: [] }), /requires context/);
   await assert.rejects(setTermRelation(root, { ...input, projectId: "other" }), /evidence in this project/);
+  await assert.rejects(setTermRelation(root, { ...input, confidence: NaN }), /confidence/);
   const first = await setTermRelation(root, input);
   const second = await setTermRelation(root, input);
   assert.equal(first.relation_id, second.relation_id);
@@ -46,6 +47,15 @@ test("curation is project-scoped and idempotent; contextual phrases and ambiguit
   await setTermRelation(root, { ...input, termB: "garbage-collector", relationType: "ambiguous" });
   assert.equal((await readTermRelations(root, "p")).length, 2); // One curated pair plus the legacy file.
   assert.equal((await expandTerms(root, "p", ["gc"], ["backend"])).size, 0);
+});
+
+test("legacy mappings remain readable, empty contextual edges do not expand, and expansion stops after one hop", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-term-legacy-"));
+  await writeLegacyRelation(root, "p", "hq", "office", "location_mapping", 0.9);
+  await writeLegacyRelation(root, "p", "office", "studio", "product_name", 0.9);
+  await writeLegacyRelation(root, "p", "gc", "collector", "contextual_equivalent", 0.9);
+  assert.deepEqual([...(await expandTerms(root, "p", ["hq", "gc"]))], [["office", 0.9]]);
+  assert.equal((await expandTerms(root, "p", ["studio"])).get("office"), 0.9);
 });
 
 async function writeLegacyRelation(root: string, project: string, a: string, b: string, type: TermRelationType, confidence: number, context: string[] = []): Promise<TermRelation> {

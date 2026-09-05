@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -12,6 +12,7 @@ import { setSetting } from "./settings.js";
 import { readTermRelations, setTermRelation, type TermRelationType } from "./term-graph.js";
 import { hybridSearch } from "./local/hybrid-search.js";
 import { suggestLocalTags } from "./local/local-embedding-runtime.js";
+import { vaultPaths } from "./paths.js";
 
 test("rebuilds tag counts from active processed source records", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "linger-tags-"));
@@ -21,6 +22,11 @@ test("rebuilds tag counts from active processed source records", async () => {
   const registry = await rebuildTagRegistry(root, "p");
   assert.equal(registry.entries.find(entry => entry.normalized_tag === "database")?.usage_count, 2);
   assert.equal((await readTagRegistry(root, "p"))?.entries.length, registry.entries.length);
+  const candidate = (await suggestTags(root, "p", "database")).candidates[0]!;
+  assert.equal(candidate.evidence_refs.length, 1);
+  const relation = await setTermRelation(root, { projectId: "p", termA: "db", termB: candidate.tag,
+    relationType: "abbreviation", confidence: 0.9, evidenceRefs: candidate.evidence_refs });
+  assert.deepEqual(relation.evidence_refs, candidate.evidence_refs);
 });
 
 test("rebuild excludes forgotten memory", async () => {
@@ -51,7 +57,7 @@ test("fixed semantic acceptance set: discovery, typed relations, lexical protect
   await processQueue(root);
   const disabled = await suggestTags(root, "p", "database", { embed: async () => { throw new Error("must not embed when disabled"); } });
   assert.equal(disabled.semantic_status, "off");
-  assert.equal(disabled.candidates[0]?.lexical_match, true);
+  assert.equal(disabled.candidates[0]?.tag, "database");
   await setSetting(root, { scope: "project", projectId: "p", key: "embedding.desired_enabled", value: true });
   const suggestions = await suggestTags(root, "p", "db", { limit: 20, embed: async (_query, tags) => {
     assert.equal(tags.includes("foreign-only"), false);
@@ -100,4 +106,35 @@ test("stale registry tags from forgotten records never enter the embedding worke
   const suggestions = await suggestTags(root, "p", "forgotten-tag", { embed: async () => { throw new Error("ineligible tags must not be embedded"); } });
   assert.equal(suggestions.considered_tags, 0);
   assert.deepEqual(suggestions.candidates, []);
+});
+
+test("tag work is bounded, exact names outrank higher cosine, and invalid vectors preserve lexical fallback", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "linger-tags-bounded-"));
+  await capture(root, { projectId: "p", sessionId: "s", turnId: "t", role: "user", content: "bounded candidate discovery fixture", sourceAgent: "test" });
+  await processQueue(root);
+  const hit = (await search(root, { projectId: "p", query: "bounded" }))[0]!;
+  const file = path.join(vaultPaths(root).processed, "p", `${hit.source}.json`);
+  const memory = JSON.parse(await readFile(file, "utf8"));
+  memory.tags = [...Array.from({ length: 129 }, (_, index) => `topic-${String(index).padStart(3, "0")}`), "zz rare"];
+  memory.predictive_tags = [];
+  await writeFile(file, JSON.stringify(memory));
+  await rebuildTagRegistry(root, "p");
+  const registryBefore = await readTagRegistry(root, "p");
+  await setSetting(root, { scope: "project", projectId: "p", key: "embedding.desired_enabled", value: true });
+  const suggestions = await suggestTags(root, "p", "ZZ rare", { embed: async (_query, tags) => {
+    assert.equal(tags.length, 128);
+    assert.equal(tags[0], "zz-rare");
+    return { dimension: 2, vectors: [[2, 0], ...tags.map(tag => tag === "zz-rare" ? [-3, 0] : [4, 0])] };
+  } });
+  assert.equal(suggestions.semantic_status, "active");
+  assert.equal(suggestions.total_tags, 130);
+  assert.equal(suggestions.considered_tags, 128);
+  assert.equal(suggestions.candidates[0]?.tag, "zz-rare");
+  assert.equal(suggestions.candidates[0]?.semantic_similarity, -1);
+  assert.equal(suggestions.candidates[1]?.semantic_similarity, 1);
+  assert.equal(suggestions.candidates.length, 8);
+  const invalid = await suggestTags(root, "p", "ZZ rare", { embed: async (_query, tags) => ({ dimension: 2, vectors: [[1, 0], ...tags.map(() => [NaN, 0])] }) });
+  assert.equal(invalid.semantic_status, "unavailable");
+  assert.deepEqual(invalid.candidates.map(candidate => candidate.tag), ["zz-rare"]);
+  assert.deepEqual(await readTagRegistry(root, "p"), registryBefore);
 });

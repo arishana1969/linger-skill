@@ -58,7 +58,9 @@ are unsupported. Sensitive queries never enter the worker. Any runtime/index/inf
 results with an explicit degraded reason; it is not a false empty recall.
 
 Tag discovery shares `embedding.desired_enabled` and `embedding.profile_id`; `embedding.semantic_weight` controls only the
-document hybrid branch. Tag vectors are transient, similarity has no calibrated synonym threshold, and no automatic
+document hybrid branch. Candidates contain `tag`, optional `semantic_similarity`, and up to five `evidence_refs` from one
+eligible source document. The response includes project/query, coverage counts and `semantic_status` (`off`, `active`,
+`privacy_blocked`, `unavailable`). Tag vectors are transient, similarity has no calibrated synonym threshold, and no automatic
 relation is persisted. Disabled embedding does not disable already curated lexical graph expansion. The graph constrains
 term expansion; it does not veto nearby document-level semantic candidates.
 

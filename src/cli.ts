@@ -210,7 +210,7 @@ async function main(): Promise<void> {
       output(result); break;
     }
     case "search": {
-      const searchOptions = {
+      const result = await localHybridSearch(vault, {
         projectId: option("--project") ?? (await registerProject(vault, process.cwd())).project_id,
         includeRaw: flag("--include-raw"),
         maxFiles: optionalNumberOption("--max-files"),
@@ -218,9 +218,9 @@ async function main(): Promise<void> {
         timeoutMs: optionalNumberOption("--timeout-ms"),
         from: option("--from"),
         to: option("--to"),
-        contextTags: option("--context")?.split(",").map(tag => tag.trim()).filter(Boolean)
-      };
-      const result = await localHybridSearch(vault, { ...searchOptions, query: option("--query") ?? args.join(" ") });
+        contextTags: option("--context")?.split(",").map(tag => tag.trim()).filter(Boolean),
+        query: option("--query") ?? args.join(" ")
+      });
       output(result.hits);
       break;
     }
@@ -310,7 +310,7 @@ Tags: tags list|rebuild|relations --project ID
       tags suggest --project ID --term TEXT [--limit 1..20]
       tags relate --project ID --from TERM --to TERM --type TYPE --confidence 0..1 --evidence EVENT_IDS [--context TAGS]
 Types: synonym, alias, abbreviation, contextual_equivalent, related, ambiguous (legacy location_mapping/product_name supported)
-Tag suggestions use optional Local Embedding, never auto-create relations; related/ambiguous do not expand queries.
+Tag suggestions use optional Local Embedding with status, coverage and evidence samples; never auto-create relations; related/ambiguous do not expand queries.
 Search/recall accept --context TAGS (comma-separated); contextual equivalence requires matching explicit context.
 Local embedding: embedding-status, embedding-install-plan, embedding-install, embedding-enable, embedding-disable, embedding-rebuild, embedding-delete-index, embedding-remove-runtime
 Install: install, uninstall, purge, capabilities

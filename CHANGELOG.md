@@ -4,8 +4,8 @@ Notable user-visible changes to Linger are recorded here.
 
 ## 1.1.0 — Unreleased development candidate
 
-Compared with v1.0.0; includes the CLI reliability fixes previously considered for v1.0.1. Pending independent ablation
-and release review. No publication or production installation is part of this candidate.
+Compared with v1.0.0; includes the CLI reliability fixes previously considered for v1.0.1. Independent ablation is complete;
+final review and release approval remain pending. No publication or production installation is part of this candidate.
 
 ### Fixed
 
@@ -20,6 +20,9 @@ and release review. No publication or production installation is part of this ca
 
 - `tags list|rebuild|suggest|relate|relations` operates on the existing Tag Registry and Term Graph. Tag discovery reuses the
   optional Local E5 runtime, embeds up to 128 eligible tags per request, and discards vectors after ranking candidates.
+- Candidate output keeps tag names, optional cosine values and a bounded evidence sample from one eligible document;
+  response status and coverage describe the discovery result. No redundant per-candidate exact-match flag or fixed error
+  alias is exposed. Independent ablation also removes duplicate evidence aggregation, query normalization and source preflight work.
 - Explicit relation curation records type, confidence, context, timestamps, and verified project evidence. No similarity
   score automatically creates a synonym. `search` and `recall` accept explicit `--context` tags.
 - Confident equivalences expand one hop with reduced lexical weight. `related` and `ambiguous` never expand, and veto a
@@ -39,8 +42,8 @@ and release review. No publication or production installation is part of this ca
 
 ### Verification
 
-- Bounded unit/integration and temporary npm-package installation checks are recorded in `DEVELOPMENT.md` with the candidate
-  handoff. Production HOME/Vault and GitHub remain unchanged.
+- Bounded unit/integration, removal experiments and temporary npm-package/upgrade checks are recorded in `ABLATION_REPORT.md`,
+  with a compact summary in `DEVELOPMENT.md`. Production HOME/Vault and GitHub remain unchanged.
 
 ## 1.0.0 — 2026-08-12
 

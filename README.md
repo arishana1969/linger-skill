@@ -211,6 +211,10 @@ Local runtime/profile as document search, without requiring a document index. It
 Only tags backed by complete, verified, normal-sensitivity effective documents enter the worker. Each request has a 30-second
 inference budget. Vectors are discarded afterwards; no vectors are written into the Tag Registry or Term Graph.
 
+Each candidate contains `tag`, optional `semantic_similarity`, and up to five `evidence_refs` sampled from one eligible
+source document. The response includes the project/query, coverage counts, and `semantic_status`: `off`, `active`,
+`privacy_blocked`, or `unavailable`.
+
 `semantic_similarity` is cosine ranking, not synonym confidence or a calibrated Tag threshold. Near neighbors may be
 broader/narrower terms, opposites, or unrelated in this project. Review the returned evidence IDs before `relate`; the command
 checks evidence integrity and project scope, while the curator is responsible for semantic correctness. It upserts the same

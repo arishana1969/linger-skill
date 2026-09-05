@@ -7,8 +7,11 @@ import test from "node:test";
 import { localEmbeddingStatus } from "./local-embedding.js";
 import { vaultPaths } from "../paths.js";
 import { setSetting } from "../settings.js";
+import { capture } from "../capture.js";
+import { processQueue } from "../processing.js";
+import { configureLocalEmbedding, LocalEmbeddingWorker, suggestLocalTags } from "./local-embedding-runtime.js";
 
-test("Local Embedding status is read-only, honest before installation, and validates one exact local profile", async () => {
+test("Local Embedding status and bounded tag worker lifecycle use the selected profile", async t => {
   const parent = await mkdtemp(path.join(os.tmpdir(), "linger-local-embedding-"));
   const absent = path.join(parent, "absent");
   assert.deepEqual(await localEmbeddingStatus(absent, "p_local"), {
@@ -78,4 +81,41 @@ test("Local Embedding status is read-only, honest before installation, and valid
   assert.equal(current.state, "validated");
   assert.equal(current.index_status, "missing");
   assert.equal(current.effective_mode, "lexical");
+
+  // Synthetic transport acceptance only: these files and vectors are not a real E5 model.
+  await configureLocalEmbedding(root, { projectId: "p_local", installRoot });
+  for (let group = 0; group < 2; group++) await capture(root, { projectId: "p_local", sessionId: "s", turnId: String(group), role: "user", sourceAgent: "test",
+    content: Array.from({ length: 12 }, (_, index) => `topic-${group * 12 + index}`).join(" ") });
+  await processQueue(root);
+  const batches: string[][] = [];
+  let starts = 0, closes = 0, fail = false;
+  t.mock.method(LocalEmbeddingWorker, "start", async (_root: string, selectedRoot: string) => {
+    assert.equal(selectedRoot, installRoot);
+    starts++;
+    return {
+      embed: async (inputs: string[], dimension: number, timeoutMs: number) => {
+        assert.ok(inputs.length <= 16, "worker protocol allows at most 16 inputs");
+        assert.equal(dimension, 768);
+        assert.ok(timeoutMs > 0 && timeoutMs <= 30_000);
+        if (fail) throw new Error("embedding.worker_timeout");
+        batches.push(inputs);
+        return { dimension, vectors: inputs.map(() => [1, ...Array<number>(767).fill(0)]) };
+      },
+      close: async () => { closes++; }
+    };
+  });
+  for (let request = 0; request < 2; request++) {
+    const suggestions = await suggestLocalTags(root, "p_local", "topic-0");
+    assert.equal(suggestions.semantic_status, "active");
+    assert.equal(suggestions.considered_tags, 24);
+    assert.equal(suggestions.candidates[0]?.tag, "topic-0");
+  }
+  assert.deepEqual(batches.map(batch => batch.length), [16, 9, 16, 9]);
+  assert.equal(batches[0]![0], "query: topic-0");
+  assert.ok(batches[0]!.slice(1).every(input => input.startsWith("passage: topic ")));
+  fail = true;
+  assert.equal((await suggestLocalTags(root, "p_local", "topic-0")).semantic_status, "unavailable");
+  assert.equal(starts, 3);
+  assert.equal(closes, 3);
+  assert.equal((await localEmbeddingStatus(root, "p_local")).index_status, "missing");
 });

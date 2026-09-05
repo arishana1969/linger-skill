@@ -12,7 +12,7 @@ import { commitEnrichment, enrichmentStatus, prepareEnrichmentBatch, type Enrich
 import { processQueue } from "./processing.js";
 import { quarantineInvalidFiles } from "./repair.js";
 import { search } from "./search.js";
-import { readTagRegistry } from "./tag-registry.js";
+import { readTagRegistry, suggestTags } from "./tag-registry.js";
 import { vaultPaths } from "./paths.js";
 import { expandTerms, setTermRelation } from "./term-graph.js";
 
@@ -62,6 +62,9 @@ test("host enrichment improves recall without replacing deterministic processed 
   assert.equal((await search(root, { projectId: project, query: "preserve source evidence" }))[0]?.source, batch.items[0]!.memory_id);
   assert.deepEqual(await enrichmentStatus(root, project), { project_id: project, pending: 0, enriched: 1 });
   assert.ok((await readTagRegistry(root, project))?.entries.some(entry => entry.normalized_tag === "semantic-orchid"));
+  const predictive = await suggestTags(root, project, "host native");
+  assert.equal(predictive.candidates[0]?.tag, "host-native");
+  assert.deepEqual(predictive.candidates[0]?.evidence_refs, batch.items[0]!.source_events);
   // A candidate uses the registry's hyphenated key while this overlay stores "host native".
   await setTermRelation(root, { projectId: project, termA: "project-helper", termB: "host-native", relationType: "alias",
     confidence: 0.9, evidenceRefs: batch.items[0]!.source_events });

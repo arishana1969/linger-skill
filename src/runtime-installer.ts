@@ -16,8 +16,6 @@ export async function installRuntime(home: string, packageRoot: string): Promise
     throw new Error("Invalid package version");
   }
   const version = assertSafeId((packageJson as { version: string }).version, "package version");
-  const sourceDist = path.join(packageRoot, "dist");
-  await stat(path.join(sourceDist, "hook-cli.js"));
   const runtimeParent = path.join(home, ".linger", "runtime");
   const root = path.join(runtimeParent, version);
   const managed = path.join(root, ".linger-managed");

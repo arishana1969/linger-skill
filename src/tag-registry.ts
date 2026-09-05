@@ -76,9 +76,8 @@ export async function readTagRegistry(root: string, projectId: string): Promise<
   catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; }
 }
 
-export interface TagCandidate {
+interface TagCandidate {
   tag: string;
-  lexical_match: boolean;
   semantic_similarity?: number;
   evidence_refs: string[];
 }
@@ -87,7 +86,6 @@ export interface TagSuggestions {
   project_id: string;
   term: string;
   semantic_status: "off" | "active" | "privacy_blocked" | "unavailable";
-  degraded_reason?: string;
   considered_tags: number;
   total_tags: number;
   candidates: TagCandidate[];
@@ -100,46 +98,45 @@ export async function suggestTags(root: string, projectId: string, term: string,
 } = {}): Promise<TagSuggestions> {
   const project = assertSafeId(projectId, "project id");
   if (!term.trim() || [...term].length > 128) throw new Error("Tag query must contain 1 to 128 characters");
+  const normalizedTerm = normalizeTag(term);
   const limit = options.limit ?? 8;
   if (!Number.isInteger(limit) || limit < 1 || limit > 20) throw new Error("Tag limit must be from 1 to 20");
   const result: TagSuggestions = { project_id: project, term, semantic_status: "off", considered_tags: 0, total_tags: 0, candidates: [] };
   if (classifySensitivity(term).level !== "normal") return { ...result, semantic_status: "privacy_blocked" };
   const registry = await readTagRegistry(root, project);
   // A stale registry cannot authorize embedding revoked, sensitive, or invalid evidence.
-  const evidenceByTag = new Map<string, Set<string>>();
+  const evidenceByTag = new Map<string, string[]>();
   for (const document of await resolveEffectiveSearchDocuments(root, project)) {
     if (!document.eligibility.index) continue;
     for (const tag of document.tag_terms) {
       const key = normalizeTag(tag);
-      const evidence = evidenceByTag.get(key) ?? new Set<string>();
-      for (const source of document.evidence_descriptors) evidence.add(source.event_id);
-      evidenceByTag.set(key, evidence);
+      // One eligible source document is enough to make the candidate inspectable.
+      if (!evidenceByTag.has(key)) evidenceByTag.set(key, document.evidence_descriptors.map(source => source.event_id).slice(0, 5));
     }
   }
   const entries = (registry?.entries ?? []).filter(entry => evidenceByTag.has(entry.normalized_tag))
-    .sort((a, b) => Number(b.normalized_tag === normalizeTag(term)) - Number(a.normalized_tag === normalizeTag(term))
+    .sort((a, b) => Number(b.normalized_tag === normalizedTerm) - Number(a.normalized_tag === normalizedTerm)
       || b.usage_count - a.usage_count || a.normalized_tag.localeCompare(b.normalized_tag));
   result.total_tags = entries.length;
   const candidates: TagCandidate[] = entries.slice(0, 128).map(entry => ({
     tag: entry.normalized_tag,
-    lexical_match: normalizeTag(term) === entry.normalized_tag,
-    evidence_refs: [...evidenceByTag.get(entry.normalized_tag)!].sort().slice(0, 5)
+    evidence_refs: evidenceByTag.get(entry.normalized_tag)!
   }));
   result.considered_tags = candidates.length;
-  result.candidates = candidates.filter(candidate => candidate.lexical_match).slice(0, limit);
+  result.candidates = candidates.filter(candidate => candidate.tag === normalizedTerm).slice(0, limit);
   const settings = await resolveSettings(root, { projectId: project });
   if (settings.values["embedding.desired_enabled"].value !== true || !candidates.length) return result;
-  if (!options.embed) return { ...result, semantic_status: "unavailable", degraded_reason: "embedding.tag_candidates_unavailable" };
+  if (!options.embed) return { ...result, semantic_status: "unavailable" };
   try {
     const embedded = await options.embed(term, candidates.map(candidate => candidate.tag));
     if (embedded.vectors.length !== candidates.length + 1) throw new Error("embedding.response_dimension_mismatch");
     const vectors = embedded.vectors.map(vector => normalizeVector(vector, embedded.dimension));
     candidates.forEach((candidate, index) => { candidate.semantic_similarity = dot(vectors[0]!, vectors[index + 1]!); });
-    candidates.sort((a, b) => Number(b.lexical_match) - Number(a.lexical_match)
+    candidates.sort((a, b) => Number(b.tag === normalizedTerm) - Number(a.tag === normalizedTerm)
       || b.semantic_similarity! - a.semantic_similarity! || a.tag.localeCompare(b.tag));
     return { ...result, semantic_status: "active", candidates: candidates.slice(0, limit) };
   } catch {
-    return { ...result, semantic_status: "unavailable", degraded_reason: "embedding.tag_candidates_unavailable" };
+    return { ...result, semantic_status: "unavailable" };
   }
 }
 
